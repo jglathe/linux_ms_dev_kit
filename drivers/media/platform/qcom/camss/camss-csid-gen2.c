@@ -623,6 +623,49 @@ static void csid_subdev_init(struct csid_device *csid)
 	csid->testgen.nmodes = CSID_PAYLOAD_MODE_NUM_SUPPORTED_GEN2;
 }
 
+static size_t csid_dump_regs(struct csid_device *csid, char *buf, size_t buf_len)
+{
+	size_t len = 0;
+	int i;
+	struct vfe_device *vfe = &csid->camss->vfe[csid->id];
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_TOP_IRQ_STATUS 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_TOP_IRQ_STATUS));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_IRQ_STATUS 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_IRQ_STATUS));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_CFG0 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_CFG0));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_CFG1 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_CFG1));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_TOTAL_PKTS_RCVD 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_TOTAL_PKTS_RCVD));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_STATS_ECC 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_STATS_ECC));
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "CSID_CSI2_RX_CRC_ERRORS 0x%08x\n",
+			 readl_relaxed(csid->base + CSID_CSI2_RX_CRC_ERRORS));
+
+	for (i = 0; i < vfe->line_num; i++) {
+		len += scnprintf(buf + len, buf_len - len,
+				 "CSID_CSI2_RDIN_IRQ_STATUS(%d) 0x%08x\n",
+				 i, readl_relaxed(csid->base + CSID_CSI2_RDIN_IRQ_STATUS(i)));
+	}
+
+	return len;
+}
+
 const struct csid_hw_ops csid_ops_gen2 = {
 	.configure_stream = csid_configure_stream,
 	.configure_testgen_pattern = csid_configure_testgen_pattern,
@@ -631,4 +674,5 @@ const struct csid_hw_ops csid_ops_gen2 = {
 	.reset = csid_reset,
 	.src_pad_code = csid_src_pad_code,
 	.subdev_init = csid_subdev_init,
+	.dump_regs = csid_dump_regs,
 };
