@@ -12,6 +12,7 @@
 
 #include <linux/clk.h>
 #include <linux/interrupt.h>
+#include <linux/mutex.h>
 #include <media/media-entity.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -147,6 +148,12 @@ struct csid_hw_ops {
 	 * @csid: CSID device
 	 */
 	void (*subdev_init)(struct csid_device *csid);
+
+	/*
+	 * dump_regs - Show debugfs regs on a per CSID basis
+	 * @csid: CSID device
+	 */
+	size_t (*dump_regs)(struct csid_device *csid, char *buf, size_t buf_len);
 };
 
 struct csid_device {
@@ -170,6 +177,8 @@ struct csid_device {
 	const struct csid_format *formats;
 	unsigned int nformats;
 	const struct csid_hw_ops *ops;
+	struct mutex mutex;	/* atomicity of active flag */
+	bool active;
 };
 
 struct camss_subdev_resources;
