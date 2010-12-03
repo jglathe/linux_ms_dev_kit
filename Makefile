@@ -1504,6 +1504,7 @@ ifdef HEADER_ARCH
 else
 	$(Q)$(MAKE) $(hdr-inst)=include/uapi
 	$(Q)$(MAKE) $(hdr-inst)=arch/$(SRCARCH)/include/uapi
+	$(Q)$(MAKE) $(hdr-inst)=ubuntu/include dst=include oldheaders=
 endif
 
 ifdef CONFIG_HEADERS_INSTALL
