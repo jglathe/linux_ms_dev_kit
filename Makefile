@@ -885,6 +885,12 @@ ifdef CONFIG_FTRACE_MCOUNT_USE_CC
   ifdef CONFIG_HAVE_NOP_MCOUNT
     ifeq ($(call cc-option-yn, -mnop-mcount),y)
       CC_FLAGS_FTRACE	+= -mnop-mcount
+# ensure -fcf-protection is disabled when using retpoline as it is
+# incompatible with -mindirect-branch=thunk-extern
+ifdef CONFIG_RETPOLINE
+KBUILD_CFLAGS += $(call cc-option,-fcf-protection=none,)
+endif
+
       CC_FLAGS_USING	+= -DCC_USING_NOP_MCOUNT
     endif
   endif
