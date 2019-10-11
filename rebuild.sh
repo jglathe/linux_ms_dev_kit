@@ -13,6 +13,6 @@ rm -rf debian/build/build-generic/_____________________________________dkms/
 
 export LLVM=1
 
-time dpkg-buildpackage -d -b -aarm64 -k'jens.glathe@oldschoolsolutions.biz'
+time dpkg-buildpackage -b -aarm64 -k'jens.glathe@oldschoolsolutions.biz'
 
 #time debuild --no-lintian -k'jens.glathe@oldschoolsolutions.biz'
