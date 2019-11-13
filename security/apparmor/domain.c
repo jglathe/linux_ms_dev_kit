@@ -706,7 +706,7 @@ static struct aa_label *profile_transition(const struct cred *subj_cred,
 			/* Don't cause error if auditing fails */
 			(void) aa_audit_file(subj_cred, profile, &perms,
 				OP_EXEC, MAY_EXEC, name, target, new, cond->uid,
-				info, error);
+				info, error, false);
 		}
 		if (new) {
 			AA_DEBUG(DEBUG_DOMAIN, "unconfined attached to new label");
@@ -779,9 +779,8 @@ create_learning_profile:
 	}
 
 audit:
-	aa_audit_file(subj_cred, profile, &perms, OP_EXEC, MAY_EXEC, name,
-		      target, new,
-		      cond->uid, info, error);
+	aa_audit_file(subj_cred, profile, &perms, OP_EXEC, MAY_EXEC, name, target, new,
+		      cond->uid, info, error, true);
 	if (!new || nonewprivs) {
 		aa_put_label(new);
 		return ERR_PTR(error);
@@ -860,7 +859,7 @@ static int profile_onexec(const struct cred *subj_cred,
 audit:
 	return aa_audit_file(subj_cred, profile, &perms, OP_EXEC,
 			     AA_MAY_ONEXEC, xname,
-			     NULL, onexec, cond->uid, info, error);
+			     NULL, onexec, cond->uid, info, error, false);
 }
 
 /* ensure none ns domain transitions are correctly applied with onexec */
@@ -916,7 +915,7 @@ static struct aa_label *handle_onexec(const struct cred *subj_cred,
 				      AA_MAY_ONEXEC, bprm->filename, NULL,
 				      onexec, GLOBAL_ROOT_UID,
 				      "failed to build target label",
-				      PTR_ERR(new)));
+				      PTR_ERR(new), false));
 	return ERR_PTR(error);
 }
 
@@ -1048,7 +1047,8 @@ audit:
 			aa_audit_file(current_cred(), profile, &nullperms,
 				      OP_EXEC, MAY_EXEC,
 				      bprm->filename, NULL, new,
-				      vfsuid_into_kuid(vfsuid), info, error));
+				      vfsuid_into_kuid(vfsuid), info, error,
+				      false));
 	aa_put_label(new);
 	goto done;
 }
@@ -1099,7 +1099,7 @@ audit:
 		      AA_MAY_CHANGEHAT,
 		      name, hat ? hat->base.hname : NULL,
 		      hat ? &hat->label : NULL, GLOBAL_ROOT_UID, info,
-		      error);
+		      error, false);
 	if (!hat || (error && error != -ENOENT))
 		return ERR_PTR(error);
 	/* if hat && error - complain mode, already audited and we adjust for
@@ -1219,7 +1219,7 @@ fail:
 			aa_audit_file(subj_cred, profile, &nullperms,
 				      OP_CHANGE_HAT,
 				      AA_MAY_CHANGEHAT, name, NULL, NULL,
-				      GLOBAL_ROOT_UID, info, error);
+				      GLOBAL_ROOT_UID, info, error, false);
 		}
 	}
 	mutex_unlock(&ns->lock);
@@ -1485,7 +1485,8 @@ int aa_change_profile(const char *fqname, int flags)
 		(void) fn_for_each_in_scope(label, profile,
 				aa_audit_file(subj_cred, profile, &perms, op,
 					      request, auditname, NULL, target,
-					      GLOBAL_ROOT_UID, stack_msg, 0));
+					      GLOBAL_ROOT_UID, stack_msg, 0,
+					      false));
 		perms.audit = 0;
 	}
 
@@ -1610,7 +1611,7 @@ audit:
 			aa_audit_file(subj_cred,
 				      profile, &perms, op, request, auditname,
 				      NULL, new ? new : target,
-				      GLOBAL_ROOT_UID, info, error));
+				      GLOBAL_ROOT_UID, info, error, false));
 
 out:
 	aa_put_label(new);
