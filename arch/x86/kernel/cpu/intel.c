@@ -202,6 +202,7 @@ void intel_unlock_cpuid_leafs(struct cpuinfo_x86 *c)
 static void early_init_intel(struct cpuinfo_x86 *c)
 {
 	u64 misc_enable;
+	bool allow_fast_string = true;
 
 	if (c->x86 >= 6 && !cpu_has(c, X86_FEATURE_IA64))
 		c->microcode = intel_get_microcode_revision();
@@ -302,6 +303,19 @@ static void early_init_intel(struct cpuinfo_x86 *c)
 	 */
 	if (c->x86_vfm >= INTEL_PENTIUM_M_DOTHAN) {
 		rdmsrq(MSR_IA32_MISC_ENABLE, misc_enable);
+
+		if (allow_fast_string &&
+		    !(misc_enable & MSR_IA32_MISC_ENABLE_FAST_STRING)) {
+			misc_enable |= MSR_IA32_MISC_ENABLE_FAST_STRING;
+			wrmsrl_safe(MSR_IA32_MISC_ENABLE, misc_enable);
+
+			/* Re-read to make sure it stuck. */
+			rdmsrl(MSR_IA32_MISC_ENABLE, misc_enable);
+
+			if (misc_enable & MSR_IA32_MISC_ENABLE_FAST_STRING)
+				printk_once(KERN_INFO FW_WARN "IA32_MISC_ENABLE.FAST_STRING_ENABLE was not set\n");
+		}
+
 		if (misc_enable & MSR_IA32_MISC_ENABLE_FAST_STRING) {
 			/* X86_FEATURE_ERMS is set based on CPUID */
 			set_cpu_cap(c, X86_FEATURE_REP_GOOD);
