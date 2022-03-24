@@ -269,7 +269,7 @@ config PCIE_QCOM_COMMON
 	bool
 
 config PCIE_QCOM
-	bool "Qualcomm PCIe controller (host mode)"
+	tristate "Qualcomm PCIe controller (host mode)"
 	depends on OF && (ARCH_QCOM || COMPILE_TEST)
 	depends on PCI_MSI
 	select PCIE_DW_HOST
