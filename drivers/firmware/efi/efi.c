@@ -372,10 +372,19 @@ static inline void efi_debugfs_init(void) {}
  */
 static int __init efisubsys_init(void)
 {
+	unsigned int mask;
 	int error;
 
 	if (!efi_enabled(EFI_RUNTIME_SERVICES))
 		efi.runtime_supported_mask = 0;
+
+	/* HACK: disable unsupported reset service */
+	mask = EFI_RT_SUPPORTED_RESET_SYSTEM;
+	if (efi.runtime_supported_mask & mask) {
+		pr_warn(FW_BUG "Runtime services mask contains unsupported services (0x%02x)\n",
+			efi.runtime_supported_mask);
+		efi.runtime_supported_mask &= ~mask;
+	}
 
 	if (!efi_enabled(EFI_BOOT))
 		return 0;
