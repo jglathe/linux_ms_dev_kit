@@ -4,6 +4,7 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -178,6 +179,7 @@ static int pm8008_probe(struct i2c_client *client)
 	int rc;
 	struct device *dev;
 	struct regmap *regmap;
+	struct gpio_desc *reset_gpio;
 
 	dev = &client->dev;
 	regmap = devm_regmap_init_i2c(client, &qcom_mfd_regmap_cfg);
@@ -185,6 +187,10 @@ static int pm8008_probe(struct i2c_client *client)
 		return PTR_ERR(regmap);
 
 	i2c_set_clientdata(client, regmap);
+
+	reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
+	if (IS_ERR(reset_gpio))
+		return PTR_ERR(reset_gpio);
 
 	if (of_property_read_bool(dev->of_node, "interrupt-controller")) {
 		rc = pm8008_probe_irq_peripherals(dev, regmap, client->irq);
