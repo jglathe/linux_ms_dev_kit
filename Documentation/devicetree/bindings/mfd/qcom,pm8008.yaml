@@ -39,7 +39,7 @@ properties:
   interrupt-controller: true
 
   "#address-cells":
-    const: 1
+    const: 2
 
   "#size-cells":
     const: 0
@@ -48,7 +48,7 @@ properties:
     maxItems: 1
 
 patternProperties:
-  "^gpio@[0-9a-f]+$":
+  "^gpio@0,[0-9a-f]+$":
     type: object
 
     description: |
@@ -61,7 +61,7 @@ patternProperties:
           - const: qcom,spmi-gpio
 
       reg:
-        description: Peripheral address of one of the two GPIO peripherals.
+        description: Peripheral offset and address of one of the two GPIO peripherals.
         maxItems: 1
 
       gpio-controller: true
@@ -110,7 +110,7 @@ examples:
       pm8008i@8 {
         compatible = "qcom,pm8008";
         reg = <0x8>;
-        #address-cells = <1>;
+        #address-cells = <2>;
         #size-cells = <0>;
         interrupt-controller;
         #interrupt-cells = <2>;
@@ -120,9 +120,9 @@ examples:
 
         reset-gpios = <&pm8350c_gpios 4 GPIO_ACTIVE_LOW>;
 
-        pm8008_gpios: gpio@c000 {
+        pm8008_gpios: gpio@0,c000 {
           compatible = "qcom,pm8008-gpio", "qcom,spmi-gpio";
-          reg = <0xc000>;
+          reg = <0x0 0xc000>;
           gpio-controller;
           gpio-ranges = <&pm8008_gpios 0 0 2>;
           #gpio-cells = <2>;
