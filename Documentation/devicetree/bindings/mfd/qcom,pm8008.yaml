@@ -44,6 +44,9 @@ properties:
   "#size-cells":
     const: 0
 
+  reset-gpios:
+    maxItems: 1
+
 patternProperties:
   "^gpio@[0-9a-f]+$":
     type: object
@@ -92,6 +95,7 @@ required:
   - "#address-cells"
   - "#size-cells"
   - "#interrupt-cells"
+  - reset-gpios
 
 additionalProperties: false
 
@@ -99,6 +103,7 @@ examples:
   - |
     #include <dt-bindings/mfd/qcom-pm8008.h>
     #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/gpio/gpio.h>
     qupv3_se13_i2c {
       #address-cells = <1>;
       #size-cells = <0>;
@@ -112,6 +117,8 @@ examples:
 
         interrupt-parent = <&tlmm>;
         interrupts = <32 IRQ_TYPE_EDGE_RISING>;
+
+        reset-gpios = <&pm8350c_gpios 4 GPIO_ACTIVE_LOW>;
 
         pm8008_gpios: gpio@c000 {
           compatible = "qcom,pm8008-gpio", "qcom,spmi-gpio";
