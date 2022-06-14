@@ -62,6 +62,21 @@ properties:
   vdd_l7-supply:
     description: Input supply phandle of ldo7 regulator.
 
+  vdd_l1_l2-supply:
+    description: Input supply phandle of ldo1 and ldo2 regulators.
+
+  vdd_l3_l4-supply:
+    description: Input supply phandle of ldo3 and ldo4 regulators.
+
+  vdd_l5-supply:
+    description: Input supply phandle of ldo5 regulator.
+
+  vdd_l6-supply:
+    description: Input supply phandle of ldo6 regulator.
+
+  vdd_l7-supply:
+    description: Input supply phandle of ldo7 regulator.
+
 patternProperties:
   "^gpio@0,[0-9a-f]+$":
     type: object
@@ -156,6 +171,12 @@ examples:
         interrupts = <32 IRQ_TYPE_EDGE_RISING>;
 
         reset-gpios = <&tlmm 42 GPIO_ACTIVE_LOW>;
+
+        vdd_l1_l2-supply = <&vreg_s8b_1p2>;
+        vdd_l3_l4-supply = <&vreg_s1b_1p8>;
+        vdd_l5-supply = <&vreg_bob>;
+        vdd_l6-supply = <&vreg_bob>;
+        vdd_l7-supply = <&vreg_bob>;
 
         vdd_l1_l2-supply = <&vreg_s8b_1p2>;
         vdd_l3_l4-supply = <&vreg_s1b_1p8>;
