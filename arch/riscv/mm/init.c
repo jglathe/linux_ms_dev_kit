@@ -880,6 +880,10 @@ retry:
 		disable_pgtable_l4();
 	}
 
+	/* UBUNTU: Force disable sv57 and fallback to sv48 */
+	if (pgtable_l5_enabled)
+		disable_pgtable_l5();
+
 out:
 	memset(early_pg_dir, 0, PAGE_SIZE);
 	memset(early_p4d, 0, PAGE_SIZE);
