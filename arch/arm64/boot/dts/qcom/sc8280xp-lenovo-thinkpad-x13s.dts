@@ -301,13 +301,13 @@
 
 			trips {
 				skin_temp_alert0: trip-point0 {
-					temperature = <55000>;
+					temperature = <60000>;
 					hysteresis = <1000>;
 					type = "passive";
 				};
 
 				skin_temp_alert1: trip-point1 {
-					temperature = <58000>;
+					temperature = <65000>;
 					hysteresis = <1000>;
 					type = "passive";
 				};
