@@ -1032,11 +1032,39 @@ static int wsa881x_digital_mute(struct snd_soc_dai *dai, int mute, int stream)
 	return 0;
 }
 
+static int wsa881x_trigger(struct snd_pcm_substream *s, int cmd,
+			   struct snd_soc_dai *dai)
+{
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		wsa881x_digital_mute(dai, false, 0);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		wsa881x_digital_mute(dai, true, 0);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int wsa881x_startup(struct snd_pcm_substream *stream,
+			   struct snd_soc_dai *dai)
+{
+	return wsa881x_digital_mute(dai, true, 0);
+}
+
 static const struct snd_soc_dai_ops wsa881x_dai_ops = {
+	.startup = wsa881x_startup,
 	.hw_params = wsa881x_hw_params,
 	.hw_free = wsa881x_hw_free,
-	.mute_stream = wsa881x_digital_mute,
 	.set_stream = wsa881x_set_sdw_stream,
+	.trigger = wsa881x_trigger,
 };
 
 static struct snd_soc_dai_driver wsa881x_dais[] = {
