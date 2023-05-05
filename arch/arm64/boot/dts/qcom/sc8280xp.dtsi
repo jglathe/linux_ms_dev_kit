@@ -3456,16 +3456,38 @@
 			#size-cells = <2>;
 			ranges;
 
-			interrupts-extended = <&intc GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
-					      <&intc GIC_SPI 496 IRQ_TYPE_EDGE_BOTH>,
-					      <&intc GIC_SPI 134 IRQ_TYPE_EDGE_BOTH>,
-					      <&intc GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "pwr_event",
-					  "dp_hs_phy_irq",
-					  "dm_hs_phy_irq",
-					  "ss_phy_irq";
+			clocks = <&gcc GCC_CFG_NOC_USB3_MP_AXI_CLK>,
+				 <&gcc GCC_USB30_MP_MASTER_CLK>,
+				 <&gcc GCC_AGGRE_USB3_MP_AXI_CLK>,
+				 <&gcc GCC_USB30_MP_SLEEP_CLK>,
+				 <&gcc GCC_USB30_MP_MOCK_UTMI_CLK>,
+				 <&gcc GCC_AGGRE_USB_NOC_AXI_CLK>,
+				 <&gcc GCC_AGGRE_USB_NOC_NORTH_AXI_CLK>,
+				 <&gcc GCC_AGGRE_USB_NOC_SOUTH_AXI_CLK>,
+				 <&gcc GCC_SYS_NOC_USB_AXI_CLK>;
+			clock-names = "cfg_noc", "core", "iface", "sleep", "mock_utmi",
+				      "noc_aggr", "noc_aggr_north", "noc_aggr_south", "noc_sys";
 
-			wakeup-source;
+			assigned-clocks = <&gcc GCC_USB30_MP_MOCK_UTMI_CLK>,
+					  <&gcc GCC_USB30_MP_MASTER_CLK>;
+			assigned-clock-rates = <19200000>, <200000000>;
+
+			interrupts-extended = <&pdc 127 IRQ_TYPE_EDGE_RISING>,
+						<&pdc 126 IRQ_TYPE_EDGE_RISING>,
+						<&pdc 16 IRQ_TYPE_LEVEL_HIGH>;
+
+			interrupt-names = "dp_hs_phy_irq", "dm_hs_phy_irq",
+						"ss_phy_irq";
+
+			power-domains = <&gcc USB30_MP_GDSC>;
+
+			resets = <&gcc GCC_USB30_MP_BCR>;
+
+			interconnects = <&aggre1_noc MASTER_USB3_1 0 &mc_virt SLAVE_EBI1 0>,
+					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_USB3_1 0>;
+			interconnect-names = "usb-ddr", "apps-usb";
+
+			required-opps = <&rpmhpd_opp_nom>;
 
 			status = "disabled";
 
@@ -3473,7 +3495,15 @@
 				compatible = "snps,dwc3";
 				reg = <0 0x0a400000 0 0xcd00>;
 				interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
-				// iommus = <&apps_smmu 0x8A0 0x0>;
+				iommus = <&apps_smmu 0x800 0x0>;
+				phys = <&usb_2_hsphy0>, <&usb_2_qmpphy0>,
+					<&usb_2_hsphy1>, <&usb_2_qmpphy1>,
+					<&usb_2_hsphy2>,
+					<&usb_2_hsphy3>;
+				phy-names = "usb2-port0", "usb3-port0",
+						"usb2-port1", "usb3-port1",
+						"usb2-port2",
+						"usb2-port3";
 			};
 		};
 
@@ -4087,10 +4117,6 @@
 			#interrupt-cells = <2>;
 			gpio-ranges = <&tlmm 0 0 230>;
 
-			edp_hot_plug_det: edp-hot-plug-det-state {
-				pins = "gpio60";
-				function = "edp_hot";
-			};
 		};
 
 		apps_smmu: iommu@15000000 {
