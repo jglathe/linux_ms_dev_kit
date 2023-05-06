@@ -592,13 +592,21 @@
 	};
 };
 
+&camcc {
+	status = "okay";
+};
+
 &camss {
+	/* CSIPHY0 CSIPHY1 1.2v = l4d, 0.88v = l6d
+	 * TODO: CSIPHY2, CSIPHY3 1.2v = l3b, 0.88v = l6b
+	 */
 	vdda-phy-supply = <&vreg_l6d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
 	status = "okay";
 
 	ports {
+		/* The port index denotes CSIPHY id i.e. csiphy0 */
 		port@0 {
 			csiphy0_lanes01_ep: endpoint@0 {
 				reg = <0>;
@@ -615,6 +623,17 @@
 };
 
 &cci2_i2c1 {
+	/*
+	 * CCI_I2C5_SDA
+	 * CCI_I2C5_SCL
+	 * CAM_MCLK3
+	 * CAMERA_A0_CLK_M
+	 * CAMERA_NC_CLK_P
+	 * CAMERA_B1_LN1_M
+	 * CAMERA_A1_LN1_P
+	 * CAMERA_C0_LN0_M
+	 * CAMERA_B0_LN0_P
+	 */
 	camera@10 {
 		compatible = "ovti,ov5675";
 		reg = <0x10>;
@@ -624,6 +643,7 @@
 		pinctrl-0 = <&cam_rgb_default>;
 
 		clocks = <&camcc CAMCC_MCLK3_CLK>;
+		assigned-clock-rates = <19200000>;
 
 		orientation = <0>;	/* Front facing */
 
@@ -1492,6 +1512,22 @@
 		bias-disable;
 	};
 
+	cam_ir_default: cam-ir-default-state {
+		mclk-pins {
+			pins = "gpio6";
+			function = "cam_mclk";
+			drive-strength = <16>;
+			bias-disable;
+		};
+
+		sc-ir-xshut-n-pins {
+			pins = "gpio7";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
 	cam_rgb_default: cam-rgb-default-state {
 		mclk-pins {
 			pins = "gpio17";
@@ -1581,15 +1617,15 @@
 			pins = "gpio143";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-down;
 		};
 
 		wake-n-pins {
-			pins = "gpio145";
-			function = "gpio";
-			drive-strength = <2>;
-			bias-pull-up;
-		};
+		       pins = "gpio145";
+		       function = "gpio";
+		       drive-strength = <2>;
+		       bias-pull-up;
+	       };
 	};
 
 	pcie3a_default: pcie3a-default-state {
@@ -1604,7 +1640,7 @@
 			pins = "gpio151";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-down;
 		};
 
 		wake-n-pins {
@@ -1627,7 +1663,7 @@
 			pins = "gpio141";
 			function = "gpio";
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-down;
 		};
 
 		wake-n-pins {
