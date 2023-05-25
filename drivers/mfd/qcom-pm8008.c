@@ -230,6 +230,10 @@ static int pm8008_probe(struct i2c_client *client)
 	if (IS_ERR(reset_gpio))
 		return PTR_ERR(reset_gpio);
 
+	gpiod_set_value(reset_gpio, 1);
+	usleep_range(500, 2000);
+	gpiod_set_value(reset_gpio, 0);
+
 	if (of_property_read_bool(dev->of_node, "interrupt-controller")) {
 		rc = pm8008_probe_irq_peripherals(dev, regmap, client->irq);
 		if (rc)
