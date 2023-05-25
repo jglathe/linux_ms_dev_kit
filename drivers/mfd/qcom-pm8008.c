@@ -216,7 +216,7 @@ static int pm8008_probe(struct i2c_client *client)
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
-	regulators_client = i2c_new_dummy_device(client->adapter, client->addr + 1);
+	regulators_client = devm_i2c_new_dummy_device(dev, client->adapter, client->addr + 1);
 	if (IS_ERR(regulators_client)) {
 		dev_err(&client->dev, "can't attach client\n");
 		return PTR_ERR(regulators_client);
