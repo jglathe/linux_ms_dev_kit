@@ -213,6 +213,10 @@ static int pm8008_probe(struct i2c_client *client)
 	if (IS_ERR(reset))
 		return PTR_ERR(reset);
 
+	gpiod_set_value(reset_gpio, 1);
+	usleep_range(500, 2000);
+	gpiod_set_value(reset_gpio, 0);
+
 	if (of_property_read_bool(dev->of_node, "interrupt-controller")) {
 		rc = devm_regmap_add_irq_chip(dev, regmap, client->irq,
 				IRQF_SHARED, 0, &pm8008_irq_chip, &irq_data);
