@@ -46,7 +46,7 @@ static void csiphy_hw_version_read(struct csiphy_device *csiphy,
 	u8 hw_version = readl_relaxed(csiphy->base +
 				      CAMSS_CSI_PHY_HW_VERSION);
 
-	dev_dbg(dev, "CSIPHY HW Version = 0x%02x\n", hw_version);
+	dev_dbg(dev, "CSIPHY%d HW Version = 0x%02x\n", csiphy->id, hw_version);
 }
 
 /*
