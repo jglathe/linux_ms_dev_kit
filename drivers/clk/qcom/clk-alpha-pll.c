@@ -1652,7 +1652,8 @@ static int __alpha_pll_trion_set_rate(struct clk_hw *hw, unsigned long rate,
 	udelay(1);
 	regmap_read(pll->clkr.regmap, PLL_MODE(pll), &val);
 	if (!(val & latch_ack)) {
-		pr_err("Lucid PLL latch failed. Output may be unstable!\n");
+		pr_err("Lucid PLL %s latch failed rate %lu Hz\n",
+		       clk_hw_get_name(&pll->clkr.hw), rate);
 		return -EINVAL;
 	}
 
