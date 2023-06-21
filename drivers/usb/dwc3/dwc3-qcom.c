@@ -74,9 +74,9 @@ struct dwc3_qcom {
 	struct reset_control	*resets;
 
 	int			hs_phy_irq;
-	int			dp_hs_phy_irq;
-	int			dm_hs_phy_irq;
-	int			ss_phy_irq;
+	int			dp_hs_phy_irq[4];
+	int			dm_hs_phy_irq[4];
+	int			ss_phy_irq[2];
 	enum usb_device_speed	usb2_speed;
 
 	struct extcon_dev	*edev;
@@ -375,16 +375,16 @@ static void dwc3_qcom_disable_interrupts(struct dwc3_qcom *qcom)
 	dwc3_qcom_disable_wakeup_irq(qcom->hs_phy_irq);
 
 	if (qcom->usb2_speed == USB_SPEED_LOW) {
-		dwc3_qcom_disable_wakeup_irq(qcom->dm_hs_phy_irq);
+		dwc3_qcom_disable_wakeup_irq(qcom->dm_hs_phy_irq[0]);
 	} else if ((qcom->usb2_speed == USB_SPEED_HIGH) ||
 			(qcom->usb2_speed == USB_SPEED_FULL)) {
-		dwc3_qcom_disable_wakeup_irq(qcom->dp_hs_phy_irq);
+		dwc3_qcom_disable_wakeup_irq(qcom->dp_hs_phy_irq[0]);
 	} else {
-		dwc3_qcom_disable_wakeup_irq(qcom->dp_hs_phy_irq);
-		dwc3_qcom_disable_wakeup_irq(qcom->dm_hs_phy_irq);
+		dwc3_qcom_disable_wakeup_irq(qcom->dp_hs_phy_irq[0]);
+		dwc3_qcom_disable_wakeup_irq(qcom->dm_hs_phy_irq[0]);
 	}
 
-	dwc3_qcom_disable_wakeup_irq(qcom->ss_phy_irq);
+	dwc3_qcom_disable_wakeup_irq(qcom->ss_phy_irq[0]);
 }
 
 static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
@@ -401,20 +401,20 @@ static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 	 */
 
 	if (qcom->usb2_speed == USB_SPEED_LOW) {
-		dwc3_qcom_enable_wakeup_irq(qcom->dm_hs_phy_irq,
+		dwc3_qcom_enable_wakeup_irq(qcom->dm_hs_phy_irq[0],
 						IRQ_TYPE_EDGE_FALLING);
 	} else if ((qcom->usb2_speed == USB_SPEED_HIGH) ||
 			(qcom->usb2_speed == USB_SPEED_FULL)) {
-		dwc3_qcom_enable_wakeup_irq(qcom->dp_hs_phy_irq,
+		dwc3_qcom_enable_wakeup_irq(qcom->dp_hs_phy_irq[0],
 						IRQ_TYPE_EDGE_FALLING);
 	} else {
-		dwc3_qcom_enable_wakeup_irq(qcom->dp_hs_phy_irq,
+		dwc3_qcom_enable_wakeup_irq(qcom->dp_hs_phy_irq[0],
 						IRQ_TYPE_EDGE_RISING);
-		dwc3_qcom_enable_wakeup_irq(qcom->dm_hs_phy_irq,
+		dwc3_qcom_enable_wakeup_irq(qcom->dm_hs_phy_irq[0],
 						IRQ_TYPE_EDGE_RISING);
 	}
 
-	dwc3_qcom_enable_wakeup_irq(qcom->ss_phy_irq, 0);
+	dwc3_qcom_enable_wakeup_irq(qcom->ss_phy_irq[0], 0);
 }
 
 static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
@@ -535,6 +535,80 @@ static int dwc3_qcom_get_irq(struct platform_device *pdev,
 	return ret;
 }
 
+static int dwc3_qcom_setup_mp_irq(struct platform_device *pdev)
+{
+	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
+	char irq_name[15];
+	int irq;
+	int ret;
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		if (qcom->dp_hs_phy_irq[i])
+			continue;
+
+		sprintf(irq_name, "dp%d_hs_phy_irq", i+1);
+		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
+		if (irq > 0) {
+			irq_set_status_flags(irq, IRQ_NOAUTOEN);
+			ret = devm_request_threaded_irq(qcom->dev, irq, NULL,
+					qcom_dwc3_resume_irq,
+					IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+					irq_name, qcom);
+			if (ret) {
+				dev_err(qcom->dev, "%s failed: %d\n", irq_name, ret);
+				return ret;
+			}
+		}
+
+		qcom->dp_hs_phy_irq[i] = irq;
+	}
+
+	for (i = 0; i < 4; i++) {
+		if (qcom->dm_hs_phy_irq[i])
+			continue;
+
+		sprintf(irq_name, "dm%d_hs_phy_irq", i+1);
+		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
+		if (irq > 0) {
+			irq_set_status_flags(irq, IRQ_NOAUTOEN);
+			ret = devm_request_threaded_irq(qcom->dev, irq, NULL,
+					qcom_dwc3_resume_irq,
+					IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+					irq_name, qcom);
+			if (ret) {
+				dev_err(qcom->dev, "%s failed: %d\n", irq_name, ret);
+				return ret;
+			}
+		}
+
+		qcom->dm_hs_phy_irq[i] = irq;
+	}
+
+	for (i = 0; i < 2; i++) {
+		if (qcom->ss_phy_irq[i])
+			continue;
+
+		sprintf(irq_name, "ss%d_phy_irq", i+1);
+		irq = dwc3_qcom_get_irq(pdev, irq_name, -1);
+		if (irq > 0) {
+			irq_set_status_flags(irq, IRQ_NOAUTOEN);
+			ret = devm_request_threaded_irq(qcom->dev, irq, NULL,
+					qcom_dwc3_resume_irq,
+					IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
+					irq_name, qcom);
+			if (ret) {
+				dev_err(qcom->dev, "%s failed: %d\n", irq_name, ret);
+				return ret;
+			}
+		}
+
+		qcom->ss_phy_irq[i] = irq;
+	}
+
+	return 0;
+}
+
 static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 {
 	struct dwc3_qcom *qcom = platform_get_drvdata(pdev);
@@ -570,7 +644,7 @@ static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 			dev_err(qcom->dev, "dp_hs_phy_irq failed: %d\n", ret);
 			return ret;
 		}
-		qcom->dp_hs_phy_irq = irq;
+		qcom->dp_hs_phy_irq[0] = irq;
 	}
 
 	irq = dwc3_qcom_get_irq(pdev, "dm_hs_phy_irq",
@@ -585,7 +659,7 @@ static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 			dev_err(qcom->dev, "dm_hs_phy_irq failed: %d\n", ret);
 			return ret;
 		}
-		qcom->dm_hs_phy_irq = irq;
+		qcom->dm_hs_phy_irq[0] = irq;
 	}
 
 	irq = dwc3_qcom_get_irq(pdev, "ss_phy_irq",
@@ -600,10 +674,10 @@ static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 			dev_err(qcom->dev, "ss_phy_irq failed: %d\n", ret);
 			return ret;
 		}
-		qcom->ss_phy_irq = irq;
+		qcom->ss_phy_irq[0] = irq;
 	}
 
-	return 0;
+	return dwc3_qcom_setup_mp_irq(pdev);;
 }
 
 static int dwc3_qcom_clk_init(struct dwc3_qcom *qcom, int count)
