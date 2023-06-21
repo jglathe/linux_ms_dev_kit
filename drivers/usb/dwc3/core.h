@@ -33,6 +33,10 @@
 
 #include <linux/power_supply.h>
 
+#define XHCI_EXT_PORT_MAJOR(x)	(((x) >> 24) & 0xff)
+#define XHCI_EXT_PORT_MINOR(x)	(((x) >> 16) & 0xff)
+#define XHCI_EXT_PORT_COUNT(x)	(((x) >> 8) & 0xff)
+
 #define DWC3_MSG_MAX	500
 
 /* Global constants */
@@ -1026,6 +1030,8 @@ struct dwc3_scratchpad_array {
  * @usb3_phy: pointer to USB3 PHY
  * @usb2_generic_phy: pointer to USB2 PHY
  * @usb3_generic_phy: pointer to USB3 PHY
+ * @num_usb2_ports: number of USB2 ports.
+ * @num_usb3_ports: number of USB3 ports.
  * @phys_ready: flag to indicate that PHYs are ready
  * @ulpi: pointer to ulpi interface
  * @ulpi_ready: flag to indicate that ULPI is initialized
@@ -1164,6 +1170,9 @@ struct dwc3 {
 
 	struct phy		*usb2_generic_phy;
 	struct phy		*usb3_generic_phy;
+
+	u8			num_usb2_ports;
+	u8			num_usb3_ports;
 
 	bool			phys_ready;
 
