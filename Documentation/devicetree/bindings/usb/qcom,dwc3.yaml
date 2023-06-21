@@ -29,6 +29,7 @@ properties:
           - qcom,sc7180-dwc3
           - qcom,sc7280-dwc3
           - qcom,sc8280xp-dwc3
+          - qcom,sc8280xp-dwc3-mp
           - qcom,sdm660-dwc3
           - qcom,sdm670-dwc3
           - qcom,sdm845-dwc3
@@ -258,6 +259,7 @@ allOf:
           contains:
             enum:
               - qcom,sc8280xp-dwc3
+              - qcom,sc8280xp-dwc3-mp
     then:
       properties:
         clocks:
@@ -459,6 +461,33 @@ allOf:
             - const: dp_hs_phy_irq
             - const: dm_hs_phy_irq
             - const: ss_phy_irq
+
+  - if:
+      properties:
+        compatible:
+          contains:
+            enum:
+              - qcom,sc8280xp-dwc3-mp
+    then:
+      properties:
+        interrupts:
+          maxItems: 14
+        interrupt-names:
+          items:
+            - const: dp1_hs_phy_irq
+            - const: dm1_hs_phy_irq
+            - const: dp2_hs_phy_irq
+            - const: dm2_hs_phy_irq
+            - const: dp3_hs_phy_irq
+            - const: dm4_hs_phy_irq
+            - const: dp4_hs_phy_irq
+            - const: dm4_hs_phy_irq
+            - const: ss1_phy_irq
+            - const: ss2_phy_irq
+            - const: pwr_event_1
+            - const: pwr_event_2
+            - const: pwr_event_3
+            - const: pwr_event_4
 
   - if:
       properties:
