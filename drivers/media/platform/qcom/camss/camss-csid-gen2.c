@@ -74,6 +74,11 @@
 
 #define CSID_RDI_CFG0(rdi)			((csid_is_lite(csid) ? 0x200 : 0x300) \
 						 + 0x100 * (rdi))
+
+#define CSID_CSI2_RX_TOTAL_PKTS_RCVD		0x160
+#define CSID_CSI2_RX_STATS_ECC			0x164
+#define CSID_CSI2_RX_CRC_ERRORS			0x168
+
 #define		RDI_CFG0_BYTE_CNTR_EN		0
 #define		RDI_CFG0_FORMAT_MEASURE_EN	1
 #define		RDI_CFG0_TIMESTAMP_EN		2
