@@ -1984,6 +1984,10 @@ static int camss_probe(struct platform_device *pdev)
 		goto err_v4l2_device_unregister;
 	}
 
+	camss->debugfs_rootdir = debugfs_create_dir(KBUILD_MODNAME, NULL);
+	if (IS_ERR(camss->debugfs_rootdir))
+		camss->debugfs_rootdir = NULL;
+
 	ret = camss_register_entities(camss);
 	if (ret < 0)
 		goto err_v4l2_device_unregister;
@@ -2051,6 +2055,7 @@ static void camss_remove(struct platform_device *pdev)
 	v4l2_async_nf_unregister(&camss->notifier);
 	v4l2_async_nf_cleanup(&camss->notifier);
 	camss_unregister_entities(camss);
+	debugfs_remove_recursive(camss->debugfs_rootdir);
 
 	if (atomic_read(&camss->ref_count) == 0)
 		camss_delete(camss);
