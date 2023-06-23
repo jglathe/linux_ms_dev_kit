@@ -194,24 +194,25 @@ static int csiphy_set_power(struct v4l2_subdev *sd, int on)
 {
 	struct csiphy_device *csiphy = v4l2_get_subdevdata(sd);
 	struct device *dev = csiphy->camss->dev;
+	int ret = 0;
 
+	mutex_lock(&csiphy->mutex);
 	if (on) {
-		int ret;
 
 		ret = pm_runtime_resume_and_get(dev);
 		if (ret < 0)
-			return ret;
+			goto error;
 
 		ret = csiphy_set_clock_rates(csiphy);
 		if (ret < 0) {
 			pm_runtime_put_sync(dev);
-			return ret;
+			goto error;
 		}
 
 		ret = camss_enable_clocks(csiphy->nclocks, csiphy->clock, dev);
 		if (ret < 0) {
 			pm_runtime_put_sync(dev);
-			return ret;
+			goto error;
 		}
 
 		enable_irq(csiphy->irq);
@@ -219,7 +220,9 @@ static int csiphy_set_power(struct v4l2_subdev *sd, int on)
 		csiphy->ops->reset(csiphy);
 
 		csiphy->ops->hw_version_read(csiphy, dev);
+		csiphy->active = true;
 	} else {
+		csiphy->active = false;
 		disable_irq(csiphy->irq);
 
 		camss_disable_clocks(csiphy->nclocks, csiphy->clock);
@@ -227,7 +230,9 @@ static int csiphy_set_power(struct v4l2_subdev *sd, int on)
 		pm_runtime_put_sync(dev);
 	}
 
-	return 0;
+error:
+	mutex_unlock(&csiphy->mutex);
+	return ret;
 }
 
 /*
@@ -752,6 +757,40 @@ static const struct media_entity_operations csiphy_media_ops = {
 	.link_validate = v4l2_subdev_link_validate,
 };
 
+static ssize_t read_file_csiphy_dump_regs(struct file *file,
+					char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct csiphy_device *csiphy = file->private_data;
+	size_t len = 0, buf_len = 2048;
+	char *buf;
+	int ret;
+
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	mutex_lock(&csiphy->mutex);
+
+	if (csiphy->active)
+		len = csiphy->ops->dump_regs(csiphy, buf, buf_len);
+	else
+		len = scnprintf(buf + len, buf_len - len, "%s %s\n",
+				csiphy->irq_name,
+				csiphy->active ? "active" : "inactive");
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+
+	mutex_unlock(&csiphy->mutex);
+
+	return ret;
+}
+
+static const struct file_operations fops_csiphy_dump_regs = {
+	.open = simple_open,
+	.read = read_file_csiphy_dump_regs,
+};
+
 /*
  * msm_csiphy_register_entity - Register subdev node for CSIPHY module
  * @csiphy: CSIPHY device
@@ -767,6 +806,7 @@ int msm_csiphy_register_entity(struct csiphy_device *csiphy,
 	struct device *dev = csiphy->camss->dev;
 	int ret;
 
+	mutex_init(&csiphy->mutex);
 	v4l2_subdev_init(sd, &csiphy_v4l2_ops);
 	sd->internal_ops = &csiphy_v4l2_internal_ops;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -795,6 +835,12 @@ int msm_csiphy_register_entity(struct csiphy_device *csiphy,
 	if (ret < 0) {
 		dev_err(dev, "Failed to register subdev: %d\n", ret);
 		media_entity_cleanup(&sd->entity);
+	}
+
+	if (csiphy->camss->debugfs_rootdir) {
+		debugfs_create_file(csiphy->irq_name, 0200,
+				    csiphy->camss->debugfs_rootdir, csiphy,
+				    &fops_csiphy_dump_regs);
 	}
 
 	return ret;
