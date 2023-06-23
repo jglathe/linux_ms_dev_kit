@@ -681,6 +681,29 @@ static void vfe_subdev_init(struct device *dev, struct vfe_device *vfe)
 	vfe->video_ops = vfe_video_ops_170;
 }
 
+static size_t vfe_dump_regs(struct vfe_device *vfe, char *buf, size_t buf_len)
+{
+	size_t len = 0;
+	int i;
+
+	len += scnprintf(buf + len, buf_len - len, "VFE_IRQ_STATUS_0 0x%08x\n",
+			 readl_relaxed(vfe->base + VFE_IRQ_STATUS_0));
+	len += scnprintf(buf + len, buf_len - len, "VFE_IRQ_STATUS_1 0x%08x\n",
+			 readl_relaxed(vfe->base + VFE_IRQ_STATUS_1));
+
+	for (i = VFE_LINE_RDI0; i < vfe->line_num; i++) {
+		len += scnprintf(buf + len, buf_len - len,
+				 "VFE_BUS_IRQ_STATUS(%d) 0x%08x\n", i,
+				 readl_relaxed(vfe->base + VFE_BUS_IRQ_STATUS(i)));
+	}
+
+	len += scnprintf(buf + len, buf_len - len,
+			 "VFE_VIOLATION_STATUS 0x%08x\n",
+			 readl_relaxed(vfe->base + VFE_VIOLATION_STATUS));
+
+	return len;
+}
+
 const struct vfe_hw_ops vfe_ops_170 = {
 	.global_reset = vfe_global_reset,
 	.hw_version = vfe_hw_version,
@@ -696,4 +719,5 @@ const struct vfe_hw_ops vfe_ops_170 = {
 	.vfe_halt = vfe_halt,
 	.violation_read = vfe_violation_read,
 	.vfe_wm_stop = vfe_wm_stop,
+	.dump_regs = vfe_dump_regs,
 };

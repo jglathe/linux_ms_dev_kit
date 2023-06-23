@@ -115,6 +115,8 @@ struct vfe_hw_ops {
 	int (*vfe_halt)(struct vfe_device *vfe);
 	void (*violation_read)(struct vfe_device *vfe);
 	void (*vfe_wm_stop)(struct vfe_device *vfe, u8 wm);
+	size_t (*dump_regs)(struct vfe_device *vfe, char *buf,
+			    size_t buf_len);
 };
 
 struct vfe_isr_ops {

@@ -1621,6 +1621,42 @@ static int vfe_bpl_align(struct vfe_device *vfe)
 	return ret;
 }
 
+static ssize_t read_file_vfe_dump_regs(struct file *file,
+					char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct vfe_device *vfe = file->private_data;
+	size_t len = 0, buf_len = 2048;
+	char *buf;
+	int ret;
+
+	buf = kzalloc(buf_len, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	mutex_lock(&vfe->power_lock);
+
+	len += scnprintf(buf, buf_len, "HW_VERSION 0x%08x\n", vfe->hw_version);
+	buf_len -= len;
+
+	if (vfe->power_count)
+		len += vfe->ops->dump_regs(vfe, buf + len, buf_len);
+	else
+		len += scnprintf(buf + len, buf_len, "%s unpowered\n",
+				vfe->irq_name);
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+
+	mutex_unlock(&vfe->power_lock);
+
+	return ret;
+}
+
+static const struct file_operations fops_vfe_dump_regs = {
+	.open = simple_open,
+	.read = read_file_vfe_dump_regs,
+};
+
 /*
  * msm_vfe_register_entities - Register subdev node for VFE module
  * @vfe: VFE device
@@ -1713,6 +1749,12 @@ int msm_vfe_register_entities(struct vfe_device *vfe,
 				ret);
 			goto error_link;
 		}
+	}
+
+	if (vfe->camss->debugfs_rootdir) {
+		debugfs_create_file(vfe->irq_name, 0200,
+				    vfe->camss->debugfs_rootdir, vfe,
+				    &fops_vfe_dump_regs);
 	}
 
 	return 0;
