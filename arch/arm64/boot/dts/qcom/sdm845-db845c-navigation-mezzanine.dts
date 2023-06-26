@@ -20,6 +20,13 @@
 				remote-endpoint = <&ov8856_ep>;
 			};
 		};
+
+		port@3 {
+			csiphy3_ep: endpoint {
+				data-lanes = <0>;
+				remote-endpoint = <&ov7251_ep>;
+			};
+		};
 	};
 };
 
@@ -92,12 +99,12 @@
 		vdddo-supply = <&vreg_lvs1a_1p8>;
 		vdda-supply = <&cam3_avdd_2v8>;
 
-		status = "disabled";
-
 		port {
 			ov7251_ep: endpoint {
-				data-lanes = <0 1>;
-/*				remote-endpoint = <&csiphy3_ep>; */
+				link-frequencies = /bits/ 64
+					<240000000 319200000>;
+				data-lanes = <1>;
+				remote-endpoint = <&csiphy3_ep>;
 			};
 		};
 	};
