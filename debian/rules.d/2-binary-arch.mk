@@ -568,7 +568,7 @@ endif
 		find . -name '.' -o -name '.*' -prune -o -print | \
                 cpio -pvd --preserve-modification-time \
 			$(headers_dir)/usr/include/ )
-	mkdir $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)
+	mkdir -p $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)
 	mv $(headers_dir)/usr/include/asm $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)/
 	rm -rf $(headers_tmp)
 
