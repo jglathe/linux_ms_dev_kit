@@ -924,6 +924,11 @@
 	};
 };
 
+
+&q6apm {
+	firmware-name = "qcom/sc8280xp/LENOVO/21BX/audioreach-tplg.bin";
+};
+
 &qup0 {
 	status = "okay";
 };
