@@ -593,6 +593,57 @@
 				data-lanes = <0 1>;
 				remote-endpoint = <&ov5675_ep>;
 			};
+
+			csiphy0_lane2_ep: endpoint@1 {
+				reg = <1>;
+				clock-lanes = <7>;
+				data-lanes = <2>;
+				remote-endpoint = <&ov9734_ep>;
+			};
+		};
+	};
+};
+
+&cci1 {
+	status = "okay";
+};
+
+&cci1_i2c0 {
+	/*
+	 * CCI_I2C2_SDA
+	 * CCI_I2C2_SCL
+	 * CAM_MCLK4
+	 * CAMERA_A0_CLK_M
+	 * CAMERA_NC_CLK_P
+	 * CAMERA_B1_LN1_M
+	 * CAMERA_A1_LN1_P
+	 * CAMERA_C0_LN0_M
+	 * CAMERA_B0_LN0_P
+	 */
+	camera@36 {
+		compatible = "ovti,ov9734";
+		reg = <0x36>;
+
+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_ir_default>;
+
+		clocks = <&camcc CAM_CC_MCLK4_CLK>;
+		clock-frequency = <19200000>;
+
+		orientation = <0>;	/* Front facing */
+
+		avdd-supply = <&pm8008_l5>;
+		dvdd-supply = <&pm8008_l1>;
+		dovdd-supply = <&pm8008_l3>;
+
+		port {
+			ov9734_ep: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1>;
+				link-frequencies = /bits/ 64 <180000000>;
+				remote-endpoint = <&csiphy0_lane2_ep>;
+			};
 		};
 	};
 };
