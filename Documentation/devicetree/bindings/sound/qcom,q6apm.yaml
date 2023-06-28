@@ -31,6 +31,10 @@ properties:
     unevaluatedProperties: false
     description: Qualcomm DSP audio ports
 
+  firmware-name:
+    $ref: /schemas/types.yaml#/definitions/string
+    description: Audio Topology Firmware name
+
   '#sound-dai-cells':
     const: 0
 
@@ -38,6 +42,7 @@ required:
   - compatible
   - bedais
   - dais
+  - firmware-name
 
 unevaluatedProperties: false
 
