@@ -1258,16 +1258,16 @@ static struct snd_soc_tplg_ops audioreach_tplg_ops  = {
 
 int audioreach_tplg_init(struct snd_soc_component *component)
 {
-	struct snd_soc_card *card = component->card;
 	struct device *dev = component->dev;
 	const struct firmware *fw;
-	char *tplg_fw_name;
+	const char *tplg_fw_name;
 	int ret;
 
-	/* Inline with Qualcomm UCM configs and linux-firmware path */
-	tplg_fw_name = kasprintf(GFP_KERNEL, "qcom/%s/%s-tplg.bin", card->driver_name, card->name);
-	if (!tplg_fw_name)
-		return -ENOMEM;
+	ret = of_property_read_string(dev->of_node, "firmware-name",  &tplg_fw_name);
+	if (ret < 0) {
+		dev_err(dev, "firmware-name property missing in Device tree\n");
+		return ret;
+	}
 
 	ret = request_firmware(&fw, tplg_fw_name, dev);
 	if (ret < 0) {
@@ -1283,8 +1283,6 @@ int audioreach_tplg_init(struct snd_soc_component *component)
 
 	release_firmware(fw);
 err:
-	kfree(tplg_fw_name);
-
 	return ret;
 }
 EXPORT_SYMBOL_GPL(audioreach_tplg_init);
