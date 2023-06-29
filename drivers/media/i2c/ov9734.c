@@ -13,7 +13,7 @@
 
 #define OV9734_LINK_FREQ_180MHZ		180000000ULL
 #define OV9734_SCLK			36000000LL
-#define OV9734_MCLK			19200000
+#define OV9734_XVCLK			19200000
 /* ov9734 only support 1-lane mipi output */
 #define OV9734_DATA_LANES		1
 #define OV9734_RGB_DEPTH		10
@@ -833,19 +833,19 @@ static int ov9734_check_hwcfg(struct device *dev)
 	struct v4l2_fwnode_endpoint bus_cfg = {
 		.bus_type = V4L2_MBUS_CSI2_DPHY
 	};
-	u32 mclk;
+	u32 xvclk;
 	int ret;
 	unsigned int i, j;
 
 	if (!fwnode)
 		return -ENXIO;
 
-	ret = fwnode_property_read_u32(fwnode, "clock-frequency", &mclk);
+	ret = fwnode_property_read_u32(fwnode, "clock-frequency", &xvclk);
 	if (ret)
 		return ret;
 
-	if (mclk != OV9734_MCLK) {
-		dev_err(dev, "external clock %d is not supported", mclk);
+	if (xvclk != OV9734_XVCLK) {
+		dev_err(dev, "external clock %d is not supported", xvclk);
 		return -EINVAL;
 	}
 
