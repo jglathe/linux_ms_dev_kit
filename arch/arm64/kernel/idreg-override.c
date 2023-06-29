@@ -273,9 +273,16 @@ static __init void __parse_cmdline(const char *cmdline, bool parse_aliases)
 
 		match_options(buf);
 
-		for (i = 0; parse_aliases && i < ARRAY_SIZE(aliases); i++)
-			if (parameq(buf, aliases[i].alias))
+		for (i = 0; parse_aliases && i < ARRAY_SIZE(aliases); i++) {
+			/*
+			 * HACK: Disable pointer authentication until the
+			 * sc8280xp firmware has been fixed.
+			 */
+			if (parameq(buf, aliases[i].alias) ||
+			    strcmp(aliases[i].alias, "arm64.nopauth") == 0) {
 				__parse_cmdline(aliases[i].feature, false);
+			}
+		}
 	} while (1);
 }
 
