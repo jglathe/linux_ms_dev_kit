@@ -55,6 +55,20 @@ config VIDEO_AP1302
 	  To compile this driver as a module, choose M here: the
 	  module will be called ap1302.
 
+config VIDEO_AR1337
+	tristate "On Semiconductor AR1337 sensor support"
+	depends on I2C && VIDEO_DEV
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select V4L2_FWNODE
+	help
+	  This is a Video4Linux2 sensor-level driver for the OnSemi
+	  AR1337 camera.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ar1337.
+
+
 config VIDEO_AR0521
 	tristate "ON Semiconductor AR0521 sensor support"
 	help
