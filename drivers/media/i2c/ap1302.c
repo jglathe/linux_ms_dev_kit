@@ -27,6 +27,8 @@
 
 #define DRIVER_NAME "ap1302"
 
+static const unsigned short normal_i2c[] = { 0x00, I2C_CLIENT_END };
+
 #define AP1302_FW_WINDOW_SIZE			0x2000
 #define AP1302_FW_WINDOW_OFFSET			0x8000
 
@@ -2263,7 +2265,7 @@ static int ap1302_request_firmware(struct ap1302_device *ap1302)
 			num_sensors++;
 	}
 
-	ret = snprintf(name, sizeof(name), "ap1302_%s%s_fw.bin",
+	ret = snprintf(name, sizeof(name), "ap1302/ap1302_%s%s_fw.bin",
 		       ap1302->sensor_info->name, suffixes[num_sensors]);
 	if (ret >= sizeof(name)) {
 		dev_err(ap1302->dev, "Firmware name too long\n");
@@ -2603,8 +2605,7 @@ static int ap1302_parse_of(struct ap1302_device *ap1302)
 	}
 
 	ep = fwnode_graph_get_endpoint_by_id(dev_fwnode(ap1302->dev),
-					     AP1302_PAD_SOURCE, 0,
-					     FWNODE_GRAPH_ENDPOINT_NEXT);
+					     0, 0, FWNODE_GRAPH_ENDPOINT_NEXT);
 	if (!ep) {
 		dev_err(ap1302->dev, "no sink port found");
 		return -EINVAL;
