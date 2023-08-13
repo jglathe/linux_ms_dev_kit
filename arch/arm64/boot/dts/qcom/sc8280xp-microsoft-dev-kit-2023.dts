@@ -136,6 +136,20 @@
 		};
 	};
 
+	dp1-connector@0 {
+		compatible = "dp-connector";
+		label = "DP1";
+		type = "mini";
+
+		//hpd-gpios = <&tlmm 2 GPIO_ACTIVE_HIGH>;
+
+		port {
+			dp1_connector_in: endpoint {
+				remote-endpoint = <&mdss0_dp2_phy_out>;
+			};
+		};
+	};
+
 	vreg_misc_3p3: regulator-misc-3p3 {
 		compatible = "regulator-fixed";
 
@@ -150,7 +164,6 @@
 		pinctrl-0 = <&misc_3p3_reg_en>;
 
 		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	vreg_nvme: regulator-nvme {
@@ -163,8 +176,8 @@
 		gpio = <&tlmm 135 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		regulator-boot-on;
-		regulator-always-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&nvme_reg_en>;
 	};
 
 	vreg_vph_pwr: regulator-vph-pwr {
@@ -174,6 +187,7 @@
 		regulator-min-microvolt = <3900000>;
 		regulator-max-microvolt = <3900000>;
 
+		regulator-boot-on;
 		regulator-always-on;
 	};
 
@@ -191,7 +205,6 @@
 		pinctrl-0 = <&hastings_reg_en>;
 
 		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	vreg_wwan: regulator-wwan {
@@ -208,7 +221,6 @@
 		pinctrl-0 = <&wwan_sw_en>;
 
 		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	reserved-memory {
@@ -312,7 +324,12 @@
 	};
 };
 
-&adreno_smmu {
+&gcc{
+	//this PCIe bus is apparrently disabled in the WDK2023, variable to parse in gcc_sc8280xp_probe()
+	pcie_3a_disabled = <1>; // Set to 1 to disable, 0 to enable
+};
+
+&gpu_smmu {
 	status = "okay";
 };
 
@@ -391,7 +408,8 @@
 			regulator-min-microvolt = <1880000>;
 			regulator-max-microvolt = <1900000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
+			regulator-boot-on;
+			regulator-always-on;		
 		};
 
 		vreg_l1c: ldo1 {
@@ -420,7 +438,8 @@
 			regulator-min-microvolt = <3008000>;
 			regulator-max-microvolt = <3960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_AUTO>;
-			regulator-always-on;
+			regulator-boot-on;
+			regulator-always-on;		
 		};
 	};
 
@@ -439,6 +458,9 @@
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-allow-set-load;
+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
+						   RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l4d: ldo4 {
@@ -518,13 +540,24 @@
 	remote-endpoint = <&pmic_glink_con1_ss>;
 };
 
-&mdss0_dp3 {
-	data-lanes = <0 1 2 3>;
+&mdss0_dp2 {
+  compatible = "qcom,sc8280xp-dp";
+
+  data-lanes = <0 1 2 3>;
 
 	status = "okay";
+
+	ports {
+		port@1 {
+			reg = <1>;
+			mdss0_dp2_phy_out: endpoint {
+				remote-endpoint = <&dp1_connector_in>;
+			};
+		};
+	};
 };
 
-&mdss0_dp3_phy {
+&mdss0_dp2_phy {
 	vdda-phy-supply = <&vreg_l6b>;
 	vdda-pll-supply = <&vreg_l3b>;
 
@@ -532,18 +565,57 @@
 };
 
 &pcie2a {
+	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+
+	vddpe-3v3-supply = <&vreg_nvme>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie2a_default>;
+
 	status = "okay";
 };
 
 &pcie2a_phy {
+	vdda-phy-supply = <&vreg_l6d>;
+	vdda-pll-supply = <&vreg_l4d>;
+
 	status = "okay";
 };
 
 &pcie4 {
+	perst-gpios = <&tlmm 141 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 139 GPIO_ACTIVE_LOW>;
+
+	vddpe-3v3-supply = <&vreg_wlan>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie4_default>;
+
 	status = "okay";
+
+	pcie@0 {
+		device_type = "pci";
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges;
+
+		bus-range = <0x01 0xff>;
+
+		wifi@0 {
+			compatible = "pci17cb,1103";
+			reg = <0x10000 0x0 0x0 0x0 0x0>;
+
+			qcom,ath11k-calibration-variant = "LE_X13S";
+		};
+	};
 };
 
 &pcie4_phy {
+	vdda-phy-supply = <&vreg_l6d>;
+	vdda-pll-supply = <&vreg_l4d>;
+
 	status = "okay";
 };
 
@@ -899,6 +971,8 @@
 
 &usb_0_dwc3 {
 	dr_mode = "host";
+
+	status = "okay";
 };
 
 &usb_0_hsphy {
@@ -948,6 +1022,9 @@
 };
 
 &usb_2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&usb2_en_state>;
+
 	status = "okay";
 };
 
@@ -955,6 +1032,8 @@
 	dr_mode = "host";
 	phy-names = "usb2-port0", "usb3-port0";
 	phys = <&usb_2_hsphy0>, <&usb_2_qmpphy0>;
+
+	status = "okay";
 };
 
 &usb_2_hsphy0 {
@@ -1198,6 +1277,15 @@
 			bias-disable;
 			drive-strength = <16>;
 		};
+	};
+
+	usb2_en_state: usb2-en-state {
+		/* TS3USB221A USB2.0 mux select */
+		pins = "gpio24";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
 	};
 
 	wcd_default: wcd-default-state {
