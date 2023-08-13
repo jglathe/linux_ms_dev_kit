@@ -12,6 +12,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/printk.h>
 
 #include <dt-bindings/clock/qcom,gcc-sc8280xp.h>
 
@@ -7479,6 +7480,33 @@ static struct gdsc *gcc_sc8280xp_gdscs[] = {
 	[HLOS1_VOTE_TURING_MMU_TBU3_GDSC] = &hlos1_vote_turing_mmu_tbu3_gdsc,
 };
 
+static struct gdsc *gcc_sc8280xp_gdscs_pcie3a_disabled[] = {
+	[PCIE_0_TUNNEL_GDSC] = &pcie_0_tunnel_gdsc,
+	[PCIE_1_TUNNEL_GDSC] = &pcie_1_tunnel_gdsc,
+	[PCIE_2A_GDSC] = &pcie_2a_gdsc,
+	[PCIE_2B_GDSC] = &pcie_2b_gdsc,
+	/* [PCIE_3A_GDSC] = &pcie_3a_gdsc, */
+	[PCIE_3B_GDSC] = &pcie_3b_gdsc,
+	[PCIE_4_GDSC] = &pcie_4_gdsc,
+	[UFS_CARD_GDSC] = &ufs_card_gdsc,
+	[UFS_PHY_GDSC] = &ufs_phy_gdsc,
+	[USB30_MP_GDSC] = &usb30_mp_gdsc,
+	[USB30_PRIM_GDSC] = &usb30_prim_gdsc,
+	[USB30_SEC_GDSC] = &usb30_sec_gdsc,
+	[EMAC_0_GDSC] = &emac_0_gdsc,
+	[EMAC_1_GDSC] = &emac_1_gdsc,
+	[USB4_1_GDSC] = &usb4_1_gdsc,
+	[USB4_GDSC] = &usb4_gdsc,
+	[HLOS1_VOTE_MMNOC_MMU_TBU_HF0_GDSC] = &hlos1_vote_mmnoc_mmu_tbu_hf0_gdsc,
+	[HLOS1_VOTE_MMNOC_MMU_TBU_HF1_GDSC] = &hlos1_vote_mmnoc_mmu_tbu_hf1_gdsc,
+	[HLOS1_VOTE_MMNOC_MMU_TBU_SF0_GDSC] = &hlos1_vote_mmnoc_mmu_tbu_sf0_gdsc,
+	[HLOS1_VOTE_MMNOC_MMU_TBU_SF1_GDSC] = &hlos1_vote_mmnoc_mmu_tbu_sf1_gdsc,
+	[HLOS1_VOTE_TURING_MMU_TBU0_GDSC] = &hlos1_vote_turing_mmu_tbu0_gdsc,
+	[HLOS1_VOTE_TURING_MMU_TBU1_GDSC] = &hlos1_vote_turing_mmu_tbu1_gdsc,
+	[HLOS1_VOTE_TURING_MMU_TBU2_GDSC] = &hlos1_vote_turing_mmu_tbu2_gdsc,
+	[HLOS1_VOTE_TURING_MMU_TBU3_GDSC] = &hlos1_vote_turing_mmu_tbu3_gdsc,
+};
+
 static const struct clk_rcg_dfs_data gcc_dfs_clocks[] = {
 	DEFINE_RCG_DFS(gcc_qupv3_wrap0_s0_clk_src),
 	DEFINE_RCG_DFS(gcc_qupv3_wrap0_s1_clk_src),
@@ -7524,10 +7552,23 @@ static const struct qcom_cc_desc gcc_sc8280xp_desc = {
 	.num_gdscs = ARRAY_SIZE(gcc_sc8280xp_gdscs),
 };
 
+static const struct qcom_cc_desc gcc_sc8280xp_desc_pcie3a_disabled = {
+	.config = &gcc_sc8280xp_regmap_config,
+	.clks = gcc_sc8280xp_clocks,
+	.num_clks = ARRAY_SIZE(gcc_sc8280xp_clocks),
+	.resets = gcc_sc8280xp_resets,
+	.num_resets = ARRAY_SIZE(gcc_sc8280xp_resets),
+	.gdscs = gcc_sc8280xp_gdscs_pcie3a_disabled,
+	.num_gdscs = ARRAY_SIZE(gcc_sc8280xp_gdscs_pcie3a_disabled),
+};
+
 static int gcc_sc8280xp_probe(struct platform_device *pdev)
 {
 	struct regmap *regmap;
 	int ret;
+
+	struct device_node *node = pdev->dev.of_node;
+	u32 pcie_3a_disabled = 0;
 
 	ret = devm_pm_runtime_enable(&pdev->dev);
 	if (ret)
@@ -7537,7 +7578,19 @@ static int gcc_sc8280xp_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	regmap = qcom_cc_map(pdev, &gcc_sc8280xp_desc);
+	// Read the pcie_3a_disabled variable if it exists
+	printk(KERN_INFO "Probing device node: %s\n", node->name);
+	if (!of_property_read_u32(node, "pcie_3a_disabled", &pcie_3a_disabled)) {
+		printk(KERN_INFO "pcie_3a_disabled is set to %u\n",pcie_3a_disabled);
+		if (pcie_3a_disabled) {
+			regmap = qcom_cc_map(pdev, &gcc_sc8280xp_desc_pcie3a_disabled);
+		} else {
+			regmap = qcom_cc_map(pdev, &gcc_sc8280xp_desc);
+		}
+	} else {
+		printk(KERN_INFO "pcie_3a_disabled not found.\n");
+		regmap = qcom_cc_map(pdev, &gcc_sc8280xp_desc);
+	}
 	if (IS_ERR(regmap)) {
 		ret = PTR_ERR(regmap);
 		goto err_put_rpm;
@@ -7563,7 +7616,11 @@ static int gcc_sc8280xp_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_put_rpm;
 
-	ret = qcom_cc_really_probe(pdev, &gcc_sc8280xp_desc, regmap);
+	if (pcie_3a_disabled) {
+		ret = qcom_cc_really_probe(pdev, &gcc_sc8280xp_desc_pcie3a_disabled, regmap);
+	} else {
+		ret = qcom_cc_really_probe(pdev, &gcc_sc8280xp_desc, regmap);
+	}
 	if (ret)
 		goto err_put_rpm;
 
