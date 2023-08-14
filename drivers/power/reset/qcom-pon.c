@@ -80,8 +80,6 @@ static int pm8916_pon_probe(struct platform_device *pdev)
 		}
 	}
 
-	platform_set_drvdata(pdev, pon);
-
 	return devm_of_platform_populate(&pdev->dev);
 }
 
