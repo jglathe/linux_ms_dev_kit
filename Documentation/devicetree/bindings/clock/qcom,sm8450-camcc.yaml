@@ -21,9 +21,6 @@ description: |
 allOf:
   - $ref: qcom,gcc.yaml#
 
-allOf:
-  - $ref: qcom,gcc.yaml#
-
 properties:
   compatible:
     enum:
