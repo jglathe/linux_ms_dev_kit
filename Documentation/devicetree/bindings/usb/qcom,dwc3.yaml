@@ -481,18 +481,13 @@ allOf:
     then:
       properties:
         interrupts:
-          minItems: 18
-          maxItems: 18
+          maxItems: 14
         interrupt-names:
           items:
             - const: pwr_event_1
             - const: pwr_event_2
             - const: pwr_event_3
             - const: pwr_event_4
-            - const: hs_phy_1
-            - const: hs_phy_2
-            - const: hs_phy_3
-            - const: hs_phy_4
             - const: dp_hs_phy_1
             - const: dm_hs_phy_1
             - const: dp_hs_phy_2
