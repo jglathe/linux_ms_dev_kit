@@ -94,7 +94,7 @@ properties:
       - items:
           enum: [ usb2-phy, usb3-phy ]
       - items:
-          pattern: "^usb[23]-[0-3]$"
+          pattern: "^usb[23]-port[0-3]$"
 
   power-domains:
     description:
