@@ -391,7 +391,7 @@ static const struct adreno_info gpulist[] = {
 		.init = a6xx_gpu_init,
 		.zapfw = "a690_zap.mdt",
 		.hwcg = a690_hwcg,
-		.address_space_size = SZ_16G,
+		.address_space_size = SZ_32G,
 	},
 };
 
