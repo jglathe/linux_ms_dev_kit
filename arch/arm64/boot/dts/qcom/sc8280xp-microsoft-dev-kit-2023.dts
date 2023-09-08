@@ -67,7 +67,7 @@
 		connector@0 {
 			compatible = "usb-c-connector";
 			reg = <0>;
-			power-role = "dual";
+			power-role = "source";
 			data-role = "dual";
 
 			ports {
@@ -103,7 +103,7 @@
 		connector@1 {
 			compatible = "usb-c-connector";
 			reg = <1>;
-			power-role = "dual";
+			power-role = "source";
 			data-role = "dual";
 
 			ports {
