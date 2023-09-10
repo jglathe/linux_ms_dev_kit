@@ -1900,12 +1900,12 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 		regulator->dev = dev;
 
 		/* Add a link to the device sysfs entry */
-		if (device_is_registered(dev)) {		
+		if (device_is_registered(dev)) {
 			err = sysfs_create_link_nowarn(&rdev->dev.kobj, &dev->kobj,
-							supply_name);	
+							supply_name);
 			if (err) {
 				rdev_dbg(rdev, "could not add device link %s: %pe\n",
-					dev->kobj.name, ERR_PTR(err));
+						dev->kobj.name, ERR_PTR(err));
 				/* non-fatal */
 			}
 		}
@@ -5707,11 +5707,11 @@ regulator_register(struct device *dev,
 	/* Add a link to the device sysfs entry */
 	if (rdev->supply && rdev->supply->dev) {
 		ret = sysfs_create_link_nowarn(&rdev->supply->dev->kobj,
-						&rdev->dev.kobj,
-						rdev->supply->supply_name);
+					       &rdev->dev.kobj,
+					       rdev->supply->supply_name);
 		if (ret) {
 			rdev_dbg(rdev, "could not add device link %s err %d\n",
-				rdev->dev.kobj.name, ret);
+				 rdev->dev.kobj.name, ret);
 			/* non-fatal */
 		}
 	}
