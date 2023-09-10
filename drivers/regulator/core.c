@@ -1904,7 +1904,7 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 					       supply_name);
 		if (err) {
 			rdev_dbg(rdev, "could not add device link %s: %pe\n",
-				  dev->kobj.name, ERR_PTR(err));
+				     dev->kobj.name, ERR_PTR(err));
 			/* non-fatal */
 		}
 	}
@@ -2183,6 +2183,8 @@ struct regulator *_regulator_get(struct device *dev, const char *id,
 	rdev = regulator_dev_lookup(dev, id);
 	if (IS_ERR(rdev)) {
 		ret = PTR_ERR(rdev);
+		/* debug */
+		dev_dbg(dev, "look up regulator failed for %s, ret=%x\n", id, ret);
 
 		/*
 		 * If regulator_dev_lookup() fails with error other

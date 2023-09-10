@@ -338,6 +338,9 @@
 		compatible = "qcom,pm8350-rpmh-regulators";
 		qcom,pmic-id = "b";
 
+		vdd-s10-supply = <&vreg_vph_pwr>;
+		vdd-s11-supply = <&vreg_vph_pwr>;
+		vdd-s12-supply = <&vreg_vph_pwr>;
 		vdd-l1-l4-supply = <&vreg_s12b>;
 		vdd-l2-l7-supply = <&vreg_bob>;
 		vdd-l3-l5-supply = <&vreg_s11b>;
@@ -396,10 +399,11 @@
 		compatible = "qcom,pm8350c-rpmh-regulators";
 		qcom,pmic-id = "c";
 
+		vdd-s1-supply = <&vreg_vph_pwr>;
 		vdd-bob-supply = <&vreg_vph_pwr>;
 		vdd-l1-l12-supply = <&vreg_s1c>;
 		vdd-l2-l8-supply = <&vreg_s1c>;
-		vdd-l3-l4-l5-l7-l13-supply = <&vreg_bob>;
+		vdd-l3-l4-l5-l7-l13-supply = <&vreg_vph_pwr>;
 		vdd-l6-l9-l11-supply = <&vreg_bob>;
 		vdd-l10-supply = <&vreg_s11b>;
 
@@ -448,7 +452,7 @@
 		qcom,pmic-id = "d";
 
 		vdd-l1-l4-supply = <&vreg_s11b>;
-		vdd-l2-l7-supply = <&vreg_bob>;
+		vdd-l2-l7-supply = <&vreg_vph_pwr>;
 		vdd-l3-l5-supply = <&vreg_s11b>;
 		vdd-l6-l9-l10-supply = <&vreg_s12b>;
 		vdd-l8-supply = <&vreg_s12b>;
@@ -971,7 +975,6 @@
 
 &usb_0_dwc3 {
 	dr_mode = "host";
-
 	status = "okay";
 };
 
@@ -985,7 +988,9 @@
 
 &usb_0_qmpphy {
 	vdda-phy-supply = <&vreg_l9d>;
+	phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
+	pll-supply = <&vreg_l4d>;
 
 	status = "okay";
 };
@@ -1000,6 +1005,7 @@
 
 &usb_1_dwc3 {
 	dr_mode = "host";
+	status = "okay";
 };
 
 &usb_1_hsphy {
@@ -1012,7 +1018,9 @@
 
 &usb_1_qmpphy {
 	vdda-phy-supply = <&vreg_l4b>;
+	phy-supply = <&vreg_l4b>;
 	vdda-pll-supply = <&vreg_l3b>;
+	pll-supply = <&vreg_l3b>;
 
 	status = "okay";
 };
