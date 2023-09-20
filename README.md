@@ -1,100 +1,43 @@
-Current tip of the development: [based on ubuntu-mainline 6.4.3](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/ms-dev-kit-2023-v6.4.3)
+Current tip of the development: [jg/wdk2023-6.5.4](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-6.5.4), now based on [steev/linux](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-6.5.4)
 
-newest fix: MHI bus will be enabled now, works way better this way. USB Boot with rootfs on USB works now. Initrd-compression support is enabled now. 
+# **Bootable Image**
+A bootable image can be downloaded [here](https://drive.google.com/drive/folders/1sc_CpqOMTJNljfvRyLG-xdwB0yduje_O?usp=sharing). Some more details are in [this discussion](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-6907710). Now that the WDK is bootable from an USB stick (or SSD) I will take the previous tutorial on booting up the WDK with Linux offline. It will be replaced with a tutorial on how to install on SSD soon. [There is a short description on how to do this with the image.](https://github.com/linux-surface/surface-pro-x/issues/43#issuecomment-1705395207) I would recommend to read he discussions, though, before embarking on the instal on the local SSD. Especially [here](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-7038835) regarding USB-C support.
 
-Original from @chenguokai can be found [here](https://github.com/chenguokai/chenguokai/blob/master/tutorial-dev-kit-linux.md)
+# **How to buld and install your own kernel when you're up and running on the WDK2023**
+To build the kernel, you need to install the necessary tools:
 
-# Tutorial on Booting Linux on MS Dev Kit 2023
+`sudo apt install git bc bison flex libssl-dev make libc6-dev libncurses5-dev build-essential`
 
-## Introduction
+Next, clone the git repo, check out the desired branch. In the example I use `jg/wdk2023-6.5.4`:
 
-Currently, according to discussions in [linux-surface issue](https://github.com/linux-surface/surface-pro-x/issues/43), it has become possible to boot linux on Microsoft dev kit with key functions working. The latest progress was made by @merckhung who has provided a working kernel tree. However there has been no tutorial that provide a full description on how to make the magic happen. Discussion in the issue by @jglathe has provided a basic working path and my tutorial resembles in many parts. But please note before you begin, neither I nor the code authors would be responsible for any damage on your device or your data. You go at your own risk.
+you@yourwdk:~/src$ `git clone --branch jg/wdk2023-6.5.4 https://github.com/jglathe/linux_ms_dev_kit.git`
 
-## Overview
+Before compiling you need to configure for the wdk target. steev/linux maintains its own laptop_defconfig, which is IMO better fitting. I'm out of my depth with this config thing.
 
-The hardware requirements are one MS Dev Kit with stock Windows and a usb key. You will need to install some software on the windows side which will be described later. Following this, you will have a minimal working ubuntu system running on your dev kit.
+you@yourwdk:~/src/linux_ms_dev_kit.git$ `make -j8 laptop_config`
 
-There are mainly three steps:
-1. compile the kernel
-2. configure the rootfs
-3. flash, boot and enjoy
+This generates a .config file with the configuration for the kernel to build. Afterwards, you can change the configuration with `make menuconfig`. The .config always appends a '+' for a locally compiled kernel, so the version would be `6.5.4+`.
 
-### Compile the kernel
+Time for doing changes / hacking.
 
-I have done the following in a ubuntu 20.04 WSL2 environment running on Dev Kit, to avoid annoying cross compiling. You may refer to steps provided by @jglathe for cross compiling guidance.
+Afterwards, compile the kernel: `time make -j8 Image.gz dtbs modules`
+'time' just measures how long it takes, I find it useful. A full run should take ~25mins. This command builds all we need to do an install.
 
-Firstly, you should install essential tools (`build-essential`, `git`, `bison`, `flex` etc ) for compiling a kernel. If there are any missing tools called in your process. please do some googling and install any missing tools.
-Secondly, you should clone merckhung's kernel source to your local machine. The command should be like 
+The actual installation is a few steps:
 
-```shell
-git clone https://github.com/merckhung/linux_ms_dev_kit
+- If it's a new kernel version, we need to create the dtb target path: `sudo mkdir -p /boot/dtbs/6.5.4+/`.
+- copy the dtb to the target path: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo cp arch/arm64/boot/dts/qcom/sc8280xp-microsoft-dev-kit-2023.dtb /boot/dtb-6.5.4+/`
+- if it doesn't exist yet, we need to set a symlink named `dtb-<version>` to the dtb
 ```
-
-The source tree is so huge that you may want to do a [shallow clone](https://git-scm.com/docs/shallow). Currently the default branch in the repo is for Dev Kit, but if it changes in the future, remember to checkout the correct branch:
-```shell
-git checkout ms-dev-kit-2023-v6.4.3
+cd /boot
+sudo ln -s dtbs/6.5.4+/sc8280xp-microsoft-dev-kit-2023.dtb dtb-6.5.4+
 ```
+- install the kernel modules: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo make -j8 modules_install`
+- finally, install the kernel. This will invoke install scripts which also updates grub: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo make install`
 
+On the next reboot, you can boot the new kernel.
 
-Secondly, you should compile the kernel with the config for Dev Kit. After you enter the kernel source directory, compile with:
-```
-make devkit_defconfig # this tells the kernel to use Dev Kit default config
-make menuconfig       # this allows you to make any custom config change
-                      # for ubuntu's initramfs generation requirement, you should enable initramfs support here
-                      # press `esc` and choose save after that to save your config
-make -j8              # do the actual work, Dev Kit has 8 cores so use 8 threads here
-```
+If you're stuck and need to clean up, this command is helpful: you@yourwdk:~/src/linux_ms_dev_kit.git$ `make -j8 mrproper`
 
-After that you will find `Image` file in `arch/arm64/boot` and `sc8280xp-microsoft-dev-kit-2023.dtb` in `arch/arm64/boot/dts
-/qcom/`. Copy them out to your Windows partition. You will also find `.config` file right in the top of the kernel source tree, copy it to `/boot` in your WSL system. Root priviledge are required for this copy. You will need to adjust the config file name to meet ubuntu's requirement later.ch compression to use.
-
-Finally, except for the kernel image, you will need kernel modules. You can install it on your WSL system by typing 
-
-```sudo make modules_install```
-
-You will find your kernel modules in `/lib/modules/6.4.3+`, you will need to put them in the incoming rootfs.
-
-### Rootfs preparation
-
-In theory, you can use prebuilt raspberry pi ubuntu rootfs image but in my experience, it contains garbage configurations that breaks my experience. Assume that you have an empty rootfs image in ext4 file system (you can always use dd to create one and mkfs to assign a filesystem to it), you can mount it to any place and make a debootstrap on it.
-```
-sudo debootstrap --arch arm64 focal /mnt http://ports.ubuntu.com/ubuntu-ports # assume you mount rootfs to /mnt and use ubuntu focal
-                                                                              # you may replace the final link with your local mirror site
-```
-You may want to chroot into the new system to setup your root password:
-
-```
-sudo cp -r /lib/modules/6.4.3+ /mnt/lib/modules/6.4.3+ # copy kernel modules to rootfs
-sudo chroot /mnt
-passwd root
-# you may also install some softwares in this stage
-exit # exit the chroot environment
-sudo update-initramfs -c -k 6.4.3+ # you may need to move your kernel config to a proper name in /boot before it works, this step can also be done in WSL
-```
-
-After setup, copy the newly generated initrd file in `/boot` (either in WSL2 `/` or `/mnt`) to Windows disk and umount the rootfs and you have got a working ubuntu rootfs.
-
-### Flash, boot and enjoy
-
-You need to move the rootfs image to your Windows disk and flash it to an empty partition. New partitions may be created with Windows's disk manager. You can use winhex(thanks @huxuan0307) to flash the rootfs image to your newly created disk partition. Please always double check you are flashing to the **right partition**.
-
-After your rootfs flashed, you should put your kernel and devicetree file in any place you can find easily. You will need to manually boot the kernel at least the first few times.
-
-As we are lacking ways to install grub to Dev Kit's internal disk now, I would recommend you to create a ubuntu 23.04 (22.04 will NOT work) installation disk with an usb key. You can boot from the usb key and use the grub there to boot the kernel.
-
-When you are greeted by the grub interface, press `c` to enter grub commandline. You will need to type the following command to boot.
-
-```
-linux PATH_TO_YOUR_KERNEL_IMAGE clk_ignore_unused efi=novamap earlycon=efifb iommu.strict=0 pd_ignore_unused mitigations=off root=/dev/nvme0n1pX 
-# where X is your real rootfs partition number
-devicetree PATH_TO_YOUR_DEVICETREE
-initrd YOUR_INITRD_FILE
-boot
-```
-
-You should see ubuntu booting now.
-
-## Appendix
-
-After you have finished this tutorial, not all devices will work as expected, for example the WiFi. However in the problematic RPI rootfs, WiFi works. I suppose that it is mainly because debootstrap will not install `linux-firmware` by default. Currently I have only remote ssh access to Dev Kit and cannot verify myself. You may try it on your own.
-Also you may install grub to Dev Kit's internal disk and drop the usb key requirement in the following boots. I have not had time to do it myself as well.
+## **Acknowledgements**
+The original tutorial from @chenguokai can be found [here](https://github.com/chenguokai/chenguokai/blob/master/tutorial-dev-kit-linux.md)
