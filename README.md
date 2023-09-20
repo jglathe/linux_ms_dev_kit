@@ -3,7 +3,7 @@ Current tip of the development: [jg/wdk2023-6.5.4](https://github.com/jglathe/li
 # **Bootable Image**
 A bootable image can be downloaded [here](https://drive.google.com/drive/folders/1sc_CpqOMTJNljfvRyLG-xdwB0yduje_O?usp=sharing). Some more details are in [this discussion](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-6907710). Now that the WDK is bootable from an USB stick (or SSD) I will take the previous tutorial on booting up the WDK with Linux offline. It will be replaced with a tutorial on how to install on SSD soon. [There is a short description on how to do this with the image.](https://github.com/linux-surface/surface-pro-x/issues/43#issuecomment-1705395207) I would recommend to read he discussions, though, before embarking on the instal on the local SSD. Especially [here](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-7038835) regarding USB-C support.
 
-# **How to buld and install your own kernel when you're up and running on the WDK2023**
+# **How to build and install your own kernel when you're up and running on the WDK2023**
 To build the kernel, you need to install the necessary tools:
 
 `sudo apt install git bc bison flex libssl-dev make libc6-dev libncurses5-dev build-essential`
