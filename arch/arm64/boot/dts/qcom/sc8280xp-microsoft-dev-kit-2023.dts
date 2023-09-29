@@ -22,6 +22,8 @@
 	compatible = "microsoft,dev-kit-2023", "qcom,sc8280xp";
 
 	aliases {
+		i2c4 = &i2c4;
+		i2c21 = &i2c21;
 		serial1 = &uart2;
 	};
 
@@ -86,7 +88,7 @@
 					reg = <1>;
 
 					pmic_glink_con0_ss: endpoint {
-						remote-endpoint = <&mdss0_dp0_out>;
+						remote-endpoint = <&usb_0_qmpphy_out>;
 					};
 				};
 
@@ -121,7 +123,7 @@
 					reg = <1>;
 
 					pmic_glink_con1_ss: endpoint {
-						remote-endpoint = <&mdss0_dp1_out>;
+						remote-endpoint = <&usb_1_qmpphy_out>;
 					};
 				};
 
@@ -180,6 +182,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&nvme_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_vph_pwr: regulator-vph-pwr {
@@ -373,6 +377,13 @@
 			regulator-always-on;
 		};
 
+		vreg_l1b: ldo1 {
+			regulator-name = "vreg_l1b";
+			regulator-min-microvolt = <912000>;
+			regulator-max-microvolt = <912000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l3b: ldo3 {
 			regulator-name = "vreg_l3b";
 			regulator-min-microvolt = <1200000>;
@@ -425,6 +436,13 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vreg_l8c: ldo8 {
+			regulator-name = "vreg_l8c";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l12c: ldo12 {
 			regulator-name = "vreg_l12c";
 			regulator-min-microvolt = <1800000>;
@@ -459,6 +477,13 @@
 		vdd-l6-l9-l10-supply = <&vreg_s12b>;
 		vdd-l8-supply = <&vreg_s12b>;
 
+		vreg_l2d: ldo2 {
+			regulator-name = "vreg_l2d";
+			regulator-min-microvolt = <3072000>;
+			regulator-max-microvolt = <3072000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l3d: ldo3 {
 			regulator-name = "vreg_l3d";
 			regulator-min-microvolt = <1200000>;
@@ -490,8 +515,22 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vreg_l8d: ldo8 {
+			regulator-name = "vreg_l8d";
+			regulator-min-microvolt = <912000>;
+			regulator-max-microvolt = <912000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
 		vreg_l9d: ldo9 {
 			regulator-name = "vreg_l9d";
+			regulator-min-microvolt = <912000>;
+			regulator-max-microvolt = <912000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l10d: ldo10 {
+			regulator-name = "vreg_l10d";
 			regulator-min-microvolt = <912000>;
 			regulator-max-microvolt = <912000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -534,7 +573,7 @@
 
 &mdss0_dp0_out {
 	data-lanes = <0 1>;
-	remote-endpoint = <&pmic_glink_con0_ss>;
+	remote-endpoint = <&usb_0_qmpphy_dp_in>;
 };
 
 &mdss0_dp1 {
@@ -543,7 +582,7 @@
 
 &mdss0_dp1_out {
 	data-lanes = <0 1>;
-	remote-endpoint = <&pmic_glink_con1_ss>;
+	remote-endpoint = <&usb_1_qmpphy_dp_in>;
 };
 
 &mdss0_dp2 {
@@ -1007,7 +1046,17 @@
 	vdda-pll-supply = <&vreg_l9d>;
 	pll-supply = <&vreg_l9d>;
 
+	orientation-switch;
+
 	status = "okay";
+};
+
+&usb_0_qmpphy_dp_in {
+	remote-endpoint = <&mdss0_dp0_out>;
+};
+
+&usb_0_qmpphy_out {
+	remote-endpoint = <&pmic_glink_con0_ss>;
 };
 
 &usb_0_role_switch {
@@ -1039,7 +1088,17 @@
 	vdda-pll-supply = <&vreg_l4b>;
 	pll-supply = <&vreg_l4b>;
 
+	orientation-switch;
+
 	status = "okay";
+};
+
+&usb_1_qmpphy_dp_in {
+	remote-endpoint = <&mdss0_dp1_out>;
+};
+
+&usb_1_qmpphy_out {
+	remote-endpoint = <&pmic_glink_con1_ss>;
 };
 
 &usb_1_role_switch {
@@ -1125,6 +1184,11 @@
 
 	qcom,dmic-sample-rate = <4800000>;
 
+	status = "okay";
+};
+
+&venus {
+	firmware-name = "qcom/sc8280xp/MICROSOFT/DEVKIT23/qcvss8280.mbn";
 	status = "okay";
 };
 
