@@ -109,46 +109,6 @@
 			};
 		};
 	};
-
-	regulator-usb2-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB2_VBUS";
-		gpio = <&pmm8540c_gpios 9 GPIO_ACTIVE_HIGH>;
-		pinctrl-0 = <&usb2_en>;
-		pinctrl-names = "default";
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	regulator-usb3-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB3_VBUS";
-		gpio = <&pmm8540e_gpios 5 GPIO_ACTIVE_HIGH>;
-		pinctrl-0 = <&usb3_en>;
-		pinctrl-names = "default";
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	regulator-usb4-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB4_VBUS";
-		gpio = <&pmm8540g_gpios 5 GPIO_ACTIVE_HIGH>;
-		pinctrl-0 = <&usb4_en>;
-		pinctrl-names = "default";
-		enable-active-high;
-		regulator-always-on;
-	};
-
-	regulator-usb5-vbus {
-		compatible = "regulator-fixed";
-		regulator-name = "USB5_VBUS";
-		gpio = <&pmm8540g_gpios 9 GPIO_ACTIVE_HIGH>;
-		pinctrl-0 = <&usb5_en>;
-		pinctrl-names = "default";
-		enable-active-high;
-		regulator-always-on;
-	};
 };
 
 &apps_rsc {
@@ -626,6 +586,12 @@
 };
 
 &usb_2 {
+	pinctrl-0 = <&usb2_en_state>,
+		    <&usb3_en_state>,
+		    <&usb4_en_state>,
+		    <&usb5_en_state>;
+	pinctrl-names = "default";
+
 	status = "okay";
 };
 
@@ -680,44 +646,6 @@
 };
 
 /* PINCTRL */
-
-&pmm8540c_gpios {
-	usb2_en: usb2-en-state {
-		pins = "gpio9";
-		function = "normal";
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
-		output-enable;
-		power-source = <0>;
-	};
-};
-
-&pmm8540e_gpios {
-	usb3_en: usb3-en-state {
-		pins = "gpio5";
-		function = "normal";
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
-		output-enable;
-		power-source = <0>;
-	};
-};
-
-&pmm8540g_gpios {
-	usb4_en: usb4-en-state {
-		pins = "gpio5";
-		function = "normal";
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
-		output-enable;
-		power-source = <0>;
-	};
-
-	usb5_en: usb5-en-state {
-		pins = "gpio9";
-		function = "normal";
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
-		output-enable;
-		power-source = <0>;
-	};
-};
 
 &tlmm {
 	pcie2a_default: pcie2a-default-state {
@@ -810,5 +738,43 @@
 			drive-strength = <2>;
 			bias-pull-up;
 		};
+	};
+};
+
+&pmm8540c_gpios {
+	usb2_en_state: usb2-en-state {
+		pins = "gpio9";
+		function = "normal";
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
+		output-high;
+		power-source = <0>;
+	};
+};
+
+&pmm8540e_gpios {
+	usb3_en_state: usb3-en-state {
+		pins = "gpio5";
+		function = "normal";
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
+		output-high;
+		power-source = <0>;
+	};
+};
+
+&pmm8540g_gpios {
+	usb4_en_state: usb4-en-state {
+		pins = "gpio5";
+		function = "normal";
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
+		output-high;
+		power-source = <0>;
+	};
+
+	usb5_en_state: usb5-en-state {
+		pins = "gpio9";
+		function = "normal";
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_HIGH>;
+		output-high;
+		power-source = <0>;
 	};
 };
