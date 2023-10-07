@@ -33,6 +33,9 @@
 
 #include <linux/power_supply.h>
 
+/* Number of ports supported by a multiport controller */
+#define DWC3_MAX_PORTS 4
+
 #define DWC3_MSG_MAX	500
 
 /* Global constants */
@@ -1031,8 +1034,8 @@ struct dwc3_scratchpad_array {
  * @usb_psy: pointer to power supply interface.
  * @usb2_phy: pointer to USB2 PHY
  * @usb3_phy: pointer to USB3 PHY
- * @usb2_generic_phy: pointer to USB2 PHY
- * @usb3_generic_phy: pointer to USB3 PHY
+ * @usb2_generic_phy: pointer to array of USB2 PHY
+ * @usb3_generic_phy: pointer to array of USB3 PHY
  * @num_usb2_ports: number of USB2 ports
  * @num_usb3_ports: number of USB3 ports
  * @phys_ready: flag to indicate that PHYs are ready
@@ -1179,8 +1182,8 @@ struct dwc3 {
 	struct usb_phy		*usb2_phy;
 	struct usb_phy		*usb3_phy;
 
-	struct phy		*usb2_generic_phy;
-	struct phy		*usb3_generic_phy;
+	struct phy		*usb2_generic_phy[DWC3_MAX_PORTS];
+	struct phy		*usb3_generic_phy[DWC3_MAX_PORTS];
 
 	u8			num_usb2_ports;
 	u8			num_usb3_ports;
