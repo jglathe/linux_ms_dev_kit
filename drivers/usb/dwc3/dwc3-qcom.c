@@ -90,7 +90,7 @@ struct dwc3_qcom {
 	 */
 	int			phy_irq[NUM_PHY_IRQ - 1][DWC3_MAX_PORTS];
 	int			hs_phy_irq;
-	enum usb_device_speed	usb2_speed;
+	enum usb_device_speed	usb2_speed[DWC3_MAX_PORTS];
 
 	struct extcon_dev	*edev;
 	struct extcon_dev	*host_edev;
@@ -335,7 +335,8 @@ static bool dwc3_qcom_is_host(struct dwc3_qcom *qcom)
 	return dwc->xhci;
 }
 
-static enum usb_device_speed dwc3_qcom_read_usb2_speed(struct dwc3_qcom *qcom)
+static enum usb_device_speed dwc3_qcom_read_usb2_speed(struct dwc3_qcom *qcom,
+							int port_index)
 {
 	struct dwc3 *dwc = platform_get_drvdata(qcom->dwc3);
 	struct usb_device *udev;
@@ -348,12 +349,10 @@ static enum usb_device_speed dwc3_qcom_read_usb2_speed(struct dwc3_qcom *qcom)
 
 	/*
 	 * It is possible to query the speed of all children of
-	 * USB2.0 root hub via usb_hub_for_each_child(). DWC3 code
-	 * currently supports only 1 port per controller. So
-	 * this is sufficient.
+	 * USB2.0 root hub via usb_hub_for_each_child().
 	 */
 #ifdef CONFIG_USB
-	udev = usb_hub_find_child(hcd->self.root_hub, 1);
+	udev = usb_hub_find_child(hcd->self.root_hub, port_index + 1);
 #else
 	udev = NULL;
 #endif
@@ -386,23 +385,29 @@ static void dwc3_qcom_disable_wakeup_irq(int irq)
 
 static void dwc3_qcom_disable_interrupts(struct dwc3_qcom *qcom)
 {
+	int i;
+
 	dwc3_qcom_disable_wakeup_irq(qcom->hs_phy_irq);
 
-	if (qcom->usb2_speed == USB_SPEED_LOW) {
-		dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][0]);
-	} else if ((qcom->usb2_speed == USB_SPEED_HIGH) ||
-			(qcom->usb2_speed == USB_SPEED_FULL)) {
-		dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][0]);
-	} else {
-		dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][0]);
-		dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][0]);
-	}
+	for (i = 0; i < qcom->num_ports; i++) {
+		if (qcom->usb2_speed[i] == USB_SPEED_LOW) {
+			dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][i]);
+		} else if ((qcom->usb2_speed[i] == USB_SPEED_HIGH) ||
+			(qcom->usb2_speed[i] == USB_SPEED_FULL)) {
+			dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][i]);
+		} else {
+			dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][i]);
+			dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][i]);
+		}
 
-	dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[SS_PHY_IRQ_INDEX][0]);
+		dwc3_qcom_disable_wakeup_irq(qcom->phy_irq[SS_PHY_IRQ_INDEX][i]);
+	}
 }
 
 static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 {
+	int i;
+
 	dwc3_qcom_enable_wakeup_irq(qcom->hs_phy_irq, 0);
 
 	/*
@@ -413,22 +418,24 @@ static void dwc3_qcom_enable_interrupts(struct dwc3_qcom *qcom)
 	 * disconnect and remote wakeup. When no device is connected, configure both
 	 * DP and DM lines as rising edge to detect HS/HS/LS device connect scenario.
 	 */
+	for (i = 0; i < qcom->num_ports; i++) {
+		qcom->usb2_speed[i] = dwc3_qcom_read_usb2_speed(qcom, i);
+		if (qcom->usb2_speed[i] == USB_SPEED_LOW) {
+			dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][i],
+						IRQ_TYPE_EDGE_FALLING);
+		} else if ((qcom->usb2_speed[i] == USB_SPEED_HIGH) ||
+			(qcom->usb2_speed[i] == USB_SPEED_FULL)) {
+			dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][i],
+						IRQ_TYPE_EDGE_FALLING);
+		} else {
+			dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][i],
+						IRQ_TYPE_EDGE_RISING);
+			dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][i],
+						IRQ_TYPE_EDGE_RISING);
+		}
 
-	if (qcom->usb2_speed == USB_SPEED_LOW) {
-		dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][0],
-						IRQ_TYPE_EDGE_FALLING);
-	} else if ((qcom->usb2_speed == USB_SPEED_HIGH) ||
-			(qcom->usb2_speed == USB_SPEED_FULL)) {
-		dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][0],
-						IRQ_TYPE_EDGE_FALLING);
-	} else {
-		dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DP_HS_PHY_IRQ_INDEX][0],
-						IRQ_TYPE_EDGE_RISING);
-		dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[DM_HS_PHY_IRQ_INDEX][0],
-						IRQ_TYPE_EDGE_RISING);
+		dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[SS_PHY_IRQ_INDEX][i], 0);
 	}
-
-	dwc3_qcom_enable_wakeup_irq(qcom->phy_irq[SS_PHY_IRQ_INDEX][0], 0);
 }
 
 static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
@@ -454,10 +461,8 @@ static int dwc3_qcom_suspend(struct dwc3_qcom *qcom, bool wakeup)
 	 * The role is stable during suspend as role switching is done from a
 	 * freezable workqueue.
 	 */
-	if (dwc3_qcom_is_host(qcom) && wakeup) {
-		qcom->usb2_speed = dwc3_qcom_read_usb2_speed(qcom);
+	if (dwc3_qcom_is_host(qcom) && wakeup)
 		dwc3_qcom_enable_interrupts(qcom);
-	}
 
 	qcom->is_suspended = true;
 
