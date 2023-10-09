@@ -178,14 +178,14 @@ static const struct resource pm8008_temp_res[] = {
 };
 
 static const struct mfd_cell pm8008_cells[] = {
-	MFD_CELL_NAME("qcom-pm8008-regulator"),
+	MFD_CELL_NAME("pm8008-regulator"),
 	MFD_CELL_RES("qpnp-temp-alarm", pm8008_temp_res),
-	MFD_CELL_NAME("qpnp-gpio"),
+	MFD_CELL_NAME("pm8008-gpio"),
 };
 
-static void devm_irq_domain_fwnode_release(void *res)
+static void devm_irq_domain_fwnode_release(void *data)
 {
-	struct fwnode_handle *fwnode = res;
+	struct fwnode_handle *fwnode = data;
 
 	irq_domain_free_fwnode(fwnode);
 }
@@ -199,22 +199,22 @@ static int pm8008_probe(struct i2c_client *client)
 	struct i2c_client *dummy;
 	struct gpio_desc *reset;
 	char *name;
-	int rc;
+	int ret;
 
 	dummy = devm_i2c_new_dummy_device(dev, client->adapter, client->addr + 1);
 	if (IS_ERR(dummy)) {
-		rc = PTR_ERR(dummy);
-		dev_err(&client->dev, "failed to claim second address: %d\n", rc);
-		return rc;
+		ret = PTR_ERR(dummy);
+		dev_err(dev, "failed to claim second address: %d\n", ret);
+		return ret;
 	}
 
 	regmap2 = devm_regmap_init_i2c(dummy, &qcom_mfd_regmap_cfg);
 	if (IS_ERR(regmap2))
 		return PTR_ERR(regmap2);
 
-	rc = regmap_attach_dev(dev, regmap2, &pm8008_regmap_cfg_2);
-	if (rc)
-		return rc;
+	ret = regmap_attach_dev(dev, regmap2, &pm8008_regmap_cfg_2);
+	if (ret)
+		return ret;
 
 	/* Default regmap must be attached last. */
 	regmap = devm_regmap_init_i2c(client, &qcom_mfd_regmap_cfg);
@@ -224,6 +224,12 @@ static int pm8008_probe(struct i2c_client *client)
 	reset = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(reset))
 		return PTR_ERR(reset);
+
+	/*
+	 * The PMIC does not appear to require a post-reset delay, but wait
+	 * for a millisecond for now anyway.
+	 */
+	usleep_range(1000, 2000);
 
 	name = devm_kasprintf(dev, GFP_KERNEL, "%pOF-internal", dev->of_node);
 	if (!name)
@@ -235,15 +241,15 @@ static int pm8008_probe(struct i2c_client *client)
 	if (!fwnode)
 		return -ENOMEM;
 
-	rc = devm_add_action_or_reset(dev, devm_irq_domain_fwnode_release, fwnode);
-	if (rc)
-		return rc;
+	ret = devm_add_action_or_reset(dev, devm_irq_domain_fwnode_release, fwnode);
+	if (ret)
+		return ret;
 
-	rc = devm_regmap_add_irq_chip_fwnode(dev, fwnode, regmap, client->irq,
+	ret = devm_regmap_add_irq_chip_fwnode(dev, fwnode, regmap, client->irq,
 				IRQF_SHARED, 0, &pm8008_irq_chip, &irq_data);
-	if (rc) {
-		dev_err(dev, "failed to add IRQ chip: %d\n", rc);
-		return rc;
+	if (ret) {
+		dev_err(dev, "failed to add IRQ chip: %d\n", ret);
+		return ret;
 	}
 
 	/* Needed by GPIO driver. */
