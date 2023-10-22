@@ -103,6 +103,12 @@ properties:
       - description: IFE1 GDSC - Image Front End, Global Distributed Switch Controller.
       - description: Titan GDSC - Titan ISP Block, Global Distributed Switch Controller.
 
+  power-domain-names:
+    items:
+      - const: ife0
+      - const: ife1
+      - const: top
+
   ports:
     $ref: /schemas/graph.yaml#/properties/ports
 
