@@ -659,12 +659,18 @@ static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 	int i;
 
 	irq_count = of_property_count_strings(np, "interrupt-names");
+	if (irq_count < 0)
+		return irq_count;
+
 	irq_names = devm_kzalloc(&pdev->dev, sizeof(*irq_names) * irq_count, GFP_KERNEL);
 	if (!irq_names)
 		return -ENOMEM;
 
 	ret = of_property_read_string_array(np, "interrupt-names",
 						irq_names, irq_count);
+	if (ret < 0)
+		return ret;
+
 	for (i = 0; i < irq_count; i++) {
 		irq_index = dwc3_qcom_get_irq_index(irq_names[i]);
 		if (irq_index == -1) {
