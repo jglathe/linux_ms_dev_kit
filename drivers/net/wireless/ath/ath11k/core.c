@@ -1309,6 +1309,8 @@ int ath11k_core_fetch_bdf(struct ath11k_base *ab, struct ath11k_board_data *bd)
 	if (!ret)
 		goto success;
 
+	ath11k_err(ab, "no success fetching board data for %s\n", boardname);
+
 	ret = ath11k_core_create_fallback_board_name(ab, fallback_boardname,
 						     sizeof(fallback_boardname));
 	if (ret) {
@@ -1322,6 +1324,7 @@ int ath11k_core_fetch_bdf(struct ath11k_base *ab, struct ath11k_board_data *bd)
 						 ATH11K_BD_IE_BOARD_DATA);
 	if (!ret)
 		goto success;
+	ath11k_err(ab, "no success fetching board data for %s\n", fallback_boardname);
 
 	ab->bd_api = 1;
 	ret = ath11k_core_fetch_board_data_api_1(ab, bd, ATH11K_DEFAULT_BOARD_FILE);
