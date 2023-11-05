@@ -1342,6 +1342,8 @@ int ath11k_core_fetch_bdf(struct ath11k_base *ab, struct ath11k_board_data *bd)
 	if (!ret)
 		goto exit;
 
+	ath11k_err(ab, "no success fetching board data for %s\n", boardname);
+
 	fallback_boardname = kzalloc(BOARD_NAME_SIZE, GFP_KERNEL);
 	if (!fallback_boardname) {
 		ret = -ENOMEM;
@@ -1361,6 +1363,8 @@ int ath11k_core_fetch_bdf(struct ath11k_base *ab, struct ath11k_board_data *bd)
 						 ATH11K_BD_IE_BOARD_DATA);
 	if (!ret)
 		goto exit;
+
+	ath11k_err(ab, "no success fetching board data for %s\n", fallback_boardname);
 
 	chip_id_boardname = kzalloc(BOARD_NAME_SIZE, GFP_KERNEL);
 	if (!chip_id_boardname) {
