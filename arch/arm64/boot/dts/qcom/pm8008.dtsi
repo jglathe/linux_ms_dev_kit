@@ -2,9 +2,9 @@
 // Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
 
 &pm8008_bus {
-	pm8008: pmic@8 {
+	pm8008: pmic@c {
 		compatible = "qcom,pm8008";
-		reg = <0x8>;
+		reg = <0xc>;
 		#address-cells = <2>;
 		#size-cells = <0>;
 		#interrupt-cells = <2>;
