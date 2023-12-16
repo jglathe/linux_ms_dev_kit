@@ -230,4 +230,14 @@ struct gunyah_hypercall_vcpu_run_resp {
 	u64 state_data[3];
 };
 
+enum {
+	GUNYAH_ADDRSPACE_VMMIO_ACTION_EMULATE = 0,
+	GUNYAH_ADDRSPACE_VMMIO_ACTION_RETRY = 1,
+	GUNYAH_ADDRSPACE_VMMIO_ACTION_FAULT = 2,
+};
+
+enum gunyah_error
+gunyah_hypercall_vcpu_run(u64 capid, u64 *resume_data,
+			  struct gunyah_hypercall_vcpu_run_resp *resp);
+
 #endif

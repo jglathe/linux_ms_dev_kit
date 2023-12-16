@@ -48,6 +48,7 @@ struct gunyah_vm {
 	enum gunyah_rm_vm_status vm_status;
 	wait_queue_head_t vm_status_wait;
 	struct rw_semaphore status_lock;
+	struct gunyah_vm_exit_info exit_info;
 
 	struct kref kref;
 	struct mutex fn_lock;
