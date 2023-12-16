@@ -9,6 +9,8 @@
 #include <linux/device.h>
 #include <linux/gunyah_rsc_mgr.h>
 #include <linux/kref.h>
+#include <linux/list.h>
+#include <linux/mutex.h>
 #include <linux/notifier.h>
 #include <linux/rwsem.h>
 #include <linux/wait.h>
@@ -28,6 +30,10 @@ struct gunyah_vm {
 	enum gunyah_rm_vm_status vm_status;
 	wait_queue_head_t vm_status_wait;
 	struct rw_semaphore status_lock;
+
+	struct kref kref;
+	struct mutex fn_lock;
+	struct list_head functions;
 };
 
 #endif
