@@ -8,8 +8,10 @@
 
 #include <linux/device.h>
 #include <linux/gunyah_rsc_mgr.h>
+#include <linux/gunyah_vm_mgr.h>
 #include <linux/kref.h>
 #include <linux/list.h>
+#include <linux/maple_tree.h>
 #include <linux/mutex.h>
 #include <linux/notifier.h>
 #include <linux/rbtree.h>
@@ -18,11 +20,26 @@
 
 #include <uapi/linux/gunyah.h>
 
+static inline u64 gunyah_gpa_to_gfn(u64 gpa)
+{
+	return gpa >> PAGE_SHIFT;
+}
+
+static inline u64 gunyah_gfn_to_gpa(u64 gfn)
+{
+	return gfn << PAGE_SHIFT;
+}
+
 long gunyah_dev_vm_mgr_ioctl(struct gunyah_rm *rm, unsigned int cmd,
 			     unsigned long arg);
 
 struct gunyah_vm {
 	u16 vmid;
+	struct maple_tree gm;
+	struct gunyah_vm_resource_ticket addrspace_ticket,
+		host_private_extent_ticket, host_shared_extent_ticket,
+		guest_private_extent_ticket, guest_shared_extent_ticket;
+
 	struct gunyah_rm *rm;
 	struct device *parent;
 	enum gunyah_rm_vm_auth_mechanism auth;
@@ -43,5 +60,18 @@ struct gunyah_vm {
 };
 
 int gunyah_vm_mmio_write(struct gunyah_vm *ghvm, u64 addr, u32 len, u64 data);
+
+int gunyah_vm_share_parcel(struct gunyah_vm *ghvm,
+			   struct gunyah_rm_mem_parcel *parcel, u64 gfn,
+			   u64 nr);
+int gunyah_vm_parcel_to_paged(struct gunyah_vm *ghvm,
+			      struct gunyah_rm_mem_parcel *parcel, u64 gfn,
+			      u64 nr);
+int gunyah_vm_reclaim_parcel(struct gunyah_vm *ghvm,
+			     struct gunyah_rm_mem_parcel *parcel, u64 gfn);
+int gunyah_vm_provide_folio(struct gunyah_vm *ghvm, struct folio *folio,
+			    u64 gfn, bool share, bool write);
+int gunyah_vm_reclaim_folio(struct gunyah_vm *ghvm, u64 gfn);
+void gunyah_vm_reclaim_memory(struct gunyah_vm *ghvm);
 
 #endif

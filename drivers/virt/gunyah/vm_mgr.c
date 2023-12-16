@@ -18,6 +18,15 @@
 
 #include "vm_mgr.h"
 
+#define GUNYAH_VM_ADDRSPACE_LABEL 0
+// For memory private to guest
+#define GUNYAH_VM_MEM_EXTENT_GUEST_PRIVATE_LABEL 0
+#define GUNYAH_VM_MEM_EXTENT_HOST_SHARED_LABEL 1
+// For memory shared with the guest
+#define GUNYAH_VM_MEM_EXTENT_GUEST_SHARED_LABEL 3
+// Our own mem extent
+#define GUNYAH_VM_MEM_EXTENT_HOST_PRIVATE_LABEL 2
+
 static DEFINE_XARRAY(gunyah_vm_functions);
 
 static void gunyah_vm_put_function(struct gunyah_vm_function *fn)
@@ -184,6 +193,16 @@ void gunyah_vm_function_unregister(struct gunyah_vm_function *fn)
 	xa_erase(&gunyah_vm_functions, fn->type);
 }
 EXPORT_SYMBOL_GPL(gunyah_vm_function_unregister);
+
+static bool gunyah_vm_resource_ticket_populate_noop(
+	struct gunyah_vm_resource_ticket *ticket, struct gunyah_resource *ghrsc)
+{
+	return true;
+}
+static void gunyah_vm_resource_ticket_unpopulate_noop(
+	struct gunyah_vm_resource_ticket *ticket, struct gunyah_resource *ghrsc)
+{
+}
 
 int gunyah_vm_add_resource_ticket(struct gunyah_vm *ghvm,
 				  struct gunyah_vm_resource_ticket *ticket)
@@ -459,6 +478,17 @@ static void gunyah_vm_stop(struct gunyah_vm *ghvm)
 		   ghvm->vm_status == GUNYAH_RM_VM_STATUS_EXITED);
 }
 
+static inline void setup_extent_ticket(struct gunyah_vm *ghvm,
+				       struct gunyah_vm_resource_ticket *ticket,
+				       u32 label)
+{
+	ticket->resource_type = GUNYAH_RESOURCE_TYPE_MEM_EXTENT;
+	ticket->label = label;
+	ticket->populate = gunyah_vm_resource_ticket_populate_noop;
+	ticket->unpopulate = gunyah_vm_resource_ticket_unpopulate_noop;
+	gunyah_vm_add_resource_ticket(ghvm, ticket);
+}
+
 static __must_check struct gunyah_vm *gunyah_vm_alloc(struct gunyah_rm *rm)
 {
 	struct gunyah_vm *ghvm;
@@ -482,6 +512,25 @@ static __must_check struct gunyah_vm *gunyah_vm_alloc(struct gunyah_rm *rm)
 	ghvm->mmio_handler_root = RB_ROOT;
 	INIT_LIST_HEAD(&ghvm->functions);
 	mutex_init(&ghvm->fn_lock);
+
+	mt_init(&ghvm->gm);
+
+	ghvm->addrspace_ticket.resource_type = GUNYAH_RESOURCE_TYPE_ADDR_SPACE;
+	ghvm->addrspace_ticket.label = GUNYAH_VM_ADDRSPACE_LABEL;
+	ghvm->addrspace_ticket.populate =
+		gunyah_vm_resource_ticket_populate_noop;
+	ghvm->addrspace_ticket.unpopulate =
+		gunyah_vm_resource_ticket_unpopulate_noop;
+	gunyah_vm_add_resource_ticket(ghvm, &ghvm->addrspace_ticket);
+
+	setup_extent_ticket(ghvm, &ghvm->host_private_extent_ticket,
+			    GUNYAH_VM_MEM_EXTENT_HOST_PRIVATE_LABEL);
+	setup_extent_ticket(ghvm, &ghvm->host_shared_extent_ticket,
+			    GUNYAH_VM_MEM_EXTENT_HOST_SHARED_LABEL);
+	setup_extent_ticket(ghvm, &ghvm->guest_private_extent_ticket,
+			    GUNYAH_VM_MEM_EXTENT_GUEST_PRIVATE_LABEL);
+	setup_extent_ticket(ghvm, &ghvm->guest_shared_extent_ticket,
+			    GUNYAH_VM_MEM_EXTENT_GUEST_SHARED_LABEL);
 
 	return ghvm;
 }
@@ -642,6 +691,15 @@ static void _gunyah_vm_put(struct kref *kref)
 		gunyah_vm_stop(ghvm);
 
 	gunyah_vm_remove_functions(ghvm);
+
+	gunyah_vm_reclaim_memory(ghvm);
+
+	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->addrspace_ticket);
+	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->host_shared_extent_ticket);
+	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->host_private_extent_ticket);
+	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->guest_shared_extent_ticket);
+	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->guest_private_extent_ticket);
+
 	gunyah_vm_clean_resources(ghvm);
 
 	if (ghvm->vm_status != GUNYAH_RM_VM_STATUS_NO_STATE &&
@@ -654,6 +712,8 @@ static void _gunyah_vm_put(struct kref *kref)
 		wait_event(ghvm->vm_status_wait,
 			   ghvm->vm_status == GUNYAH_RM_VM_STATUS_RESET);
 	}
+
+	mtree_destroy(&ghvm->gm);
 
 	if (ghvm->vm_status > GUNYAH_RM_VM_STATUS_NO_STATE) {
 		gunyah_rm_notifier_unregister(ghvm->rm, &ghvm->nb);
