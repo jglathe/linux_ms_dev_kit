@@ -544,3 +544,191 @@ err_file:
 	fput(file);
 	return ret;
 }
+
+int gunyah_gmem_share_parcel(struct gunyah_vm *ghvm, struct gunyah_rm_mem_parcel *parcel,
+			     u64 *gfn, u64 *nr)
+{
+	struct folio *folio, *prev_folio;
+	unsigned long nr_entries, i, j, start, end;
+	struct gunyah_gmem_binding *b;
+	bool lend;
+	u64 size;
+	int ret;
+
+	if (!*nr)
+		return -EINVAL;
+
+	down_read(&ghvm->mem_lock);
+	b = mtree_load(&ghvm->mem_layout, *gfn);
+	if (!b) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	start = *gfn - b->gfn;
+	end = min(*gfn + *nr, b->gfn + b->nr) - b->gfn;
+
+	nr_entries = 0;
+	prev_folio = NULL;
+	for (i = start + b->i_off; i < end + b->i_off;) {
+		folio = gunyah_gmem_get_folio(b->inode, i); /* A */
+		if (!folio) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		if (!prev_folio || folio_next(prev_folio) != folio)
+			nr_entries++;
+		i = folio_index(folio) + folio_nr_pages(folio);
+		prev_folio = folio;
+	}
+
+	parcel->mem_entries =
+		kcalloc(nr_entries, sizeof(*parcel->mem_entries), GFP_KERNEL);
+	if (!parcel->mem_entries) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	j = 0;
+	prev_folio = NULL;
+	size = 0;
+	for (i = start + b->i_off; i < end + b->i_off;) {
+		folio = filemap_get_folio(b->inode->i_mapping, i); /* B */
+		if (WARN_ON(IS_ERR(folio))) {
+			ret = PTR_ERR(folio);
+			i = end + b->i_off;
+			goto out;
+		}
+
+		if (!prev_folio || folio_next(prev_folio) != folio) {
+			if (likely(prev_folio)) {
+				parcel->mem_entries[j].size = cpu_to_le64(size);
+				size = 0;
+				j++;
+				BUG_ON(j == nr_entries);
+			}
+			parcel->mem_entries[j].phys_addr = cpu_to_le64(PFN_PHYS(folio_pfn(folio)));
+		}
+		size += folio_size(folio);
+		if (likely(prev_folio))
+			folio_put(prev_folio); /* B */
+		i = folio_index(folio) + folio_nr_pages(folio);
+		prev_folio = folio;
+	}
+	folio_put(prev_folio); /* B */
+	BUG_ON(j + 1 != nr_entries);
+	parcel->mem_entries[j].size = cpu_to_le64(size);
+	parcel->n_mem_entries = nr_entries;
+
+	lend = parcel->n_acl_entries == 1 || gunyah_guest_mem_is_lend(ghvm, b->flags);
+	if (lend)
+		parcel->n_acl_entries = 1;
+
+	parcel->acl_entries = kcalloc(parcel->n_acl_entries,
+				      sizeof(*parcel->acl_entries), GFP_KERNEL);
+	if (!parcel->n_acl_entries) {
+		ret = -ENOMEM;
+		goto free_entries;
+	}
+
+	parcel->acl_entries[0].vmid = cpu_to_le16(ghvm->vmid);
+	if (b->flags & GUNYAH_MEM_ALLOW_READ)
+		parcel->acl_entries[0].perms |= GUNYAH_RM_ACL_R;
+	if (b->flags & GUNYAH_MEM_ALLOW_WRITE)
+		parcel->acl_entries[0].perms |= GUNYAH_RM_ACL_W;
+	if (b->flags & GUNYAH_MEM_ALLOW_EXEC)
+		parcel->acl_entries[0].perms |= GUNYAH_RM_ACL_X;
+
+	if (!lend) {
+		u16 host_vmid;
+
+		ret = gunyah_rm_get_vmid(ghvm->rm, &host_vmid);
+		if (ret)
+			goto free_acl;
+
+		parcel->acl_entries[1].vmid = cpu_to_le16(host_vmid);
+		parcel->acl_entries[1].perms = GUNYAH_RM_ACL_R | GUNYAH_RM_ACL_W | GUNYAH_RM_ACL_X;
+	}
+
+	parcel->mem_handle = GUNYAH_MEM_HANDLE_INVAL;
+	*nr = end;
+	folio = filemap_get_folio(b->inode->i_mapping, start); /* C */
+	*gfn = folio_index(folio) - b->i_off + b->gfn;
+	folio_put(folio); /* C */
+
+	ret = gunyah_rm_mem_share(ghvm->rm, parcel);
+	if (ret)
+		dev_warn(ghvm->parent, "Failed to share parcel for DTB: %d\n",
+			 ret);
+
+	goto out;
+free_acl:
+	kfree(parcel->acl_entries);
+	parcel->acl_entries = NULL;
+free_entries:
+	kfree(parcel->mem_entries);
+	parcel->mem_entries = NULL;
+out:
+	for (j = start + b->i_off; j < i;) {
+		folio = filemap_get_folio(b->inode->i_mapping, j); /* D */
+		if (IS_ERR(folio))
+			continue;
+		j = folio_index(folio) + folio_nr_pages(folio);
+		if (!ret) {
+			folio_set_private(folio);
+			WARN_ON(mtree_insert_range(&b->mt, folio_index(folio),
+						   j - 1, folio, GFP_KERNEL));
+		}
+		folio_unlock(folio); /* A */
+		folio_put(folio); /* D */
+		/* matching folio_put for A is done at
+		 * (1) gunyah_gmem_reclaim_parcel or
+		 * (2) after gunyah_gmem_parcel_to_paged, gunyah_vm_reclaim_folio
+		 */
+	}
+unlock:
+	up_read(&ghvm->mem_lock);
+	return ret;
+}
+
+int gunyah_gmem_reclaim_parcel(struct gunyah_vm *ghvm,
+			       struct gunyah_rm_mem_parcel *parcel, u64 gfn,
+			       u64 nr)
+{
+	struct gunyah_gmem_binding *b;
+	struct folio *folio;
+	unsigned long i;
+	int ret;
+
+	if (parcel->mem_handle != GUNYAH_MEM_HANDLE_INVAL) {
+		ret = gunyah_rm_mem_reclaim(ghvm->rm, parcel);
+		if (ret) {
+			dev_err(ghvm->parent, "Failed to reclaim parcel: %d\n",
+				ret);
+			/* We can't reclaim the pages -- hold onto the pages
+			 * forever because we don't know what state the memory
+			 * is in
+			 */
+			return ret;
+		}
+		parcel->mem_handle = 0;
+		kfree(parcel->mem_entries);
+		kfree(parcel->acl_entries);
+	}
+
+	down_read(&ghvm->mem_lock);
+	b = mtree_load(&ghvm->mem_layout, gfn);
+	if (WARN_ON(!b)) {
+		up_read(&ghvm->mem_lock);
+		return 0;
+	}
+
+	i = gfn - b->gfn + b->i_off;
+	mt_for_each(&b->mt, folio, i, nr + b->i_off) {
+		mtree_erase(&b->mt, i);
+		folio_put(folio); /* A */
+	}
+	up_read(&ghvm->mem_lock);
+	return 0;
+}
