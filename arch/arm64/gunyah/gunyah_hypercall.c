@@ -42,6 +42,7 @@ EXPORT_SYMBOL_GPL(arch_is_gunyah_guest);
 #define GUNYAH_HYPERCALL_ADDRSPACE_MAP		GUNYAH_HYPERCALL(0x802B)
 #define GUNYAH_HYPERCALL_ADDRSPACE_UNMAP		GUNYAH_HYPERCALL(0x802C)
 #define GUNYAH_HYPERCALL_MEMEXTENT_DONATE		GUNYAH_HYPERCALL(0x8061)
+#define GUNYAH_HYPERCALL_VCPU_RUN		GUNYAH_HYPERCALL(0x8065)
 /* clang-format on */
 
 /**
@@ -151,6 +152,32 @@ enum gunyah_error gunyah_hypercall_memextent_donate(u32 options, u64 from_capid,
 	return res.a0;
 }
 EXPORT_SYMBOL_GPL(gunyah_hypercall_memextent_donate);
+
+enum gunyah_error gunyah_hypercall_vcpu_run(u64 capid, u64 *resume_data,
+					struct gunyah_hypercall_vcpu_run_resp *resp)
+{
+	struct arm_smccc_1_2_regs args = {
+		.a0 = GUNYAH_HYPERCALL_VCPU_RUN,
+		.a1 = capid,
+		.a2 = resume_data[0],
+		.a3 = resume_data[1],
+		.a4 = resume_data[2],
+		/* C language says this will be implictly zero. Gunyah requires 0, so be explicit */
+		.a5 = 0,
+	};
+	struct arm_smccc_1_2_regs res;
+
+	arm_smccc_1_2_hvc(&args, &res);
+	if (res.a0 == GUNYAH_ERROR_OK) {
+		resp->sized_state = res.a1;
+		resp->state_data[0] = res.a2;
+		resp->state_data[1] = res.a3;
+		resp->state_data[2] = res.a4;
+	}
+
+	return res.a0;
+}
+EXPORT_SYMBOL_GPL(gunyah_hypercall_vcpu_run);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Gunyah Hypervisor Hypercalls");
