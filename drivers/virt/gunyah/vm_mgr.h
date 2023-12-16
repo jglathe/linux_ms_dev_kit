@@ -60,6 +60,12 @@ struct gunyah_vm {
 	struct list_head resource_tickets;
 	struct rb_root mmio_handler_root;
 	struct rw_semaphore mmio_handler_lock;
+
+	struct {
+		struct gunyah_vm_dtb_config config;
+		u64 parcel_start, parcel_pages;
+		struct gunyah_rm_mem_parcel parcel;
+	} dtb;
 	struct xarray boot_context;
 };
 
