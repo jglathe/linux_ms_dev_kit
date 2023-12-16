@@ -91,6 +91,29 @@ static irqreturn_t gunyah_vcpu_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static bool gunyah_handle_page_fault(
+	struct gunyah_vcpu *vcpu, u64 state_data[3],
+	const struct gunyah_hypercall_vcpu_run_resp *vcpu_run_resp)
+{
+	int ret = 0;
+	u64 addr = vcpu_run_resp->state_data[0];
+	bool write = !!vcpu_run_resp->state_data[1];
+
+	ret = gunyah_gmem_demand_page(vcpu->ghvm, addr, write);
+	if (ret) {
+		if (ret != -ENOENT)
+			pr_warn_ratelimited(
+				"Failed to provide guest address for: %08llx: %d\n",
+				addr, ret);
+
+		vcpu->vcpu_run->page_fault.resume_action = GUNYAH_VCPU_RESUME_FAULT;
+		vcpu->vcpu_run->page_fault.attempt = ret;
+		vcpu->vcpu_run->page_fault.phys_addr = addr;
+		vcpu->vcpu_run->exit_reason = GUNYAH_VCPU_EXIT_PAGE_FAULT;
+	}
+	return !!ret;
+}
+
 static bool
 gunyah_handle_mmio(struct gunyah_vcpu *vcpu, u64 state_data[3],
 		   const struct gunyah_hypercall_vcpu_run_resp *vcpu_run_resp)
@@ -102,6 +125,12 @@ gunyah_handle_mmio(struct gunyah_vcpu *vcpu, u64 state_data[3],
 
 	if (WARN_ON(len > sizeof(u64)))
 		len = sizeof(u64);
+
+	if (!gunyah_gmem_demand_page(vcpu->ghvm, addr,
+				     vcpu->vcpu_run->mmio.is_write)) {
+		state_data[1] = GUNYAH_ADDRSPACE_VMMIO_ACTION_RETRY;
+		return true;
+	}
 
 	if (vcpu_run_resp->state == GUNYAH_VCPU_ADDRSPACE_VMMIO_READ) {
 		vcpu->vcpu_run->mmio.is_write = 0;
@@ -120,7 +149,8 @@ gunyah_handle_mmio(struct gunyah_vcpu *vcpu, u64 state_data[3],
 		vcpu->state = GUNYAH_VCPU_MMIO_WRITE;
 	}
 
-	vcpu->vcpu_run->mmio.phys_addr = addr;
+	vcpu->vcpu_run->mmio.resume_action = 0;
+	vcpu->mmio_addr = vcpu->vcpu_run->mmio.phys_addr = addr;
 	vcpu->vcpu_run->mmio.len = len;
 	vcpu->vcpu_run->exit_reason = GUNYAH_VCPU_EXIT_MMIO;
 
@@ -144,6 +174,8 @@ static int gunyah_handle_mmio_resume(struct gunyah_vcpu *vcpu, u64 state_data[3]
 		state_data[1] = GUNYAH_ADDRSPACE_VMMIO_ACTION_FAULT;
 		break;
 	case GUNYAH_VCPU_RESUME_RETRY:
+		gunyah_gmem_demand_page(vcpu->ghvm, vcpu->mmio_addr,
+					vcpu->state == GUNYAH_VCPU_MMIO_WRITE);
 		state_data[1] = GUNYAH_ADDRSPACE_VMMIO_ACTION_RETRY;
 		break;
 	default:
@@ -298,6 +330,11 @@ static int gunyah_vcpu_run(struct gunyah_vcpu *vcpu)
 			case GUNYAH_VCPU_ADDRSPACE_VMMIO_WRITE:
 				if (!gunyah_handle_mmio(vcpu, resume_data,
 							&vcpu_run_resp))
+					goto out;
+				break;
+			case GUNYAH_VCPU_ADDRSPACE_PAGE_FAULT:
+				if (gunyah_handle_page_fault(vcpu, resume_data,
+							     &vcpu_run_resp))
 					goto out;
 				break;
 			default:
