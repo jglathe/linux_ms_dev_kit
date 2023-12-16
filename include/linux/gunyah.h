@@ -223,6 +223,8 @@ struct gunyah_hypercall_vcpu_run_resp {
 			GUNYAH_VCPU_ADDRSPACE_VMMIO_READ	= 4,
 			/* VCPU has returned for MMIO WRITE */
 			GUNYAH_VCPU_ADDRSPACE_VMMIO_WRITE	= 5,
+			/* Host needs to satisfy a page fault */
+			GUNYAH_VCPU_ADDRSPACE_PAGE_FAULT	= 7,
 			/* clang-format on */
 		} state;
 		u64 sized_state;
