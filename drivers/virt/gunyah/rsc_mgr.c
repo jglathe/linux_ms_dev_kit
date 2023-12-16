@@ -17,6 +17,8 @@
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
 
+#include <asm/gunyah.h>
+
 #include "rsc_mgr.h"
 #include "vm_mgr.h"
 
@@ -129,6 +131,7 @@ struct gunyah_rm_message {
  * @send_ready: completion to send messages again
  * @nh: notifier chain for clients interested in RM notification messages
  * @miscdev: /dev/gunyah
+ * @irq_domain: Domain to translate Gunyah hwirqs to Linux irqs
  */
 struct gunyah_rm {
 	struct device *dev;
@@ -147,6 +150,7 @@ struct gunyah_rm {
 	struct blocking_notifier_head nh;
 
 	struct miscdevice miscdev;
+	struct irq_domain *irq_domain;
 };
 
 /**
@@ -185,6 +189,143 @@ static inline int gunyah_rm_error_remap(enum gunyah_rm_error rm_error)
 	default:
 		return -EBADMSG;
 	}
+}
+
+struct gunyah_irq_chip_data {
+	u32 gunyah_virq;
+};
+
+static struct irq_chip gunyah_rm_irq_chip = {
+	/* clang-format off */
+	.name			= "Gunyah",
+	.irq_enable		= irq_chip_enable_parent,
+	.irq_disable		= irq_chip_disable_parent,
+	.irq_ack		= irq_chip_ack_parent,
+	.irq_mask		= irq_chip_mask_parent,
+	.irq_mask_ack		= irq_chip_mask_ack_parent,
+	.irq_unmask		= irq_chip_unmask_parent,
+	.irq_eoi		= irq_chip_eoi_parent,
+	.irq_set_affinity	= irq_chip_set_affinity_parent,
+	.irq_set_type		= irq_chip_set_type_parent,
+	.irq_set_wake		= irq_chip_set_wake_parent,
+	.irq_set_vcpu_affinity	= irq_chip_set_vcpu_affinity_parent,
+	.irq_retrigger		= irq_chip_retrigger_hierarchy,
+	.irq_get_irqchip_state	= irq_chip_get_parent_state,
+	.irq_set_irqchip_state	= irq_chip_set_parent_state,
+	.flags			= IRQCHIP_SET_TYPE_MASKED |
+				  IRQCHIP_SKIP_SET_WAKE |
+				  IRQCHIP_MASK_ON_SUSPEND,
+	/* clang-format on */
+};
+
+static int gunyah_rm_irq_domain_alloc(struct irq_domain *d, unsigned int virq,
+				      unsigned int nr_irqs, void *arg)
+{
+	struct gunyah_irq_chip_data *chip_data, *spec = arg;
+	struct irq_fwspec parent_fwspec = {};
+	struct gunyah_rm *rm = d->host_data;
+	u32 gunyah_virq = spec->gunyah_virq;
+	int ret;
+
+	if (nr_irqs != 1)
+		return -EINVAL;
+
+	chip_data = kzalloc(sizeof(*chip_data), GFP_KERNEL);
+	if (!chip_data)
+		return -ENOMEM;
+
+	chip_data->gunyah_virq = gunyah_virq;
+
+	ret = irq_domain_set_hwirq_and_chip(d, virq, chip_data->gunyah_virq,
+					    &gunyah_rm_irq_chip, chip_data);
+	if (ret)
+		goto err_free_irq_data;
+
+	parent_fwspec.fwnode = d->parent->fwnode;
+	ret = arch_gunyah_fill_irq_fwspec_params(chip_data->gunyah_virq,
+						 &parent_fwspec);
+	if (ret) {
+		dev_err(rm->dev, "virq translation failed %u: %d\n",
+			chip_data->gunyah_virq, ret);
+		goto err_free_irq_data;
+	}
+
+	ret = irq_domain_alloc_irqs_parent(d, virq, nr_irqs, &parent_fwspec);
+	if (ret)
+		goto err_free_irq_data;
+
+	return ret;
+err_free_irq_data:
+	kfree(chip_data);
+	return ret;
+}
+
+static void gunyah_rm_irq_domain_free_single(struct irq_domain *d,
+					     unsigned int virq)
+{
+	struct irq_data *irq_data;
+
+	irq_data = irq_domain_get_irq_data(d, virq);
+	if (!irq_data)
+		return;
+
+	kfree(irq_data->chip_data);
+	irq_data->chip_data = NULL;
+}
+
+static void gunyah_rm_irq_domain_free(struct irq_domain *d, unsigned int virq,
+				      unsigned int nr_irqs)
+{
+	unsigned int i;
+
+	for (i = 0; i < nr_irqs; i++)
+		gunyah_rm_irq_domain_free_single(d, virq);
+}
+
+static const struct irq_domain_ops gunyah_rm_irq_domain_ops = {
+	.alloc = gunyah_rm_irq_domain_alloc,
+	.free = gunyah_rm_irq_domain_free,
+};
+
+struct gunyah_resource *
+gunyah_rm_alloc_resource(struct gunyah_rm *rm,
+			 struct gunyah_rm_hyp_resource *hyp_resource)
+{
+	struct gunyah_resource *ghrsc;
+	int ret;
+
+	ghrsc = kzalloc(sizeof(*ghrsc), GFP_KERNEL);
+	if (!ghrsc)
+		return NULL;
+
+	ghrsc->type = hyp_resource->type;
+	ghrsc->capid = le64_to_cpu(hyp_resource->cap_id);
+	ghrsc->irq = IRQ_NOTCONNECTED;
+	ghrsc->rm_label = le32_to_cpu(hyp_resource->resource_label);
+	if (hyp_resource->virq) {
+		struct gunyah_irq_chip_data irq_data = {
+			.gunyah_virq = le32_to_cpu(hyp_resource->virq),
+		};
+
+		ret = irq_domain_alloc_irqs(rm->irq_domain, 1, NUMA_NO_NODE,
+					    &irq_data);
+		if (ret < 0) {
+			dev_err(rm->dev,
+				"Failed to allocate interrupt for resource %d label: %d: %d\n",
+				ghrsc->type, ghrsc->rm_label, ret);
+			kfree(ghrsc);
+			return NULL;
+		}
+		ghrsc->irq = ret;
+	}
+
+	return ghrsc;
+}
+
+void gunyah_rm_free_resource(struct gunyah_resource *ghrsc)
+{
+	irq_dispose_mapping(ghrsc->irq);
+	kfree(ghrsc);
 }
 
 static int gunyah_rm_init_message_payload(struct gunyah_rm_message *message,
@@ -713,6 +854,8 @@ static int gunyah_rm_probe_rx_msgq(struct gunyah_rm *rm,
 
 static int gunyah_rm_probe(struct platform_device *pdev)
 {
+	struct irq_domain *parent_irq_domain;
+	struct device_node *parent_irq_node;
 	struct gunyah_rm *rm;
 	int ret;
 
@@ -738,15 +881,43 @@ static int gunyah_rm_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	parent_irq_node = of_irq_find_parent(pdev->dev.of_node);
+	if (!parent_irq_node) {
+		dev_err(&pdev->dev,
+			"Failed to find interrupt parent of resource manager\n");
+		return -ENODEV;
+	}
+
+	parent_irq_domain = irq_find_host(parent_irq_node);
+	if (!parent_irq_domain) {
+		dev_err(&pdev->dev,
+			"Failed to find interrupt parent domain of resource manager\n");
+		return -ENODEV;
+	}
+
+	rm->irq_domain = irq_domain_add_hierarchy(parent_irq_domain, 0, 0,
+						  pdev->dev.of_node,
+						  &gunyah_rm_irq_domain_ops,
+						  NULL);
+	if (!rm->irq_domain) {
+		dev_err(&pdev->dev, "Failed to add irq domain\n");
+		return -ENODEV;
+	}
+	rm->irq_domain->host_data = rm;
+
+	rm->miscdev.parent = &pdev->dev;
 	rm->miscdev.name = "gunyah";
 	rm->miscdev.minor = MISC_DYNAMIC_MINOR;
 	rm->miscdev.fops = &gunyah_dev_fops;
 
 	ret = misc_register(&rm->miscdev);
 	if (ret)
-		return ret;
+		goto err_irq_domain;
 
 	return 0;
+err_irq_domain:
+	irq_domain_remove(rm->irq_domain);
+	return ret;
 }
 
 static void gunyah_rm_remove(struct platform_device *pdev)
@@ -754,6 +925,7 @@ static void gunyah_rm_remove(struct platform_device *pdev)
 	struct gunyah_rm *rm = platform_get_drvdata(pdev);
 
 	misc_deregister(&rm->miscdev);
+	irq_domain_remove(rm->irq_domain);
 }
 
 static const struct of_device_id gunyah_rm_of_match[] = {
