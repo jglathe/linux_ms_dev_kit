@@ -34,6 +34,9 @@ struct gunyah_vm {
 	struct kref kref;
 	struct mutex fn_lock;
 	struct list_head functions;
+	struct mutex resources_lock;
+	struct list_head resources;
+	struct list_head resource_tickets;
 };
 
 #endif
