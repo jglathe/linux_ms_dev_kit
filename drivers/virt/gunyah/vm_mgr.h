@@ -60,6 +60,7 @@ struct gunyah_vm {
 	struct list_head resource_tickets;
 	struct rb_root mmio_handler_root;
 	struct rw_semaphore mmio_handler_lock;
+	struct xarray boot_context;
 };
 
 int gunyah_vm_mmio_write(struct gunyah_vm *ghvm, u64 addr, u32 len, u64 data);

@@ -542,6 +542,66 @@ static __must_check struct gunyah_vm *gunyah_vm_alloc(struct gunyah_rm *rm)
 	return ghvm;
 }
 
+static long gunyah_vm_set_boot_context(struct gunyah_vm *ghvm,
+				       struct gunyah_vm_boot_context *boot_ctx)
+{
+	u8 reg_set, reg_index; /* to check values are reasonable */
+	int ret;
+
+	reg_set = (boot_ctx->reg >> GUNYAH_VM_BOOT_CONTEXT_REG_SHIFT) & 0xff;
+	reg_index = boot_ctx->reg & 0xff;
+
+	switch (reg_set) {
+	case REG_SET_X:
+		if (reg_index > 31)
+			return -EINVAL;
+		break;
+	case REG_SET_PC:
+		if (reg_index)
+			return -EINVAL;
+		break;
+	case REG_SET_SP:
+		if (reg_index > 2)
+			return -EINVAL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = down_read_interruptible(&ghvm->status_lock);
+	if (ret)
+		return ret;
+
+	if (ghvm->vm_status != GUNYAH_RM_VM_STATUS_NO_STATE) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = xa_err(xa_store(&ghvm->boot_context, boot_ctx->reg,
+			      (void *)boot_ctx->value, GFP_KERNEL));
+out:
+	up_read(&ghvm->status_lock);
+	return ret;
+}
+
+static inline int gunyah_vm_fill_boot_context(struct gunyah_vm *ghvm)
+{
+	unsigned long reg_set, reg_index, id;
+	void *entry;
+	int ret;
+
+	xa_for_each(&ghvm->boot_context, id, entry) {
+		reg_set = (id >> GUNYAH_VM_BOOT_CONTEXT_REG_SHIFT) & 0xff;
+		reg_index = id & 0xff;
+		ret = gunyah_rm_vm_set_boot_context(
+			ghvm->rm, ghvm->vmid, reg_set, reg_index, (u64)entry);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int gunyah_vm_start(struct gunyah_vm *ghvm)
 {
 	struct gunyah_rm_hyp_resources *resources;
@@ -581,6 +641,13 @@ static int gunyah_vm_start(struct gunyah_vm *ghvm)
 		goto err;
 	}
 	ghvm->vm_status = GUNYAH_RM_VM_STATUS_READY;
+
+	ret = gunyah_vm_fill_boot_context(ghvm);
+	if (ret) {
+		dev_warn(ghvm->parent, "Failed to setup boot context: %d\n",
+			 ret);
+		goto err;
+	}
 
 	ret = gunyah_rm_get_hyp_resources(ghvm->rm, ghvm->vmid, &resources);
 	if (ret) {
@@ -682,6 +749,14 @@ static long gunyah_vm_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 
 		return gunyah_gmem_modify_binding(ghvm, &args);
+	}
+	case GUNYAH_VM_SET_BOOT_CONTEXT: {
+		struct gunyah_vm_boot_context boot_ctx;
+
+		if (copy_from_user(&boot_ctx, argp, sizeof(boot_ctx)))
+			return -EFAULT;
+
+		return gunyah_vm_set_boot_context(ghvm, &boot_ctx);
 	}
 	default:
 		r = -ENOTTY;
