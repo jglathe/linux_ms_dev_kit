@@ -77,4 +77,6 @@ void gunyah_vm_reclaim_memory(struct gunyah_vm *ghvm);
 
 int gunyah_vm_mmio_write(struct gunyah_vm *ghvm, u64 addr, u32 len, u64 data);
 
+int gunyah_guest_mem_create(struct gunyah_create_mem_args *args);
+
 #endif
