@@ -519,6 +519,8 @@ static __must_check struct gunyah_vm *gunyah_vm_alloc(struct gunyah_rm *rm)
 	mutex_init(&ghvm->fn_lock);
 
 	mt_init(&ghvm->gm);
+	mt_init(&ghvm->mem_layout);
+	init_rwsem(&ghvm->mem_lock);
 
 	ghvm->addrspace_ticket.resource_type = GUNYAH_RESOURCE_TYPE_ADDR_SPACE;
 	ghvm->addrspace_ticket.label = GUNYAH_VM_ADDRSPACE_LABEL;
@@ -673,6 +675,14 @@ static long gunyah_vm_ioctl(struct file *filp, unsigned int cmd,
 		r = gunyah_vm_rm_function_instance(ghvm, &f);
 		break;
 	}
+	case GUNYAH_VM_MAP_MEM: {
+		struct gunyah_map_mem_args args;
+
+		if (copy_from_user(&args, argp, sizeof(args)))
+			return -EFAULT;
+
+		return gunyah_gmem_modify_binding(ghvm, &args);
+	}
 	default:
 		r = -ENOTTY;
 		break;
@@ -690,6 +700,8 @@ EXPORT_SYMBOL_GPL(gunyah_vm_get);
 static void _gunyah_vm_put(struct kref *kref)
 {
 	struct gunyah_vm *ghvm = container_of(kref, struct gunyah_vm, kref);
+	struct gunyah_gmem_binding *b;
+	unsigned long idx = 0;
 	int ret;
 
 	if (ghvm->vm_status == GUNYAH_RM_VM_STATUS_RUNNING)
@@ -697,6 +709,9 @@ static void _gunyah_vm_put(struct kref *kref)
 
 	gunyah_vm_remove_functions(ghvm);
 
+	mt_for_each(&ghvm->mem_layout, b, idx, ULONG_MAX)
+		gunyah_gmem_remove_binding(b);
+	mtree_destroy(&ghvm->mem_layout);
 	gunyah_vm_reclaim_memory(ghvm);
 
 	gunyah_vm_remove_resource_ticket(ghvm, &ghvm->addrspace_ticket);

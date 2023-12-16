@@ -36,6 +36,8 @@ long gunyah_dev_vm_mgr_ioctl(struct gunyah_rm *rm, unsigned int cmd,
 struct gunyah_vm {
 	u16 vmid;
 	struct maple_tree gm;
+	struct maple_tree mem_layout;
+	struct rw_semaphore mem_lock;
 	struct gunyah_vm_resource_ticket addrspace_ticket,
 		host_private_extent_ticket, host_shared_extent_ticket,
 		guest_private_extent_ticket, guest_shared_extent_ticket;
@@ -78,5 +80,9 @@ void gunyah_vm_reclaim_memory(struct gunyah_vm *ghvm);
 int gunyah_vm_mmio_write(struct gunyah_vm *ghvm, u64 addr, u32 len, u64 data);
 
 int gunyah_guest_mem_create(struct gunyah_create_mem_args *args);
+int gunyah_gmem_modify_binding(struct gunyah_vm *ghvm,
+			       struct gunyah_map_mem_args *args);
+struct gunyah_gmem_binding;
+void gunyah_gmem_remove_binding(struct gunyah_gmem_binding *binding);
 
 #endif
