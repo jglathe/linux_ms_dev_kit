@@ -74,4 +74,6 @@ int gunyah_vm_provide_folio(struct gunyah_vm *ghvm, struct folio *folio,
 int gunyah_vm_reclaim_folio(struct gunyah_vm *ghvm, u64 gfn);
 void gunyah_vm_reclaim_memory(struct gunyah_vm *ghvm);
 
+int gunyah_vm_mmio_write(struct gunyah_vm *ghvm, u64 addr, u32 len, u64 data);
+
 #endif
