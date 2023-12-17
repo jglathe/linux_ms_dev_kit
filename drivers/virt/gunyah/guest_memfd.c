@@ -24,7 +24,7 @@
  * @mt: Maple tree to track folios which have been provided to the VM
  * @i_off: offset into the guestmem to grab folios from
  * @inode: Pointer to guest mem inode
- * @i_entry: list entry for inode->i_private_list
+ * @i_entry: list entry for inode->private_list
  * @flags: Access flags for the binding
  * @nr: Number of pages covered by this binding
  */
@@ -245,7 +245,7 @@ static int gunyah_gmem_release(struct inode *inode, struct file *file)
 
 	gunyah_gmem_punch_hole(inode, 0, U64_MAX);
 
-	list_for_each_entry_safe(b, n, &inode->i_mapping->i_private_list,
+	list_for_each_entry_safe(b, n, &inode->i_mapping->private_list,
 				 i_entry) {
 		gunyah_gmem_remove_binding(b);
 	}
@@ -265,7 +265,7 @@ static const struct file_operations gunyah_gmem_fops = {
 static const struct address_space_operations gunyah_gmem_aops = {
 	.dirty_folio = noop_dirty_folio,
 	.migrate_folio = migrate_folio,
-	.error_remove_folio = generic_error_remove_folio,
+	.error_remove_page = generic_error_remove_page,
 };
 
 int gunyah_guest_mem_create(struct gunyah_create_mem_args *args)
@@ -294,7 +294,7 @@ int gunyah_guest_mem_create(struct gunyah_create_mem_args *args)
 	 * instead of reusing a single inode.  Each guest_memfd instance needs
 	 * its own inode to track the size, flags, etc.
 	 */
-	file = anon_inode_create_getfile(anon_name, &gunyah_gmem_fops, NULL,
+	file = anon_inode_getfile_secure(anon_name, &gunyah_gmem_fops, NULL,
 					 O_RDWR, NULL);
 	if (IS_ERR(file)) {
 		err = PTR_ERR(file);
@@ -312,10 +312,8 @@ int gunyah_guest_mem_create(struct gunyah_create_mem_args *args)
 	inode->i_size = args->size;
 	mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
 	mapping_set_large_folios(inode->i_mapping);
-	mapping_set_unmovable(inode->i_mapping);
+	mapping_set_unevictable(inode->i_mapping);
 	// mapping_set_release_always(inode->i_mapping);
-	/* Unmovable mappings are supposed to be marked unevictable as well. */
-	WARN_ON_ONCE(!mapping_unevictable(inode->i_mapping));
 
 	fd_install(fd, file);
 	return fd;
@@ -389,7 +387,7 @@ static int gunyah_gmem_remove_mapping(struct gunyah_vm *ghvm,
 		return ret;
 
 	filemap_invalidate_lock(inode->i_mapping);
-	list_for_each_entry(b, &inode->i_mapping->i_private_list, i_entry) {
+	list_for_each_entry(b, &inode->i_mapping->private_list, i_entry) {
 		if (b->ghvm != argb.ghvm || b->flags != argb.flags ||
 		    WARN_ON(b->inode != argb.inode))
 			continue;
@@ -485,7 +483,7 @@ static int gunyah_gmem_add_mapping(struct gunyah_vm *ghvm, struct inode *inode,
 		return ret;
 
 	filemap_invalidate_lock(inode->i_mapping);
-	list_for_each_entry(tmp, &inode->i_mapping->i_private_list, i_entry) {
+	list_for_each_entry(tmp, &inode->i_mapping->private_list, i_entry) {
 		if (!gunyah_gmem_binding_allowed_overlap(b, tmp)) {
 			ret = -EEXIST;
 			goto unlock;
@@ -497,7 +495,7 @@ static int gunyah_gmem_add_mapping(struct gunyah_vm *ghvm, struct inode *inode,
 	if (ret)
 		goto unlock;
 
-	list_add(&b->i_entry, &inode->i_mapping->i_private_list);
+	list_add(&b->i_entry, &inode->i_mapping->private_list);
 
 unlock:
 	filemap_invalidate_unlock(inode->i_mapping);
