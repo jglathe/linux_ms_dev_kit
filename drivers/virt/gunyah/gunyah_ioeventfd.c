@@ -27,7 +27,7 @@ static int gunyah_write_ioeventfd(struct gunyah_vm_io_handler *io_dev, u64 addr,
 	struct gunyah_ioeventfd *iofd =
 		container_of(io_dev, struct gunyah_ioeventfd, io_handler);
 
-	eventfd_signal(iofd->ctx);
+	eventfd_signal(iofd->ctx,1);
 	return 0;
 }
 
