@@ -2015,12 +2015,7 @@ static void a6xx_recover(struct msm_gpu *gpu)
 	dev_pm_genpd_add_notifier(gmu->cxpd, &gmu->pd_nb);
 	dev_pm_genpd_synced_poweroff(gmu->cxpd);
 
-	/* Drop the rpm refcount from active submits */
-	if (active_submits)
-		pm_runtime_put(&gpu->pdev->dev);
-
-	/* And the final one from recover worker */
-	pm_runtime_put_sync(&gpu->pdev->dev);
+	pm_runtime_force_suspend(&gpu->pdev->dev);
 
 	if (!wait_for_completion_timeout(&gmu->pd_gate, msecs_to_jiffies(1000)))
 		DRM_DEV_ERROR(&gpu->pdev->dev, "cx gdsc didn't collapse\n");
@@ -2029,10 +2024,7 @@ static void a6xx_recover(struct msm_gpu *gpu)
 
 	pm_runtime_use_autosuspend(&gpu->pdev->dev);
 
-	if (active_submits)
-		pm_runtime_get(&gpu->pdev->dev);
-
-	pm_runtime_get_sync(&gpu->pdev->dev);
+	pm_runtime_force_resume(&gpu->pdev->dev);
 
 	gpu->active_submits = active_submits;
 	mutex_unlock(&gpu->active_lock);
