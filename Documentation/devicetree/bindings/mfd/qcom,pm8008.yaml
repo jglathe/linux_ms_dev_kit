@@ -27,11 +27,11 @@ properties:
   reset-gpios:
     maxItems: 1
 
-  vdd_l1_l2-supply: true
-  vdd_l3_l4-supply: true
-  vdd_l5-supply: true
-  vdd_l6-supply: true
-  vdd_l7-supply: true
+  vdd-l1-l2-supply: true
+  vdd-l3-l4-supply: true
+  vdd-l5-supply: true
+  vdd-l6-supply: true
+  vdd-l7-supply: true
 
   gpio-controller: true
 
@@ -71,11 +71,11 @@ required:
   - compatible
   - reg
   - interrupts
-  - vdd_l1_l2-supply
-  - vdd_l3_l4-supply
-  - vdd_l5-supply
-  - vdd_l6-supply
-  - vdd_l7-supply
+  - vdd-l1-l2-supply
+  - vdd-l3-l4-supply
+  - vdd-l5-supply
+  - vdd-l6-supply
+  - vdd-l7-supply
   - gpio-controller
   - "#gpio-cells"
   - gpio-ranges
@@ -127,11 +127,11 @@ examples:
 
         reset-gpios = <&tlmm 42 GPIO_ACTIVE_LOW>;
 
-        vdd_l1_l2-supply = <&vreg_s8b_1p2>;
-        vdd_l3_l4-supply = <&vreg_s1b_1p8>;
-        vdd_l5-supply = <&vreg_bob>;
-        vdd_l6-supply = <&vreg_bob>;
-        vdd_l7-supply = <&vreg_bob>;
+        vdd-l1-l2-supply = <&vreg_s8b_1p2>;
+        vdd-l3-l4-supply = <&vreg_s1b_1p8>;
+        vdd-l5-supply = <&vreg_bob>;
+        vdd-l6-supply = <&vreg_bob>;
+        vdd-l7-supply = <&vreg_bob>;
 
         gpio-controller;
         #gpio-cells = <2>;
