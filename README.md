@@ -1,4 +1,11 @@
-Current tip of the development: [jg/wdk2023-6.7-rc3](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-6.7-rc3), now based on [steev/linux](https://github.com/steev/linux/)
+Current tip of the development: [jg/wdk2023-gunyah-6.7-rc6](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-gunyah-6.7-rc6), now based on [steev/linux](https://github.com/steev/linux/)
+
+# **Recent Changes**
+* [Gunyah Hypervior](https://github.com/quic/gunyah-hypervisor) support is now integrated into the kernel, so that it can be made aware of it running (it should, in EL2) - and maybe start a VM eventually. Still trying to figure out the documentation.
+* Power Management issues are resolved as it seems, having a clean and hardware-bound Windows installation on the local SSD appears to be required. I observed that you can repair unruly fan behaviour by booting into Windows, and afterwards rebooting to Linux. Still investigating to find the actual binding. Fan speed readout would be nice, too :grin:
+* DP suspend/resume behaviour has improved, even suspend/resume on my very odd Iiyama ProLite X83288UHSU works now - most of the time withot changing VTs.
+* Display via USB-C works, actually. But only on USB-C #0 (the rearmost socket). With a display on USB-C #1 it won't boot (some BIOS stuff) or get a signal later. The mode used is USB-C alt mode (DP over USB-C) which has only one lane left for USB bus operation, limiting speeds to USB-2.
+* Docker and LXD are both working nicely.
 
 # **Bootable Image**
 A bootable image can be downloaded [here](https://drive.google.com/drive/folders/1sc_CpqOMTJNljfvRyLG-xdwB0yduje_O?usp=sharing). Some more details are in [this discussion](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-6907710). Now that the WDK is bootable from an USB stick (or SSD) I will take the previous tutorial on booting up the WDK with Linux offline. It will be replaced with a tutorial on how to install on SSD soon. [There is a short description on how to do this with the image.](https://github.com/linux-surface/surface-pro-x/issues/43#issuecomment-1705395207) I would recommend to read the discussions, though, before embarking on the install on the local SSD. Especially [here](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-7038835) regarding USB-C support.
