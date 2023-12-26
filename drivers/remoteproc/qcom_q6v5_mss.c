@@ -26,6 +26,7 @@
 #include <linux/remoteproc.h>
 #include <linux/reset.h>
 #include <linux/soc/qcom/mdt_loader.h>
+#include <linux/soc/qcom/pd_mapper.h>
 #include <linux/iopoll.h>
 #include <linux/slab.h>
 
@@ -163,6 +164,9 @@ struct rproc_hexagon_res {
 	bool has_qaccept_regs;
 	bool has_ext_cntl_regs;
 	bool has_vq6;
+
+	size_t num_domains;
+	const struct qcom_pdm_domain_data * const *domains;
 };
 
 struct q6v5 {
@@ -242,6 +246,9 @@ struct q6v5 {
 	u64 mba_perm;
 	const char *hexagon_mdt_image;
 	int version;
+
+	size_t num_domains;
+	const struct qcom_pdm_domain_data * const *domains;
 };
 
 enum {
@@ -1580,6 +1587,7 @@ static int q6v5_start(struct rproc *rproc)
 	struct q6v5 *qproc = rproc->priv;
 	int xfermemop_ret;
 	int ret;
+	int i;
 
 	ret = q6v5_mba_load(qproc);
 	if (ret)
@@ -1608,7 +1616,17 @@ static int q6v5_start(struct rproc *rproc)
 	/* Reset Dump Segment Mask */
 	qproc->current_dump_size = 0;
 
+	for (i = 0; i < qproc->num_domains; i++) {
+		ret = qcom_pdm_add_domain(qproc->domains[i]);
+		if (ret)
+			goto err_domains;
+	}
+
 	return 0;
+
+err_domains:
+	while (--i >= 0)
+		qcom_pdm_del_domain(qproc->domains[i]);
 
 reclaim_mpss:
 	q6v5_mba_reclaim(qproc);
@@ -1621,6 +1639,10 @@ static int q6v5_stop(struct rproc *rproc)
 {
 	struct q6v5 *qproc = rproc->priv;
 	int ret;
+	int i;
+
+	for (i = 0; i < qproc->num_domains; i++)
+		qcom_pdm_del_domain(qproc->domains[i]);
 
 	ret = qcom_q6v5_request_stop(&qproc->q6v5, qproc->sysmon);
 	if (ret == -ETIMEDOUT)
@@ -2013,6 +2035,9 @@ static int q6v5_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, qproc);
 
+	qproc->num_domains = desc->num_domains;
+	qproc->domains = desc->domains;
+
 	qproc->has_qaccept_regs = desc->has_qaccept_regs;
 	qproc->has_ext_cntl_regs = desc->has_ext_cntl_regs;
 	qproc->has_vq6 = desc->has_vq6;
@@ -2153,6 +2178,54 @@ static void q6v5_remove(struct platform_device *pdev)
 	rproc_free(rproc);
 }
 
+static const struct qcom_pdm_domain_data mpss_root_pd = {
+	.domain = "msm/modem/root_pd",
+	.instance_id = 180,
+	.services = { NULL },
+};
+
+static const struct qcom_pdm_domain_data msm8996_mpss_root_pd = {
+	.domain = "msm/modem/root_pd",
+	.instance_id = 100,
+	.services = { NULL },
+};
+
+static const struct qcom_pdm_domain_data sm8150_mpss_root_pd = {
+	.domain = "msm/modem/root_pd",
+	.instance_id = 180,
+	.services = {
+		"gps/gps_service",
+		NULL,
+	},
+};
+
+static const struct qcom_pdm_domain_data mpss_wlan_pd = {
+	.domain = "msm/modem/wlan_pd",
+	.instance_id = 180,
+	.services = {
+		"kernel/elf_loader",
+		"wlan/fw",
+		NULL,
+	},
+};
+
+static const struct qcom_pdm_domain_data *msm8996_mpss_domains[] = {
+	&msm8996_mpss_root_pd,
+};
+
+static const struct qcom_pdm_domain_data *sdm660_mpss_domains[] = {
+	&mpss_wlan_pd,
+};
+
+static const struct qcom_pdm_domain_data *sdm845_mpss_domains[] = {
+	&mpss_root_pd,
+	&mpss_wlan_pd,
+};
+
+static const struct qcom_pdm_domain_data *sm8350_mpss_domains[] = {
+	&sm8150_mpss_root_pd,
+};
+
 static const struct rproc_hexagon_res sc7180_mss = {
 	.hexagon_mba_image = "mba.mbn",
 	.proxy_clk_names = (char*[]){
@@ -2184,6 +2257,7 @@ static const struct rproc_hexagon_res sc7180_mss = {
 	.has_ext_cntl_regs = false,
 	.has_vq6 = false,
 	.version = MSS_SC7180,
+	// FIXME: domains?
 };
 
 static const struct rproc_hexagon_res sc7280_mss = {
@@ -2212,6 +2286,8 @@ static const struct rproc_hexagon_res sc7280_mss = {
 	.has_ext_cntl_regs = true,
 	.has_vq6 = true,
 	.version = MSS_SC7280,
+	.num_domains = ARRAY_SIZE(sm8350_mpss_domains),
+	.domains = sm8350_mpss_domains,
 };
 
 static const struct rproc_hexagon_res sdm660_mss = {
@@ -2243,6 +2319,8 @@ static const struct rproc_hexagon_res sdm660_mss = {
 	.has_ext_cntl_regs = false,
 	.has_vq6 = false,
 	.version = MSS_SDM660,
+	.num_domains = ARRAY_SIZE(sdm660_mpss_domains),
+	.domains = sdm660_mpss_domains,
 };
 
 static const struct rproc_hexagon_res sdm845_mss = {
@@ -2278,6 +2356,8 @@ static const struct rproc_hexagon_res sdm845_mss = {
 	.has_ext_cntl_regs = false,
 	.has_vq6 = false,
 	.version = MSS_SDM845,
+	.num_domains = ARRAY_SIZE(sdm845_mpss_domains),
+	.domains = sdm845_mpss_domains,
 };
 
 static const struct rproc_hexagon_res msm8998_mss = {
@@ -2309,6 +2389,8 @@ static const struct rproc_hexagon_res msm8998_mss = {
 	.has_ext_cntl_regs = false,
 	.has_vq6 = false,
 	.version = MSS_MSM8998,
+	.num_domains = ARRAY_SIZE(sdm845_mpss_domains),
+	.domains = sdm845_mpss_domains,
 };
 
 static const struct rproc_hexagon_res msm8996_mss = {
@@ -2347,6 +2429,8 @@ static const struct rproc_hexagon_res msm8996_mss = {
 	.has_ext_cntl_regs = false,
 	.has_vq6 = false,
 	.version = MSS_MSM8996,
+	.num_domains = ARRAY_SIZE(msm8996_mpss_domains),
+	.domains = msm8996_mpss_domains,
 };
 
 static const struct rproc_hexagon_res msm8909_mss = {
