@@ -1272,6 +1272,8 @@
 
 		pinctrl-0 = <&bt_default>;
 		pinctrl-names = "default";
+		
+		local-bd-address = [ 8c fd f0 00 5a ad ];
 	};
 };
 
