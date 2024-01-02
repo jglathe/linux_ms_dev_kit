@@ -409,13 +409,13 @@ static int venc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	out->capability = V4L2_CAP_TIMEPERFRAME;
 
 	us_per_frame = timeperframe->numerator * (u64)USEC_PER_SEC;
-	do_div(us_per_frame, timeperframe->denominator);
+	us_per_frame = div64_u64(us_per_frame, timeperframe->denominator);
 
 	if (!us_per_frame)
 		return -EINVAL;
 
 	fps = (u64)USEC_PER_SEC;
-	do_div(fps, us_per_frame);
+	fps = div64_u64(fps, us_per_frame);
 
 	inst->timeperframe = *timeperframe;
 	inst->fps = fps;
