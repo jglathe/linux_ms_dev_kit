@@ -282,11 +282,6 @@
 	};
 };
 
-&gcc{
-	//this PCIe bus is apparrently disabled in the WDK2023, variable to parse in gcc_sc8280xp_probe()
-	pcie_3a_disabled = <1>; // Set to 1 to disable, 0 to enable
-};
-
 &gpu_smmu {
 	status = "okay";
 };
