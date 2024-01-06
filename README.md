@@ -1,11 +1,11 @@
-Current tip of the development: [jg/wdk2023-gunyah-6.7-rc7](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-gunyah-6.7-rc), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
+Current tip of the development: [jg/wdk2023-gunyah-6.7-rc8](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/wdk2023-gunyah-6.7-rc8), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
 
 # **Recent Changes**
 * [Gunyah Hypervior](https://github.com/quic/gunyah-hypervisor) support is now integrated into the kernel, so that it can be made aware of it running (it should, in EL2) - and maybe start a VM eventually. Still trying to figure out the documentation.
 * Power Management issues are resolved as it seems, having a clean and hardware-bound Windows installation on the local SSD appears to be required. I observed that you can repair unruly fan behaviour by booting into Windows, and afterwards rebooting to Linux. Still investigating to find the actual binding. Fan speed readout would be nice, too :grin:
 * DP suspend/resume behaviour has improved, even suspend/resume on my very odd Iiyama ProLite X83288UHSU works now - most of the time without changing VTs.
 * Display via USB-C works, actually. But only on USB-C #0 (the rearmost socket). With a display on USB-C #1 it won't boot (some BIOS stuff) or get a signal later. The mode used is USB-C alt mode (DP over USB-C) which has only one lane left for USB bus operation, limiting speeds to USB-2.
-* Docker and LXD are both working nicely.
+* Docker and LXD both working nicely.
 * Bluetooth now has a default MAC address set up via the dtb - quite an improvement, it can now work out of the box. To get a unique MAC (the one stored in the machine is unknown) you can use [bootmac](https://gitlab.com/jglathe/bootmac/-/commits/jg/wdk2023) started from crontab. This should be in `/var/spool/cron/crontabs/root`, my command line is `@reboot sleep 7 && /usr/bin/bootmac -b -p AD5A`.
 
 # **Bootable Image**
