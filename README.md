@@ -1,4 +1,4 @@
-Current tip of the development: [jg/blackrock-6.7.y](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/blackrock-6.7.y), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
+Current tip of the development: [jg/blackrock-v6.7.y](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/blackrock-v6.7.y), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
 
 # **Recent Changes**
 * [Gunyah Hypervior](https://github.com/quic/gunyah-hypervisor) support is backed out again. My assumptions didn't hold, Gunyah is not relevant on this platform.
