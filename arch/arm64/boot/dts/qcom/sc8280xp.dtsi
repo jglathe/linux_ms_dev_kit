@@ -4033,6 +4033,28 @@
 			#thermal-sensor-cells = <1>;
 		};
 
+		tsens2: thermal-sensor@c251000 {
+			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
+			reg = <0 0x0c251000 0 0x1ff>,
+			      <0 0x0c224000 0 0x8>;
+			#qcom,sensors = <11>;
+			interrupts-extended = <&pdc 122 IRQ_TYPE_LEVEL_HIGH>,
+					      <&pdc 124 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "uplow", "critical";
+			#thermal-sensor-cells = <1>;
+		};
+
+		tsens3: thermal-sensor@c252000 {
+			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
+			reg = <0 0x0c252000 0 0x1ff>,
+			      <0 0x0c225000 0 0x8>;
+			#qcom,sensors = <5>;
+			interrupts-extended = <&pdc 123 IRQ_TYPE_LEVEL_HIGH>,
+					      <&pdc 125 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "uplow", "critical";
+			#thermal-sensor-cells = <1>;
+		};
+
 		aoss_qmp: power-management@c300000 {
 			compatible = "qcom,sc8280xp-aoss-qmp", "qcom,aoss-qmp";
 			reg = <0 0x0c300000 0 0x400>;
@@ -5202,6 +5224,21 @@
 			polling-delay = <1000>;
 
 			thermal-sensors = <&tsens0 9>;
+
+			trips {
+				cpu-crit {
+					temperature = <110000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		gpu-thermal {
+			polling-delay-passive = <0>;
+			polling-delay = <0>;
+
+			thermal-sensors = <&tsens2 2>;
 
 			trips {
 				cpu-crit {
