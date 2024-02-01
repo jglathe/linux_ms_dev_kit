@@ -618,7 +618,6 @@
 
 	status = "okay";
 
-	/* FIXME: verify */
 	touchscreen@10 {
 		compatible = "hid-over-i2c";
 		reg = <0x10>;
@@ -627,6 +626,11 @@
 		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_s10b>;
+
+		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
+
+		post-power-on-delay-ms = <5>;
+		post-reset-deassert-delay-ms = <200>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&ts0_default>;
@@ -1506,7 +1510,6 @@ pm8008_bus: &i2c11 {
 		reset-n-pins {
 			pins = "gpio99";
 			function = "gpio";
-			output-high;
 			drive-strength = <16>;
 		};
 	};
