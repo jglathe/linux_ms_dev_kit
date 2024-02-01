@@ -105,11 +105,6 @@ static int i2c_hid_of_probe(struct i2c_client *client)
 	if (!device_property_read_u32(dev, "post-power-on-delay-ms", &val))
 		ihid_of->post_power_delay_ms = val;
 
-	/*
-	 * Note this is a kernel internal device-property set by x86 platform code,
-	 * this MUST not be used in devicetree files without first adding it to
-	 * the DT bindings.
-	 */
 	if (!device_property_read_u32(dev, "post-reset-deassert-delay-ms", &val))
 		ihid_of->post_reset_delay_ms = val;
 
