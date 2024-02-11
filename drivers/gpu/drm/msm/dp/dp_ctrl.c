@@ -114,6 +114,7 @@ struct msm_dp_ctrl_private {
 	struct drm_device *drm_dev;
 	struct device *dev;
 	struct drm_dp_aux *aux;
+	struct msm_dp_panel *panel;
 	struct msm_dp_link *link;
 	void __iomem *ahb_base;
 	void __iomem *link_base;
@@ -2623,6 +2624,9 @@ int msm_dp_ctrl_on_stream(struct msm_dp_ctrl *msm_dp_ctrl, struct msm_dp_panel *
 	drm_dbg_dp(ctrl->drm_dev,
 		"mainlink %s\n", mainlink_ready ? "READY" : "NOT READY");
 
+end:
+	drm_dbg_dp(ctrl->drm_dev,
+		"preempted exit: mainlink %s, ret = %x\n", mainlink_ready ? "READY" : "NOT READY", ret);
 	return ret;
 }
 
