@@ -1925,8 +1925,11 @@ int dp_ctrl_on_stream(struct dp_ctrl *dp_ctrl, bool force_link_train)
 	mainlink_ready = dp_catalog_ctrl_mainlink_ready(ctrl->catalog);
 	drm_dbg_dp(ctrl->drm_dev,
 		"mainlink %s\n", mainlink_ready ? "READY" : "NOT READY");
+	return ret;
 
 end:
+	drm_dbg_dp(ctrl->drm_dev,
+		"preempted exit: mainlink %s, ret = %x\n", mainlink_ready ? "READY" : "NOT READY", ret);
 	return ret;
 }
 
