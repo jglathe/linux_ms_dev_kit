@@ -2543,8 +2543,11 @@ int msm_dp_ctrl_on_stream(struct msm_dp_ctrl *msm_dp_ctrl, bool force_link_train
 	mainlink_ready = msm_dp_ctrl_mainlink_ready(ctrl);
 	drm_dbg_dp(ctrl->drm_dev,
 		"mainlink %s\n", mainlink_ready ? "READY" : "NOT READY");
+	return ret;
 
 end:
+	drm_dbg_dp(ctrl->drm_dev,
+		"preempted exit: mainlink %s, ret = %x\n", mainlink_ready ? "READY" : "NOT READY", ret);
 	return ret;
 }
 
