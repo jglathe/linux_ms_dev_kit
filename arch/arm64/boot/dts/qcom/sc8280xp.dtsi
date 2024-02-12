@@ -1768,6 +1768,8 @@
 				 <0x02000000 0x0 0x30300000 0x0 0x30300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommus = <&pcie_smmu 0x60000>;
+			iommu-map = <0 &pcie_smmu 0x60000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <6>;
@@ -1868,6 +1870,8 @@
 				 <0x02000000 0x0 0x32300000 0x0 0x32300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommus = <&pcie_smmu 0x50000>;
+			iommu-map = <0 &pcie_smmu 0x50000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <5>;
@@ -1966,6 +1970,8 @@
 				 <0x02000000 0x0 0x34300000 0x0 0x34300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommus = <&pcie_smmu 0x40000>;
+			iommu-map = <0 &pcie_smmu 0x40000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <4>;
@@ -2067,6 +2073,8 @@
 				 <0x02000000 0x0 0x38300000 0x0 0x38300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommus = <&pcie_smmu 0x30000>;
+			iommu-map = <0 &pcie_smmu 0x30000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <3>;
@@ -2164,7 +2172,9 @@
 			ranges = <0x01000000 0x0 0x00000000 0x0 0x3c200000 0x0 0x100000>,
 				 <0x02000000 0x0 0x3c300000 0x0 0x3c300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
-
+			
+			iommus = <&pcie_smmu 0x20000>;
+			iommu-map = <0 &pcie_smmu 0x20000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <2>;
@@ -2265,7 +2275,7 @@
 			power-domains = <&gcc UFS_PHY_GDSC>;
 			required-opps = <&rpmhpd_opp_nom>;
 
-			iommus = <&apps_smmu 0xe0 0x0>;
+			//iommus = <&apps_smmu 0xe0 0x0>;
 			dma-coherent;
 
 			clocks = <&gcc GCC_UFS_PHY_AXI_CLK>,
@@ -2327,7 +2337,7 @@
 
 			power-domains = <&gcc UFS_CARD_GDSC>;
 
-			iommus = <&apps_smmu 0x4a0 0x0>;
+			//iommus = <&apps_smmu 0x4a0 0x0>;
 			dma-coherent;
 
 			clocks = <&gcc GCC_UFS_CARD_AXI_CLK>,
@@ -4868,7 +4878,7 @@
 			};
 		};
 
-		iommu@14f80000 {
+		pcie_smmu: iommu@14f80000 {
 			compatible = "arm,smmu-v3";
 			reg = <0 0x14f80000 0 0x80000>;
 			interrupts = <GIC_SPI 951 IRQ_TYPE_EDGE_RISING>,
@@ -4881,7 +4891,9 @@
 			dma-coherent;
 
 			/* The secure firmware prevents register access from Linux */
-			status = "reserved";
+			// status = "reserved";
+			/* on EL2, though... */
+			status = "okay";
 		};
 
 		apps_smmu: iommu@15000000 {
