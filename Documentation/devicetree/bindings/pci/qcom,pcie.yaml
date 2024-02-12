@@ -130,6 +130,8 @@ properties:
     description: GPIO controlled connection to WAKE# signal
     maxItems: 1
 
+  aspm-no-l0s: true
+
 required:
   - compatible
   - reg
