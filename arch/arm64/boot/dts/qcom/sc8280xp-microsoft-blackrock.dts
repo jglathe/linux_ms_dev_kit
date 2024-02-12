@@ -571,7 +571,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie2a_default>;
 
-	status = "okay";
+	// status = "okay";
 };
 
 &pcie2a_phy {
@@ -580,7 +580,7 @@
 	vdda-pll-supply = <&vreg_l6d>;
 	pll-supply = <&vreg_l6d>;
 
-	status = "okay";
+	// status = "okay";
 };
 
 &pcie4 {
@@ -594,7 +594,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie4_default>;
 
-	status = "okay";
+	// status = "okay";
 
 	pcie@0 {
 		device_type = "pci";
@@ -620,7 +620,7 @@
 	vdda-pll-supply = <&vreg_l6d>;
 	pll-supply = <&vreg_l6d>;
 
-	status = "okay";
+	// status = "okay";
 };
 
 &pmc8280c_lpg {
