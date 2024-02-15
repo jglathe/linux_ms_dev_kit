@@ -1368,3 +1368,7 @@
 		};
 	};
 };
+
+&pcie_smmu {
+    status = "okay";
+};
