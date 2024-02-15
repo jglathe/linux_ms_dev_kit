@@ -4891,9 +4891,7 @@
 			dma-coherent;
 
 			/* The secure firmware prevents register access from Linux */
-			// status = "reserved";
-			/* on EL2, though... */
-			status = "okay";
+			status = "reserved";
 		};
 
 		apps_smmu: iommu@15000000 {
