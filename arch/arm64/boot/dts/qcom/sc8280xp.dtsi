@@ -4889,7 +4889,7 @@
 					  "gerror",
 					  "priq",
 					  "cmdq-sync";
-			// msi-parent = <&its 0x10000>;
+			msi-parent = <&its 0x10000>;
 			#iommu-cells = <1>;
 			dma-coherent;		
 
@@ -5048,7 +5048,7 @@
 			#size-cells = <2>;
 			ranges;
 
-			msic: msi-controller@17a40000 {
+			its: msi-controller@17a40000 {
 				compatible = "arm,gic-v3-its";
 				reg = <0 0x17a40000 0 0x20000>;
 				msi-controller;
