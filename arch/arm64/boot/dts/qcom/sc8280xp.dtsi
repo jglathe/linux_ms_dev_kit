@@ -4281,6 +4281,7 @@
 			interrupt-names = "eventq",
 					  "gerror",
 					  "cmdq-sync";
+			msi-parent = <&msic 0x10000>;
 			#iommu-cells = <1>;
 			dma-coherent;
 
