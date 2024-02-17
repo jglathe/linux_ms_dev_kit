@@ -262,8 +262,9 @@ int iommu_device_register(struct iommu_device *iommu,
 	 * already the de-facto behaviour, since any possible combination of
 	 * existing drivers would compete for at least the PCI or platform bus.
 	 */
-	if (iommu_buses[0]->iommu_ops && iommu_buses[0]->iommu_ops != ops)
-		return -EBUSY;
+	// take this out, we have arm-smmu and arm-smmuv3
+	// if (iommu_buses[0]->iommu_ops && iommu_buses[0]->iommu_ops != ops)
+	//	return -EBUSY;
 
 	iommu->ops = ops;
 	if (hwdev)
