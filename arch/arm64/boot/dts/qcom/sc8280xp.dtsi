@@ -4276,15 +4276,15 @@
 		pcie_smmu: iommu@14f80000 {
 			compatible = "arm,smmu-v3";
 			reg = <0 0x14f80000 0 0x80000>;
-			interrupts = <GIC_SPI 951 IRQ_TYPE_EDGE_RISING>,
-				     <GIC_SPI 955 IRQ_TYPE_EDGE_RISING>,
-					// <GIC_SPI 952 IRQ_TYPE_EDGE_RISING>,
-				     <GIC_SPI 953 IRQ_TYPE_EDGE_RISING>;
+			interrupts = <GIC_SPI 983 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 987 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 984 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 985 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "eventq",
 					  "gerror",
-					//  "priq",
+					  "priq",
 					  "cmdq-sync";
-			// msi-parent = <&its 0x10000>;
+			msi-parent = <&its 0x10000>;
 			#iommu-cells = <1>;
 			dma-coherent;
 
