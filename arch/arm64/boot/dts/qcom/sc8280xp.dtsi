@@ -1732,7 +1732,6 @@
 				 <0x02000000 0x0 0x30300000 0x0 0x30300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommus = <&pcie_smmu 0x60000>;
 			iommu-map = <0 &pcie_smmu 0x60000 0x10000>;
 			dma-coherent;
 
@@ -1837,7 +1836,6 @@
 				 <0x02000000 0x0 0x32300000 0x0 0x32300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommus = <&pcie_smmu 0x50000>;
 			iommu-map = <0 &pcie_smmu 0x50000 0x10000>;
 			dma-coherent;
 
@@ -1940,7 +1938,6 @@
 				 <0x02000000 0x0 0x34300000 0x0 0x34300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommus = <&pcie_smmu 0x40000>;
 			iommu-map = <0 &pcie_smmu 0x40000 0x10000>;
 			dma-coherent;
 
@@ -2046,7 +2043,6 @@
 				 <0x02000000 0x0 0x38300000 0x0 0x38300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommus = <&pcie_smmu 0x30000>;
 			iommu-map = <0 &pcie_smmu 0x30000 0x10000>;
 			dma-coherent;
 
@@ -2149,7 +2145,6 @@
 				 <0x02000000 0x0 0x3c300000 0x0 0x3c300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommus = <&pcie_smmu 0x20000>;
 			iommu-map = <0 &pcie_smmu 0x20000 0x10000>;
 			dma-coherent;
 
@@ -4276,10 +4271,10 @@
 		pcie_smmu: iommu@14f80000 {
 			compatible = "arm,smmu-v3";
 			reg = <0 0x14f80000 0 0x80000>;
-			interrupts = <GIC_SPI 983 IRQ_TYPE_EDGE_RISING>,
-				     <GIC_SPI 987 IRQ_TYPE_EDGE_RISING>,
-				     <GIC_SPI 984 IRQ_TYPE_EDGE_RISING>,
-				     <GIC_SPI 985 IRQ_TYPE_EDGE_RISING>;
+			interrupts = <GIC_SPI 951 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 955 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 952 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 953 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "eventq",
 					  "gerror",
 					  "priq",
