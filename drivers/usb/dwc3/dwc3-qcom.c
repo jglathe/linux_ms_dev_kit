@@ -681,12 +681,12 @@ static int dwc3_qcom_setup_irq(struct platform_device *pdev)
 	for (i = 0; i < irq_count; i++) {
 		irq_index = dwc3_qcom_get_irq_index(irq_names[i]);
 		if (irq_index == -1) {
-			dev_err(&pdev->dev, "Unknown interrupt-name \"%s\" found\n", irq_names[i]);
+			dev_dbg(&pdev->dev, "Unknown interrupt-name \"%s\" found\n", irq_names[i]);
 			continue;
 		}
 		port_index = dwc3_qcom_get_port_index(irq_names[i], irq_index);
 		if (port_index == -1) {
-			dev_err(&pdev->dev, "Invalid interrupt-name suffix \"%s\"\n", irq_names[i]);
+			dev_dbg(&pdev->dev, "Invalid interrupt-name suffix \"%s\"\n", irq_names[i]);
 			continue;
 		}
 
