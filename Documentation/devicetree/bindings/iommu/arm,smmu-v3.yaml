@@ -20,7 +20,11 @@ properties:
   $nodename:
     pattern: "^iommu@[0-9a-f]*"
   compatible:
-    const: arm,smmu-v3
+    oneOf:
+      - items:
+          - const: qcom,sc8280xp-smmu-v3
+          - const: arm,smmu-v3
+      - const: arm,smmu-v3
 
   reg:
     maxItems: 1
