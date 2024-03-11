@@ -1732,6 +1732,7 @@
 				 <0x02000000 0x0 0x30300000 0x0 0x30300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x60000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <6>;
@@ -1835,6 +1836,7 @@
 				 <0x02000000 0x0 0x32300000 0x0 0x32300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x50000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <5>;
@@ -1936,6 +1938,7 @@
 				 <0x02000000 0x0 0x34300000 0x0 0x34300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x40000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <4>;
@@ -2040,6 +2043,7 @@
 				 <0x02000000 0x0 0x38300000 0x0 0x38300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x30000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <3>;
@@ -2141,6 +2145,7 @@
 				 <0x02000000 0x0 0x3c300000 0x0 0x3c300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x20000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <2>;
@@ -4598,28 +4603,6 @@
 			interrupt-controller;
 		};
 
-		tsens2: thermal-sensor@c251000 {
-			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
-			reg = <0 0x0c251000 0 0x1ff>,
-			      <0 0x0c224000 0 0x8>;
-			#qcom,sensors = <11>;
-			interrupts-extended = <&pdc 122 IRQ_TYPE_LEVEL_HIGH>,
-					      <&pdc 124 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "uplow", "critical";
-			#thermal-sensor-cells = <1>;
-		};
-
-		tsens3: thermal-sensor@c252000 {
-			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
-			reg = <0 0x0c252000 0 0x1ff>,
-			      <0 0x0c225000 0 0x8>;
-			#qcom,sensors = <5>;
-			interrupts-extended = <&pdc 123 IRQ_TYPE_LEVEL_HIGH>,
-					      <&pdc 125 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "uplow", "critical";
-			#thermal-sensor-cells = <1>;
-		};
-
 		tsens0: thermal-sensor@c263000 {
 			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
 			reg = <0 0x0c263000 0 0x1ff>, /* TM */
@@ -4638,6 +4621,28 @@
 			#qcom,sensors = <16>;
 			interrupts-extended = <&pdc 27 IRQ_TYPE_LEVEL_HIGH>,
 					      <&pdc 29 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "uplow", "critical";
+			#thermal-sensor-cells = <1>;
+		};
+
+		tsens2: thermal-sensor@c251000 {
+			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
+			reg = <0 0x0c251000 0 0x1ff>,
+			      <0 0x0c224000 0 0x8>;
+			#qcom,sensors = <11>;
+			interrupts-extended = <&pdc 122 IRQ_TYPE_LEVEL_HIGH>,
+					      <&pdc 124 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "uplow", "critical";
+			#thermal-sensor-cells = <1>;
+		};
+
+		tsens3: thermal-sensor@c252000 {
+			compatible = "qcom,sc8280xp-tsens", "qcom,tsens-v2";
+			reg = <0 0x0c252000 0 0x1ff>,
+			      <0 0x0c225000 0 0x8>;
+			#qcom,sensors = <5>;
+			interrupts-extended = <&pdc 123 IRQ_TYPE_LEVEL_HIGH>,
+					      <&pdc 125 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "uplow", "critical";
 			#thermal-sensor-cells = <1>;
 		};
@@ -4829,6 +4834,25 @@
 					bias-pull-down;
 				};
 			};
+		};
+
+		pcie_smmu: iommu@14f80000 {
+			compatible = "qcom,sc8280xp-smmu-v3", "arm,smmu-v3";
+			reg = <0 0x14f80000 0 0x80000>;
+			interrupts = <GIC_SPI 951 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 955 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 952 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 953 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "eventq",
+					  "gerror",
+					  "priq",
+					  "cmdq-sync";
+			msi-parent = <&its 0x40000>;
+			#iommu-cells = <1>;
+			dma-coherent;
+
+			/* The secure firmware prevents register access from Linux */
+			status = "reserved";
 		};
 
 		apps_smmu: iommu@15000000 {
