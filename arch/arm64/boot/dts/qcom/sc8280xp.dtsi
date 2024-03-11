@@ -1789,6 +1789,7 @@
 				 <0x02000000 0x0 0x30300000 0x0 0x30300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x60000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <6>;
@@ -1892,6 +1893,7 @@
 				 <0x02000000 0x0 0x32300000 0x0 0x32300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x50000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <5>;
@@ -1993,6 +1995,7 @@
 				 <0x02000000 0x0 0x34300000 0x0 0x34300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x40000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <4>;
@@ -2097,6 +2100,7 @@
 				 <0x02000000 0x0 0x38300000 0x0 0x38300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x30000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <3>;
@@ -2198,6 +2202,7 @@
 				 <0x02000000 0x0 0x3c300000 0x0 0x3c300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
+			iommu-map = <0 &pcie_smmu 0x20000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <2>;
@@ -4892,14 +4897,17 @@
 			reg = <0 0x14f80000 0 0x80000>;
 			interrupts = <GIC_SPI 951 IRQ_TYPE_EDGE_RISING>,
 				     <GIC_SPI 955 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 952 IRQ_TYPE_EDGE_RISING>,
 				     <GIC_SPI 953 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "eventq",
 					  "gerror",
+					  "priq",
 					  "cmdq-sync";
+			msi-parent = <&its 0x40000>;
 			#iommu-cells = <1>;
 			dma-coherent;
 
-			/* The hypervisor prevents register access from Linux */
+			/* The secure firmware prevents register access from Linux */
 			status = "reserved";
 		};
 
