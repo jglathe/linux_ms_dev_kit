@@ -4279,7 +4279,7 @@
 					  "gerror",
 					  "priq",
 					  "cmdq-sync";
-			msi-parent = <&its 0x10000>;
+			msi-parent = <&its 0x40000>;
 			#iommu-cells = <1>;
 			dma-coherent;
 
