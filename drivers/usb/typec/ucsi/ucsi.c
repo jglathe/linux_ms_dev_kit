@@ -79,11 +79,6 @@ static int ucsi_read_error(struct ucsi *ucsi)
 	u16 error;
 	int ret;
 
-	/* Acknowledge the command that failed */
-	ret = ucsi_acknowledge_command(ucsi);
-	if (ret)
-		return ret;
-
 	ret = ucsi_exec_command(ucsi, UCSI_GET_ERROR_STATUS);
 	if (ret < 0)
 		return ret;
@@ -154,14 +149,27 @@ static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
 	if (!(cci & UCSI_CCI_COMMAND_COMPLETE))
 		return -EIO;
 
+	/*
+	 * All error cases below must acknowledge the command completion,
+	 * otherwise PPM will be stuck and won't process commands anymore.
+	 *
+	 * In non-error case the command is acknowledged after reading Data
+	 * from the controller.
+	 */
+
 	if (cci & UCSI_CCI_NOT_SUPPORTED) {
 		ret = ucsi_acknowledge_command(ucsi);
 		return ret ? ret : -EOPNOTSUPP;
 	}
 
 	if (cci & UCSI_CCI_ERROR) {
+		ret = ucsi_acknowledge_command(ucsi);
+		if (ret)
+			return ret;
+
 		if (cmd == UCSI_GET_ERROR_STATUS)
 			return -EIO;
+
 		return ucsi_read_error(ucsi);
 	}
 
