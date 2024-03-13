@@ -61,12 +61,28 @@ static int ucsi_acknowledge_command(struct ucsi *ucsi)
 
 static int ucsi_acknowledge_connector_change(struct ucsi *ucsi)
 {
+	unsigned int con_num;
 	u64 ctrl;
+	u32 cci;
+	int ret;
 
 	ctrl = UCSI_ACK_CC_CI;
 	ctrl |= UCSI_ACK_CONNECTOR_CHANGE;
 
-	return ucsi->ops->sync_write(ucsi, UCSI_CONTROL, &ctrl, sizeof(ctrl));
+	ret = ucsi->ops->sync_write(ucsi, UCSI_CONTROL, &ctrl, sizeof(ctrl));
+	if (ret)
+		return ret;
+
+	clear_bit(EVENT_PENDING, &ucsi->flags);
+	ret = ucsi->ops->read(ucsi, UCSI_CCI, &cci, sizeof(cci));
+	if (ret)
+		return ret;
+
+	con_num = UCSI_CCI_CONNECTOR(cci);
+	if (con_num)
+		ucsi_connector_change(ucsi, con_num);
+
+	return 0;
 }
 
 static int ucsi_exec_command(struct ucsi *ucsi, u64 command);
