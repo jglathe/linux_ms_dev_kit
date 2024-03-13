@@ -154,8 +154,10 @@ static int ucsi_exec_command(struct ucsi *ucsi, u64 cmd)
 	if (!(cci & UCSI_CCI_COMMAND_COMPLETE))
 		return -EIO;
 
-	if (cci & UCSI_CCI_NOT_SUPPORTED)
-		return -EOPNOTSUPP;
+	if (cci & UCSI_CCI_NOT_SUPPORTED) {
+		ret = ucsi_acknowledge_command(ucsi);
+		return ret ? ret : -EOPNOTSUPP;
+	}
 
 	if (cci & UCSI_CCI_ERROR) {
 		if (cmd == UCSI_GET_ERROR_STATUS)
