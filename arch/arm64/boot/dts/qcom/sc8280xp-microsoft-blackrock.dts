@@ -1359,6 +1359,14 @@
 			bias-disable;
 			drive-strength = <16>;
 		};
+
+		mode-pins {
+			pins = "gpio167";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+			output-high;
+		};
 	};
 
 	usb1_sbu_default: usb1-sbu-state {
@@ -1375,6 +1383,14 @@
 			function = "gpio";
 			bias-disable;
 			drive-strength = <16>;
+		};
+
+		mode-pins {
+			pins = "gpio50";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+			output-high;
 		};
 	};
 
