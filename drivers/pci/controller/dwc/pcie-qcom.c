@@ -35,6 +35,7 @@
 #include <linux/units.h>
 
 #include "../../pci.h"
+#include "pcie-qcom-cmn.h"
 #include "pcie-designware.h"
 
 /* PARF registers */
