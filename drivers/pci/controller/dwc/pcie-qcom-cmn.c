@@ -53,6 +53,41 @@ void qcom_pcie_cmn_set_16gt_eq_settings(struct dw_pcie *pci)
 }
 EXPORT_SYMBOL_GPL(qcom_pcie_cmn_set_16gt_eq_settings);
 
+void qcom_pcie_cmn_set_16gt_rx_margining_settings(struct dw_pcie *pci)
+{
+	u32 reg;
+
+	reg = dw_pcie_readl_dbi(pci, GEN4_LANE_MARGINING_1_OFF);
+	reg &= ~MARGINING_MAX_VOLTAGE_OFFSET_MASK;
+	reg |= (MARGINING_MAX_VOLTAGE_OFFSET_VAL <<
+		MARGINING_MAX_VOLTAGE_OFFSET_SHIFT);
+	reg &= ~MARGINING_NUM_VOLTAGE_STEPS_MASK;
+	reg |= (MARGINING_NUM_VOLTAGE_STEPS_VAL <<
+		MARGINING_NUM_VOLTAGE_STEPS_SHIFT);
+	reg &= ~MARGINING_MAX_TIMING_OFFSET_MASK;
+	reg |= (MARGINING_MAX_TIMING_OFFSET_VAL <<
+		MARGINING_MAX_TIMING_OFFSET_SHIFT);
+	reg &= ~MARGINING_NUM_TIMING_STEPS_MASK;
+	reg |= MARGINING_NUM_TIMING_STEPS_VAL;
+	dw_pcie_writel_dbi(pci, GEN4_LANE_MARGINING_1_OFF, reg);
+
+	reg = dw_pcie_readl_dbi(pci, GEN4_LANE_MARGINING_2_OFF);
+	reg |= MARGINING_IND_ERROR_SAMPLER;
+	reg |= MARGINING_SAMPLE_REPORTING_METHOD;
+	reg |= MARGINING_IND_LEFT_RIGHT_TIMING;
+	reg |= MARGINING_VOLTAGE_SUPPORTED;
+	reg &= ~MARGINING_IND_UP_DOWN_VOLTAGE;
+	reg &= ~MARGINING_MAXLANES_MASK;
+	reg |= (pci->num_lanes <<
+		MARGINING_MAXLANES_SHIFT);
+	reg &= ~MARGINING_SAMPLE_RATE_TIMING_MASK;
+	reg |= (MARGINING_SAMPLE_RATE_TIMING_VAL <<
+		MARGINING_SAMPLE_RATE_TIMING_SHIFT);
+	reg |= MARGINING_SAMPLE_RATE_VOLTAGE_VAL;
+	dw_pcie_writel_dbi(pci, GEN4_LANE_MARGINING_2_OFF, reg);
+}
+EXPORT_SYMBOL_GPL(qcom_pcie_cmn_set_16gt_rx_margining_settings);
+
 int qcom_pcie_cmn_icc_get_resource(struct dw_pcie *pci, struct icc_path *icc_mem)
 {
 	if (IS_ERR(pci))

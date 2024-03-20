@@ -455,8 +455,10 @@ static int qcom_pcie_perst_deassert(struct dw_pcie *pci)
 		goto err_disable_resources;
 	}
 
-	if (pcie_link_speed[pci->link_gen] == PCIE_SPEED_16_0GT)
+	if (pcie_link_speed[pci->link_gen] == PCIE_SPEED_16_0GT) {
 		qcom_pcie_cmn_set_16gt_eq_settings(pci);
+		qcom_pcie_cmn_set_16gt_rx_margining_settings(pci);
+	}
 
 	/*
 	 * The physical address of the MMIO region which is exposed as the BAR
