@@ -467,11 +467,6 @@ static int qcom_pcie_perst_deassert(struct dw_pcie *pci)
 		goto err_disable_resources;
 	}
 
-	if (pcie_link_speed[pci->link_gen] == PCIE_SPEED_16_0GT) {
-		qcom_pcie_cmn_set_16gt_eq_settings(pci);
-		qcom_pcie_cmn_set_16gt_rx_margining_settings(pci);
-	}
-
 	/*
 	 * The physical address of the MMIO region which is exposed as the BAR
 	 * should be written to MHI BASE registers.
@@ -619,7 +614,7 @@ static int qcom_pcie_ep_get_resources(struct platform_device *pdev,
 	if (IS_ERR(pcie_ep->phy))
 		ret = PTR_ERR(pcie_ep->phy);
 
-	ret = qcom_pcie_cmn_icc_get_resource(&pcie_ep->pci, &pcie_ep->icc_mem);
+	ret = qcom_pcie_cmn_icc_get_resource(&pcie_ep->pci, pcie_ep->icc_mem);
 	if (IS_ERR(pcie_ep->icc_mem))
 		ret = PTR_ERR(pcie_ep->icc_mem);
 
