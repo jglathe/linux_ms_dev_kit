@@ -10,6 +10,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb/typec_dp.h>
 #include <linux/usb/typec_mux.h>
+#include "../mux.h"
 
 struct gpio_sbu_mux {
 	struct gpio_desc *enable_gpio;
@@ -29,6 +30,9 @@ static int gpio_sbu_switch_set(struct typec_switch_dev *sw,
 	struct gpio_sbu_mux *sbu_mux = typec_switch_get_drvdata(sw);
 	bool enabled;
 	bool swapped;
+
+	/* print out call parameter */
+	printk(KERN_INFO "%s: gpio_sbu_switch_set() enter orientation=%d, enabled=%d, swapped=%d\n", dev_name(&sw->dev),orientation,sbu_mux->enabled,sbu_mux->swapped);
 
 	mutex_lock(&sbu_mux->lock);
 
@@ -58,6 +62,9 @@ static int gpio_sbu_switch_set(struct typec_switch_dev *sw,
 
 	mutex_unlock(&sbu_mux->lock);
 
+	/* print out result */
+	printk(KERN_INFO "%s: gpio_sbu_switch_set() exit orientation=%d, enabled=%d, swapped=%d\n", dev_name(&sw->dev),orientation,enabled,swapped);
+
 	return 0;
 }
 
@@ -65,6 +72,9 @@ static int gpio_sbu_mux_set(struct typec_mux_dev *mux,
 			    struct typec_mux_state *state)
 {
 	struct gpio_sbu_mux *sbu_mux = typec_mux_get_drvdata(mux);
+
+	/* print out call parameter */
+	printk(KERN_INFO "%s: gpio_sbu_mux_set() enter mode=%d, enabled=%d\n", dev_name(&mux->dev),(int)state->mode,sbu_mux->enabled);
 
 	mutex_lock(&sbu_mux->lock);
 
@@ -85,6 +95,9 @@ static int gpio_sbu_mux_set(struct typec_mux_dev *mux,
 	gpiod_set_value(sbu_mux->enable_gpio, sbu_mux->enabled);
 
 	mutex_unlock(&sbu_mux->lock);
+
+	/* print out call parameter */
+	printk(KERN_INFO "%s: gpio_sbu_mux_set() exit mode=%d, enabled=%d\n", dev_name(&mux->dev),(int)state->mode,sbu_mux->enabled);
 
 	return 0;
 }
@@ -133,6 +146,8 @@ static int gpio_sbu_mux_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, sbu_mux);
+	/* anounce device is loaded */
+	printk(KERN_INFO "%s: registered type-c switch/mux\n", dev_name(dev));
 
 	return 0;
 }
