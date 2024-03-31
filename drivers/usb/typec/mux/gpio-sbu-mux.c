@@ -15,6 +15,7 @@
 struct gpio_sbu_mux {
 	struct gpio_desc *enable_gpio;
 	struct gpio_desc *select_gpio;
+	struct gpio_desc *swap_gpio;
 
 	struct typec_switch_dev *sw;
 	struct typec_mux_dev *mux;
@@ -125,6 +126,16 @@ static int gpio_sbu_mux_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(sbu_mux->select_gpio),
 				     "unable to acquire select gpio\n");
 
+	sbu_mux->swap_gpio = devm_gpiod_get(dev, "swap", GPIOD_ASIS);
+	if (IS_ERR(sbu_mux->swap_gpio)){
+		dev_err_probe(dev, PTR_ERR(sbu_mux->swap_gpio),
+	    	 "unable to acquire swap detect gpio\n");
+	} else {
+		mutex_lock(&sbu_mux->lock);
+		sbu_mux->swapped = gpiod_get_value(sbu_mux->swap_gpio);
+		mutex_unlock(&sbu_mux->lock);
+	}
+
 	sw_desc.drvdata = sbu_mux;
 	sw_desc.fwnode = dev_fwnode(dev);
 	sw_desc.set = gpio_sbu_switch_set;
@@ -147,7 +158,7 @@ static int gpio_sbu_mux_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, sbu_mux);
 	/* anounce device is loaded */
-	printk(KERN_INFO "%s: registered type-c switch/mux\n", dev_name(dev));
+	printk(KERN_INFO "%s: registered type-c switch/mux, detected state: altmode=%d, swapped=%d\n", dev_name(dev), sbu_mux->enabled, sbu_mux->swapped);
 
 	return 0;
 }
