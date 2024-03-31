@@ -249,6 +249,7 @@
 
 		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
 		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
+		swap-gpios = <&tlmm 166 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb0_sbu_default>;
@@ -268,6 +269,7 @@
 
 		enable-gpios = <&tlmm 48 GPIO_ACTIVE_LOW>;
 		select-gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+		swap-gpios = <&tlmm 49 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb1_sbu_default>;
@@ -1367,6 +1369,14 @@
 			drive-strength = <16>;
 			output-high;
 		};
+
+    swap-pins {
+      pins = "gpio166";
+      function = "gpio";
+      drive-strength = <2>;
+      pull-down;
+      input;
+    };
 	};
 
 	usb1_sbu_default: usb1-sbu-state {
@@ -1392,6 +1402,14 @@
 			drive-strength = <16>;
 			output-high;
 		};
+
+    swap-pins {
+      pins = "gpio49";
+      function = "gpio";
+      drive-strength = <2>;
+      pull-down;
+      input;
+    };
 	};
 
 	usb2_en_state: usb2-en-state {
