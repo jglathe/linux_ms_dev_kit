@@ -30,6 +30,9 @@ properties:
   select-gpios:
     description: Orientation select
 
+  swap-gpios:
+    description:  Orientation detect
+
   vcc-supply:
     description: power supply
 
@@ -54,7 +57,8 @@ required:
   - orientation-switch
   - port
 
-additionalProperties: false
+additionalProperties:
+  - swap-gpios
 
 examples:
   - |
