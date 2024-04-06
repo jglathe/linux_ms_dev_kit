@@ -254,7 +254,6 @@
 		regulator-min-microvolt = <3900000>;
 		regulator-max-microvolt = <3900000>;
 
-		regulator-boot-on;
 		regulator-always-on;
 	};
 
@@ -619,10 +618,6 @@
 	status = "okay";
 };
 
-&dispcc1 {
-	status = "okay";
-};
-
 &gmu {
 	status = "okay";
 };
@@ -816,6 +811,8 @@ pm8008_bus: &i2c11 {
 };
 
 &pcie3a {
+	aspm-no-l0s;
+
 	perst-gpios = <&tlmm 151 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
 
@@ -828,8 +825,10 @@ pm8008_bus: &i2c11 {
 };
 
 &pcie3a_phy {
-	vdda-phy-supply = <&vreg_l6d>;
-	vdda-pll-supply = <&vreg_l4d>;
+	vdda-phy-supply = <&vreg_l4d>;
+	phy-supply = <&vreg_l4d>;
+	vdda-pll-supply = <&vreg_l6d>;
+	pll-supply = <&vreg_l6d>;
 
 	status = "okay";
 };
@@ -1307,8 +1306,6 @@ pm8008_bus: &i2c11 {
 
 &usb_0_dwc3 {
 	dr_mode = "host";
-
-	status = "okay";
 };
 
 &usb_0_hsphy {
@@ -1350,7 +1347,6 @@ pm8008_bus: &i2c11 {
 
 &usb_1_dwc3 {
 	dr_mode = "host";
-	status = "okay";
 };
 
 &usb_1_hsphy {
@@ -1387,9 +1383,6 @@ pm8008_bus: &i2c11 {
 };
 
 &usb_2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&usb2_en_state>;
-
 	status = "okay";
 };
 
@@ -1397,8 +1390,6 @@ pm8008_bus: &i2c11 {
 	dr_mode = "host";
 	phy-names = "usb2-port0", "usb3-port0";
 	phys = <&usb_2_hsphy0>, <&usb_2_qmpphy0>;
-
-	status = "okay";
 };
 
 &usb_2_hsphy0 {
@@ -1499,7 +1490,7 @@ pm8008_bus: &i2c11 {
 	};
 
 	misc_3p3_reg_en: misc-3p3-reg-en-state {
-		pins = "gpio2";
+		pins = "gpio1";
 		function = "normal";
 	};
 };
@@ -1830,15 +1821,6 @@ pm8008_bus: &i2c11 {
 			pull-down;
 			input;
 		};
-	};
-
-	usb2_en_state: usb2-en-state {
-		/* TS3USB221A USB2.0 mux select */
-		pins = "gpio24";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
-		output-low;
 	};
 
 	wcd_default: wcd-default-state {
