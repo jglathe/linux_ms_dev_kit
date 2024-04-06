@@ -194,7 +194,6 @@
 		regulator-min-microvolt = <3900000>;
 		regulator-max-microvolt = <3900000>;
 
-		regulator-boot-on;
 		regulator-always-on;
 	};
 
@@ -508,10 +507,6 @@
 };
 
 &dispcc0 {
-	status = "okay";
-};
-
-&dispcc1 {
 	status = "okay";
 };
 
@@ -1004,8 +999,6 @@
 
 &usb_0_dwc3 {
 	dr_mode = "host";
-
-	status = "okay";
 };
 
 &usb_0_hsphy {
@@ -1047,7 +1040,6 @@
 
 &usb_1_dwc3 {
 	dr_mode = "host";
-	status = "okay";
 };
 
 &usb_1_hsphy {
@@ -1196,7 +1188,7 @@
 	};
 
 	misc_3p3_reg_en: misc-3p3-reg-en-state {
-		pins = "gpio2";
+		pins = "gpio1";
 		function = "normal";
 	};
 };
