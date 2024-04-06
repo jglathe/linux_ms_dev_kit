@@ -41,7 +41,7 @@ static inline struct device *qseecom_scm_dev(struct qseecom_client *client)
  * qseecom_dma_alloc() - Allocate DMA memory for a QSEECOM client.
  * @client:     The QSEECOM client to allocate the memory for.
  * @size:       The number of bytes to allocate.
- * @dma_handle: Pointer to where the physical address should be stored.
+ * @dma_handle: Pointer to where the DMA address should be stored.
  * @gfp:        Allocation flags.
  *
  * Wrapper function for dma_alloc_coherent(), allocating DMA memory usable for
@@ -58,7 +58,7 @@ static inline void *qseecom_dma_alloc(struct qseecom_client *client, size_t size
  * @client:     The QSEECOM client for which the memory has been allocated.
  * @size:       The number of bytes allocated.
  * @cpu_addr:   Virtual memory address to free.
- * @dma_handle: Physical memory address to free.
+ * @dma_handle: DMA memory address to free.
  *
  * Wrapper function for dma_free_coherent(), freeing memory previously
  * allocated with qseecom_dma_alloc(). Refer to dma_free_coherent() for
@@ -73,16 +73,16 @@ static inline void qseecom_dma_free(struct qseecom_client *client, size_t size,
 /**
  * qcom_qseecom_app_send() - Send to and receive data from a given QSEE app.
  * @client:   The QSEECOM client associated with the target app.
- * @req:      Physical address of the request buffer sent to the app.
+ * @req:      DMA address of the request buffer sent to the app.
  * @req_size: Size of the request buffer.
- * @rsp:      Physical address of the response buffer, written to by the app.
+ * @rsp:      DMA address of the response buffer, written to by the app.
  * @rsp_size: Size of the response buffer.
  *
  * Sends a request to the QSEE app associated with the given client and read
- * back its response. The caller must provide two physical memory regions, one
- * for the request and one for the response, and fill out the @req region with
- * the respective (app-specific) request data. The QSEE app reads this and
- * returns its response in the @rsp region.
+ * back its response. The caller must provide two DMA memory regions, one for
+ * the request and one for the response, and fill out the @req region with the
+ * respective (app-specific) request data. The QSEE app reads this and returns
+ * its response in the @rsp region.
  *
  * Note: This is a convenience wrapper around qcom_scm_qseecom_app_send().
  * Clients should prefer to use this wrapper.

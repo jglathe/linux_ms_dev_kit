@@ -1576,14 +1576,14 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_get_id);
 /**
  * qcom_scm_qseecom_app_send() - Send to and receive data from a given QSEE app.
  * @app_id:   The ID of the target app.
- * @req:      Physical address of the request buffer sent to the app.
+ * @req:      DMA address of the request buffer sent to the app.
  * @req_size: Size of the request buffer.
- * @rsp:      Physical address of the response buffer, written to by the app.
+ * @rsp:      DMA address of the response buffer, written to by the app.
  * @rsp_size: Size of the response buffer.
  *
  * Sends a request to the QSEE app associated with the given ID and read back
- * its response. The caller must provide two physical memory regions, one for
- * the request and one for the response, and fill out the @req region with the
+ * its response. The caller must provide two DMA memory regions, one for the
+ * request and one for the response, and fill out the @req region with the
  * respective (app-specific) request data. The QSEE app reads this and returns
  * its response in the @rsp region.
  *
