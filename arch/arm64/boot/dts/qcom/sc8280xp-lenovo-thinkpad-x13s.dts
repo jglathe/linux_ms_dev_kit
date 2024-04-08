@@ -709,10 +709,10 @@
 &gpu {
 	status = "okay";
 
-	zap-shader {
-		memory-region = <&gpu_mem>;
-		firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcdxkmsuc8280.mbn";
-	};
+//	zap-shader {
+//		memory-region = <&gpu_mem>;
+//		firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcdxkmsuc8280.mbn";
+//	};
 };
 
 &mdss0 {
@@ -1842,4 +1842,8 @@
 		drive-strength = <8>;
 		bias-pull-down;
 	};
+};
+
+&pcie_smmu {
+    status = "okay";
 };
