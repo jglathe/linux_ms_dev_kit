@@ -1362,13 +1362,13 @@
 			output-high;
 		};
 
-    swap-pins {
-      pins = "gpio166";
-      function = "gpio";
-      drive-strength = <2>;
-      pull-down;
-      input;
-    };
+		swap-pins {
+			pins = "gpio166";
+			function = "gpio";
+			drive-strength = <2>;
+			pull-down;
+			input;
+		};
 	};
 
 	usb1_sbu_default: usb1-sbu-state {
@@ -1395,13 +1395,13 @@
 			output-high;
 		};
 
-    swap-pins {
-      pins = "gpio49";
-      function = "gpio";
-      drive-strength = <2>;
-      pull-down;
-      input;
-    };
+		swap-pins {
+			pins = "gpio50";
+			function = "gpio";
+			drive-strength = <2>;
+			pull-down;
+			input;
+		};
 	};
 
 	usb2_en_state: usb2-en-state {
