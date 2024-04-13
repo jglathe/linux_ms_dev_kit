@@ -345,6 +345,7 @@
 
 		enable-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
 		select-gpios = <&tlmm 164 GPIO_ACTIVE_HIGH>;
+		swap-gpios = <&tlmm 166 GPIO_ACTIVE_HIGH>;	
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb0_sbu_default>;
@@ -364,6 +365,7 @@
 
 		enable-gpios = <&tlmm 48 GPIO_ACTIVE_LOW>;
 		select-gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+		swap-gpios = <&tlmm 49 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&usb1_sbu_default>;
@@ -1650,6 +1652,22 @@ pm8008_bus: &i2c11 {
 			bias-disable;
 			drive-strength = <16>;
 		};
+
+		mode-pins {
+			pins = "gpio167";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+			output-high;
+		};
+
+		swap-pins {
+			pins = "gpio166";
+			function = "gpio";
+			drive-strength = <2>;
+			pull-down;
+			input;
+		};
 	};
 
 	usb1_sbu_default: usb1-sbu-state {
@@ -1666,6 +1684,22 @@ pm8008_bus: &i2c11 {
 			function = "gpio";
 			bias-disable;
 			drive-strength = <16>;
+		};
+
+		mode-pins {
+			pins = "gpio50";
+			function = "gpio";
+			bias-disable;
+			drive-strength = <16>;
+			output-high;
+		};
+
+		swap-pins {
+			pins = "gpio50";
+			function = "gpio";
+			drive-strength = <2>;
+			pull-down;
+			input;
 		};
 	};
 
