@@ -1177,6 +1177,9 @@ static int ntfs_fill_super(struct super_block *sb, struct fs_context *fc)
 	sb->s_xattr = ntfs_xattr_handlers;
 	sb->s_d_op = options->nocase ? &ntfs_dentry_ops : NULL;
 
+	ntfs_warn(sb, "ntfs3 driver is broken, mounting read only");
+	sb->s_flags |= SB_RDONLY;
+
 	options->nls = ntfs_load_nls(options->nls_name);
 	if (IS_ERR(options->nls)) {
 		options->nls = NULL;
