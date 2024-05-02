@@ -239,7 +239,7 @@ static int qcom_pmic_typec_probe(struct platform_device *pdev)
 	return 0;
 
 port_stop:
-	tcpm->port_stop(tcpm);
+	qcom_pmic_typec_port_stop(tcpm->pmic_typec_port);
 port_unregister:
 	tcpm_unregister_port(tcpm->tcpm_port);
 fwnode_remove:
