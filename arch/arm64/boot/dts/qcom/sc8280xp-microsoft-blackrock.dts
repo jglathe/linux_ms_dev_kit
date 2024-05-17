@@ -18,8 +18,8 @@
 #include "sc8280xp-pmics.dtsi"
 
 / {
-	model = "Microsoft Dev Kit 2023";
-	compatible = "microsoft,dev-kit-2023", "qcom,sc8280xp";
+	model = "Windows Dev Kit 2023";
+	compatible = "microsoft,win-dev-kit-2023", "qcom,sc8280xp";
 
 	aliases {
 		i2c4 = &i2c4;
