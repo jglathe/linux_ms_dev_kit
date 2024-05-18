@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/refcount.h>
+#include <linux/slab.h>
 #include <linux/soc/qcom/qmi.h>
 
 #include "pdr_internal.h"
