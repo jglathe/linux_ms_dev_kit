@@ -4835,7 +4835,8 @@
 			#interrupt-cells = <2>;
 
 			gpio-ranges = <&tlmm 0 0 239>;
-			wakeup-parent = <&pdc>;
+			// FIXME: wakeup-parent breaks HID interrupts
+			//wakeup-parent = <&pdc>;
 
 			qup_i2c0_data_clk: qup-i2c0-data-clk-state {
 				/* SDA, SCL */
