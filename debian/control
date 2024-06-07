@@ -80,7 +80,7 @@ Description: Linux kernel version specific tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools (such as perf and x86_energy_perf_policy) for
  version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
  You probably want to install linux-tools-6.9.3-76060903-<flavour>.
 
 Package: linux-cloud-tools-6.9.3-76060903
@@ -92,7 +92,7 @@ Depends: ${misc:Depends}, ${shlibs:Depends}, linux-cloud-tools-common
 Description: Linux kernel version specific cloud tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools for cloud tools for version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
  You probably want to install linux-cloud-tools-6.9.3-76060903-<flavour>.
 
 # linux-meta {
@@ -257,7 +257,7 @@ Description: Linux kernel specific documentation for version 6.9.3
  compatibility reasons. It will be dropped in the future.
 
 
-Package: linux-image-6.9.3-76060903-generic
+Package: linux-image-unsigned-6.9.3-76060903-generic
 Build-Profiles: <!stage1>
 Architecture: amd64 armhf arm64 ppc64el s390x
 Section: kernel
@@ -266,11 +266,11 @@ Provides: linux-image, fuse-module, kvm-api-4, redhat-cluster-modules, ivtv-modu
 Depends: ${misc:Depends}, ${shlibs:Depends}, kmod, linux-base (>= 4.5ubuntu1~16.04.1), linux-modules-6.9.3-76060903-generic
 Recommends: kernelstub [amd64] | grub-pc [amd64] | grub-efi-amd64 [amd64] | grub-efi-ia32 [amd64] | grub [amd64] | lilo [amd64] | flash-kernel [armhf arm64] | grub-efi-arm64 [arm64] | grub-efi-arm [armhf] | grub-ieee1275 [ppc64el], initramfs-tools | linux-initramfs-tool
 Breaks: flash-kernel (<< 3.90ubuntu2) [arm64 armhf], s390-tools (<< 2.3.0-0ubuntu3) [s390x]
-Conflicts: linux-image-unsigned-6.9.3-76060903-generic
+Conflicts: linux-image-6.9.3-76060903-generic
 Suggests: fdutils, linux-tools, linux-headers-6.9.3-76060903-generic, linux-modules-extra-6.9.3-76060903-generic
-Description: Linux kernel image for version 6.9.3 on 64 bit x86 SMP
- This package contains the Linux kernel image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel image for version 6.9.3 on ARMv8 SMP
+ This package contains the unsigned Linux kernel image for version 6.9.3 on
+ ARMv8 SMP.
  .
  Supports Generic processors.
  .
@@ -287,7 +287,7 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  Contains the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
  unbootable state after an update.
@@ -306,9 +306,9 @@ Architecture: amd64 armhf arm64 ppc64el s390x
 Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}, linux-modules-6.9.3-76060903-generic, wireless-regdb
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel extra modules for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  Also includes the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
@@ -329,9 +329,9 @@ Section: devel
 Priority: optional
 Depends: ${misc:Depends}, linux-headers-6.9.3-76060903, ${shlibs:Depends}
 Provides: linux-headers, linux-headers-3.0
-Description: Linux kernel headers for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel headers for version 6.9.3 on ARMv8 SMP
  This package provides kernel header files for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  This is for sites that want the latest kernel headers.  Please read
  /usr/share/doc/linux-headers-6.9.3-76060903/debian.README.gz for details.
@@ -347,16 +347,16 @@ Description: Rust library files related to Linux kernel version 6.9.3
  This package provides kernel library files for version 6.9.3, that allow to
  compile out-of-tree kernel modules written in Rust.
 
-Package: linux-image-6.9.3-76060903-generic-dbgsym
+Package: linux-image-unsigned-6.9.3-76060903-generic-dbgsym
 Build-Profiles: <!stage1>
 Architecture: amd64 armhf arm64 ppc64el s390x
 Section: devel
 Priority: optional
 Depends: ${misc:Depends}
 Provides: linux-debug
-Description: Linux kernel debug image for version 6.9.3 on 64 bit x86 SMP
- This package provides the kernel debug image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel debug image for version 6.9.3 on ARMv8 SMP
+ This package provides the unsigned kernel debug image for version 6.9.3 on
+ ARMv8 SMP.
  .
  This is for sites that wish to debug the kernel.
  .
@@ -374,7 +374,7 @@ Description: Linux kernel version specific tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools (such as perf and x86_energy_perf_policy) for
  version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 Package: linux-cloud-tools-6.9.3-76060903-generic
 Build-Profiles: <!stage1>
@@ -385,7 +385,7 @@ Depends: ${misc:Depends}, linux-cloud-tools-6.9.3-76060903
 Description: Linux kernel version specific cloud tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools for cloud for version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 
 Package: linux-buildinfo-6.9.3-76060903-generic
@@ -395,14 +395,14 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel buildinfo for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel buildinfo for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel buildinfo for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  You likely do not want to install this package.
 
 
-Package: linux-image-6.9.3-76060903-generic-64k
+Package: linux-image-unsigned-6.9.3-76060903-generic-64k
 Build-Profiles: <!stage1>
 Architecture: arm64
 Section: kernel
@@ -411,11 +411,11 @@ Provides: linux-image, fuse-module, kvm-api-4, redhat-cluster-modules, ivtv-modu
 Depends: ${misc:Depends}, ${shlibs:Depends}, kmod, linux-base (>= 4.5ubuntu1~16.04.1), linux-modules-6.9.3-76060903-generic-64k
 Recommends: grub-efi-arm64 [arm64] | flash-kernel [arm64], initramfs-tools | linux-initramfs-tool
 Breaks: flash-kernel (<< 3.90ubuntu2) [arm64 armhf], s390-tools (<< 2.3.0-0ubuntu3) [s390x]
-Conflicts: linux-image-unsigned-6.9.3-76060903-generic-64k
+Conflicts: linux-image-6.9.3-76060903-generic-64k
 Suggests: fdutils, linux-tools, linux-headers-6.9.3-76060903-generic-64k, linux-modules-extra-6.9.3-76060903-generic-64k
-Description: Linux kernel image for version 6.9.3 on 64 bit x86 SMP
- This package contains the Linux kernel image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel image for version 6.9.3 on ARMv8 SMP
+ This package contains the unsigned Linux kernel image for version 6.9.3 on
+ ARMv8 SMP.
  .
  Supports Generic 64K pages processors.
  .
@@ -432,7 +432,7 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  Contains the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
  unbootable state after an update.
@@ -451,9 +451,9 @@ Architecture: arm64
 Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}, linux-modules-6.9.3-76060903-generic-64k, wireless-regdb
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel extra modules for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  Also includes the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
@@ -474,9 +474,9 @@ Section: devel
 Priority: optional
 Depends: ${misc:Depends}, linux-headers-6.9.3-76060903, ${shlibs:Depends}
 Provides: linux-headers, linux-headers-3.0
-Description: Linux kernel headers for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel headers for version 6.9.3 on ARMv8 SMP
  This package provides kernel header files for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  This is for sites that want the latest kernel headers.  Please read
  /usr/share/doc/linux-headers-6.9.3-76060903/debian.README.gz for details.
@@ -492,16 +492,16 @@ Description: Rust library files related to Linux kernel version 6.9.3
  This package provides kernel library files for version 6.9.3, that allow to
  compile out-of-tree kernel modules written in Rust.
 
-Package: linux-image-6.9.3-76060903-generic-64k-dbgsym
+Package: linux-image-unsigned-6.9.3-76060903-generic-64k-dbgsym
 Build-Profiles: <!stage1>
 Architecture: arm64
 Section: devel
 Priority: optional
 Depends: ${misc:Depends}
 Provides: linux-debug
-Description: Linux kernel debug image for version 6.9.3 on 64 bit x86 SMP
- This package provides the kernel debug image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel debug image for version 6.9.3 on ARMv8 SMP
+ This package provides the unsigned kernel debug image for version 6.9.3 on
+ ARMv8 SMP.
  .
  This is for sites that wish to debug the kernel.
  .
@@ -519,7 +519,7 @@ Description: Linux kernel version specific tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools (such as perf and x86_energy_perf_policy) for
  version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 Package: linux-cloud-tools-6.9.3-76060903-generic-64k
 Build-Profiles: <!stage1>
@@ -530,7 +530,7 @@ Depends: ${misc:Depends}, linux-cloud-tools-6.9.3-76060903
 Description: Linux kernel version specific cloud tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools for cloud for version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 
 Package: linux-buildinfo-6.9.3-76060903-generic-64k
@@ -540,14 +540,14 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel buildinfo for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel buildinfo for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel buildinfo for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  You likely do not want to install this package.
 
 
-Package: linux-image-6.9.3-76060903-generic-lpae
+Package: linux-image-unsigned-6.9.3-76060903-generic-lpae
 Build-Profiles: <!stage1>
 Architecture: armhf
 Section: kernel
@@ -556,11 +556,11 @@ Provides: linux-image, fuse-module, kvm-api-4, redhat-cluster-modules, ivtv-modu
 Depends: ${misc:Depends}, ${shlibs:Depends}, kmod, linux-base (>= 4.5ubuntu1~16.04.1), linux-modules-6.9.3-76060903-generic-lpae
 Recommends: flash-kernel [armhf] | grub-efi-arm [armhf], initramfs-tools | linux-initramfs-tool
 Breaks: flash-kernel (<< 3.90ubuntu2) [arm64 armhf], s390-tools (<< 2.3.0-0ubuntu3) [s390x]
-Conflicts: linux-image-unsigned-6.9.3-76060903-generic-lpae
+Conflicts: linux-image-6.9.3-76060903-generic-lpae
 Suggests: fdutils, linux-tools, linux-headers-6.9.3-76060903-generic-lpae, linux-modules-extra-6.9.3-76060903-generic-lpae
-Description: Linux kernel image for version 6.9.3 on 64 bit x86 SMP
- This package contains the Linux kernel image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel image for version 6.9.3 on ARMv8 SMP
+ This package contains the unsigned Linux kernel image for version 6.9.3 on
+ ARMv8 SMP.
  .
  Supports Generic LPAE processors.
  .
@@ -577,7 +577,7 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  Contains the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
  unbootable state after an update.
@@ -596,9 +596,9 @@ Architecture: armhf
 Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}, linux-modules-6.9.3-76060903-generic-lpae, wireless-regdb
-Description: Linux kernel extra modules for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel extra modules for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel extra modules for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  Also includes the corresponding System.map file, the modules built by the
  packager, and scripts that try to ensure that the system is not left in an
@@ -619,9 +619,9 @@ Section: devel
 Priority: optional
 Depends: ${misc:Depends}, linux-headers-6.9.3-76060903, ${shlibs:Depends}
 Provides: linux-headers, linux-headers-3.0
-Description: Linux kernel headers for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel headers for version 6.9.3 on ARMv8 SMP
  This package provides kernel header files for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  This is for sites that want the latest kernel headers.  Please read
  /usr/share/doc/linux-headers-6.9.3-76060903/debian.README.gz for details.
@@ -637,16 +637,16 @@ Description: Rust library files related to Linux kernel version 6.9.3
  This package provides kernel library files for version 6.9.3, that allow to
  compile out-of-tree kernel modules written in Rust.
 
-Package: linux-image-6.9.3-76060903-generic-lpae-dbgsym
+Package: linux-image-unsigned-6.9.3-76060903-generic-lpae-dbgsym
 Build-Profiles: <!stage1>
 Architecture: armhf
 Section: devel
 Priority: optional
 Depends: ${misc:Depends}
 Provides: linux-debug
-Description: Linux kernel debug image for version 6.9.3 on 64 bit x86 SMP
- This package provides the kernel debug image for version 6.9.3 on
- 64 bit x86 SMP.
+Description: Linux kernel debug image for version 6.9.3 on ARMv8 SMP
+ This package provides the unsigned kernel debug image for version 6.9.3 on
+ ARMv8 SMP.
  .
  This is for sites that wish to debug the kernel.
  .
@@ -664,7 +664,7 @@ Description: Linux kernel version specific tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools (such as perf and x86_energy_perf_policy) for
  version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 Package: linux-cloud-tools-6.9.3-76060903-generic-lpae
 Build-Profiles: <!stage1>
@@ -675,7 +675,7 @@ Depends: ${misc:Depends}, linux-cloud-tools-6.9.3-76060903
 Description: Linux kernel version specific cloud tools for version 6.9.3-76060903
  This package provides the architecture dependant parts for kernel
  version locked tools for cloud for version 6.9.3-76060903 on
- 64 bit x86.
+ ARMv8.
 
 
 Package: linux-buildinfo-6.9.3-76060903-generic-lpae
@@ -685,9 +685,9 @@ Section: kernel
 Priority: optional
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Built-Using: ${linux:BuiltUsing}
-Description: Linux kernel buildinfo for version 6.9.3 on 64 bit x86 SMP
+Description: Linux kernel buildinfo for version 6.9.3 on ARMv8 SMP
  This package contains the Linux kernel buildinfo for version 6.9.3 on
- 64 bit x86 SMP.
+ ARMv8 SMP.
  .
  You likely do not want to install this package.
 
