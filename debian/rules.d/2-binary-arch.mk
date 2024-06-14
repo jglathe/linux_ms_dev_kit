@@ -321,7 +321,7 @@ endif
 	#
 	# NOTE: need to keep this list in sync with postrm
 	#
-	mkdir $(pkgdir)/lib/modules/$(abi_release)-$*/_
+	mkdir -p $(pkgdir)/lib/modules/$(abi_release)-$*/_
 	mv $(pkgdir)/lib/modules/$(abi_release)-$*/modules.order \
 		$(pkgdir)/lib/modules/$(abi_release)-$*/_
 	if [ -f $(pkgdir)/lib/modules/$(abi_release)-$*/modules.builtin ] ; then \
@@ -503,7 +503,7 @@ install-arch-headers:
 	$(call if_package, linux-libc-dev, dh_prep -plinux-libc-dev)
 	rm -rf $(headers_tmp) $(headers_dir)
 	$(kmake) O=$(headers_tmp) INSTALL_HDR_PATH=$(headers_dir)/usr $(conc_level) headers_install
-	mkdir $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)
+	mkdir -p $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)
 	mv $(headers_dir)/usr/include/asm $(headers_dir)/usr/include/$(DEB_HOST_MULTIARCH)/
 	rm -rf $(headers_tmp)
 
