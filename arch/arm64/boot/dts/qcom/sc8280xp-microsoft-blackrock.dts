@@ -371,7 +371,7 @@
 			regulator-min-microvolt = <1880000>;
 			regulator-max-microvolt = <1900000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;		
+			regulator-always-on;
 		};
 
 		vreg_l1c: ldo1 {
@@ -431,7 +431,7 @@
 			regulator-min-microvolt = <3008000>;
 			regulator-max-microvolt = <3960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_AUTO>;
-			regulator-always-on;		
+			regulator-always-on;
 		};
 	};
 
@@ -536,7 +536,7 @@
 };
 
 &mdss0_dp0_out {
-	data-lanes = <0 1>;
+	data-lanes = <0 1 2 3>;
 	remote-endpoint = <&usb_0_qmpphy_dp_in>;
 };
 
@@ -545,7 +545,7 @@
 };
 
 &mdss0_dp1_out {
-	data-lanes = <0 1>;
+	data-lanes = <0 1 2 3>;
 	remote-endpoint = <&usb_1_qmpphy_dp_in>;
 };
 
@@ -1021,6 +1021,7 @@
 	vdda-pll-supply = <&vreg_l9d>;
 	pll-supply = <&vreg_l9d>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -1062,6 +1063,7 @@
 	vdda-pll-supply = <&vreg_l4b>;
 	pll-supply = <&vreg_l4b>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
