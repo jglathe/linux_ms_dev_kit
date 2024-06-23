@@ -1,6 +1,6 @@
-linux (6.9.4-060904.202406120638) oracular; urgency=low
+linux (6.9.6-060906.202406221942) oracular; urgency=low
 
-  Mainline build at commit: v6.9.4
+  Mainline build at commit: v6.9.6
 
- -- Mainline Build <kernel@gloin>  Wed, 12 Jun 2024 06:38:33 -0400
+ -- Mainline Build <jglathe@grinder>  Wed, 22 Jun 2024 21:42:00 -0200
 
