@@ -1,3 +1,9 @@
+linux (6.9.6-060906-el2.202406221942) oracular; urgency=low
+
+  * build for el2-prepared targets
+
+ -- Disgruntled X User <jglathe@sdbox2>  Mon, 24 Jun 2024 08:18:47 +0200
+
 linux (6.9.6-060906.202406221942) oracular; urgency=low
 
   Mainline build at commit: v6.9.6
