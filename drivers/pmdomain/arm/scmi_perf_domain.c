@@ -18,6 +18,7 @@ struct scmi_perf_domain {
 	const struct scmi_perf_proto_ops *perf_ops;
 	const struct scmi_protocol_handle *ph;
 	const struct scmi_perf_domain_info *info;
+	char domain_name[SCMI_MAX_STR_SIZE];
 	u32 domain_id;
 };
 
@@ -123,7 +124,12 @@ static int scmi_perf_domain_probe(struct scmi_device *sdev)
 		scmi_pd->domain_id = i;
 		scmi_pd->perf_ops = perf_ops;
 		scmi_pd->ph = ph;
-		scmi_pd->genpd.name = scmi_pd->info->name;
+
+		/* Domain attributes can report identical names across domains */
+		snprintf(scmi_pd->domain_name, sizeof(scmi_pd->domain_name), "%s-%d",
+			 scmi_pd->info->name, scmi_pd->domain_id);
+
+		scmi_pd->genpd.name = scmi_pd->domain_name;
 		scmi_pd->genpd.flags = GENPD_FLAG_ALWAYS_ON |
 				       GENPD_FLAG_OPP_TABLE_FW;
 		scmi_pd->genpd.set_performance_state = scmi_pd_set_perf_state;
