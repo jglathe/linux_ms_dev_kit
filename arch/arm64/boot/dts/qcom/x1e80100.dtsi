@@ -2919,6 +2919,7 @@
 
 			linux,pci-domain = <6>;
 			num-lanes = <2>;
+			max-link-speed = <4>;
 
 			interrupts = <GIC_SPI 773 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 774 IRQ_TYPE_LEVEL_HIGH>,
