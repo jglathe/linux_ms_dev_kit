@@ -88,14 +88,14 @@ void qcom_pcie_cmn_set_16gt_rx_margining_settings(struct dw_pcie *pci)
 }
 EXPORT_SYMBOL_GPL(qcom_pcie_cmn_set_16gt_rx_margining_settings);
 
-int qcom_pcie_cmn_icc_get_resource(struct dw_pcie *pci, struct icc_path *icc_mem)
+int qcom_pcie_cmn_icc_get_resource(struct dw_pcie *pci, struct icc_path **icc_mem)
 {
 	if (IS_ERR(pci))
 		return PTR_ERR(pci);
 
-	icc_mem = devm_of_icc_get(pci->dev, "pcie-mem");
-	if (IS_ERR(icc_mem))
-		return PTR_ERR(icc_mem);
+	*icc_mem = devm_of_icc_get(pci->dev, "pcie-mem");
+	if (IS_ERR(*icc_mem))
+		return PTR_ERR(*icc_mem);
 
 	return 0;
 }
