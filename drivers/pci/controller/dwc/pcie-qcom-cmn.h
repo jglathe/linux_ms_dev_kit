@@ -21,7 +21,7 @@
 #define MARGINING_SAMPLE_RATE_TIMING_VAL	0x3f
 #define MARGINING_SAMPLE_RATE_VOLTAGE_VAL	0x3f
 
-int qcom_pcie_cmn_icc_get_resource(struct dw_pcie *pci, struct icc_path *icc_mem);
+int qcom_pcie_cmn_icc_get_resource(struct dw_pcie *pci, struct icc_path **icc_mem);
 int qcom_pcie_cmn_icc_init(struct dw_pcie *pci, struct icc_path *icc_mem);
 void qcom_pcie_cmn_icc_update(struct dw_pcie *pci, struct icc_path *icc_mem);
 void qcom_pcie_cmn_set_16gt_eq_settings(struct dw_pcie *pci);
