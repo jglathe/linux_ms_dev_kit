@@ -569,7 +569,8 @@
 
 &pcie2a {
 	aspm-no-l0s;
-
+	max-link-speed = <16>;
+	
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
 
