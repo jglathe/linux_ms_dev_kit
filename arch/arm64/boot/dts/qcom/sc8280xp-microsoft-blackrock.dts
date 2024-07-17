@@ -284,10 +284,6 @@
 	};
 };
 
-&gpu_smmu {
-	status = "okay";
-};
-
 &apps_rsc {
 	regulators-0 {
 		compatible = "qcom,pm8350-rpmh-regulators";
@@ -512,10 +508,6 @@
 	status = "okay";
 };
 
-&gmu {
-	status = "okay";
-};
-
 &gpu {
 	status = "okay";
 
@@ -523,10 +515,6 @@
 		memory-region = <&gpu_mem>;
 		firmware-name = "qcom/sc8280xp/MICROSOFT/DEVKIT23/qcdxkmsuc8280.mbn";
 	};
-};
-
-&gpucc {
-	status = "okay";
 };
 
 &mdss0 {
@@ -1085,58 +1073,58 @@
 };
 
 &usb_2_hsphy0 {
-	vdda-pll-supply = <&vreg_l9d>;
+	vdda-pll-supply = <&vreg_l1b>;
 	vdda-phy-supply = <&vreg_l3d>;
 	phy-supply = <&vreg_l3d>;
-	vdda18-supply = <&vreg_l12c>;
-	vdda33-supply = <&vreg_l13c>;
+	vdda18-supply = <&vreg_l1c>;
+	vdda33-supply = <&vreg_l7d>;
 
 	status = "okay";
 };
 
 &usb_2_hsphy1 {
-	vdda-pll-supply = <&vreg_l9d>;
+	vdda-pll-supply = <&vreg_l8d>;
 	vdda-phy-supply = <&vreg_l3d>;
 	phy-supply = <&vreg_l3d>;
-	vdda18-supply = <&vreg_l12c>;
-	vdda33-supply = <&vreg_l13c>;
+	vdda18-supply = <&vreg_l1c>;
+	vdda33-supply = <&vreg_l7d>;
 
 	status = "okay";
 };
 
 &usb_2_hsphy2 {
-	vdda-pll-supply = <&vreg_l9d>;
+	vdda-pll-supply = <&vreg_l10d>;
 	vdda-phy-supply = <&vreg_l3d>;
 	phy-supply = <&vreg_l3d>;
-	vdda18-supply = <&vreg_l12c>;
-	vdda33-supply = <&vreg_l13c>;
+	vdda18-supply = <&vreg_l8c>;
+	vdda33-supply = <&vreg_l2d>;
 
 	status = "okay";
 };
 
 &usb_2_hsphy3 {
-	vdda-pll-supply = <&vreg_l9d>;
+	vdda-pll-supply = <&vreg_l10d>;
 	vdda-phy-supply = <&vreg_l3d>;
 	phy-supply = <&vreg_l3d>;
-	vdda18-supply = <&vreg_l12c>;
-	vdda33-supply = <&vreg_l13c>;
+	vdda18-supply = <&vreg_l8c>;
+	vdda33-supply = <&vreg_l2d>;
 
 	status = "okay";
 };
 
 &usb_2_qmpphy0 {
-	vdda-phy-supply = <&vreg_l3d>;
-	phy-supply = <&vreg_l3d>;
-	vdda-pll-supply = <&vreg_l9d>;
-	pll-supply = <&vreg_l9d>;
+	vdda-phy-supply = <&vreg_l1b>;
+	phy-supply = <&vreg_l1b>;
+	vdda-pll-supply = <&vreg_l4d>;
+	pll-supply = <&vreg_l4d>;
 	status = "okay";
 };
 
 &usb_2_qmpphy1 {
-	vdda-phy-supply = <&vreg_l3d>;
-	phy-supply = <&vreg_l3d>;
-	vdda-pll-supply = <&vreg_l9d>;
-	pll-supply = <&vreg_l9d>;
+	vdda-phy-supply = <&vreg_l8d>;
+	phy-supply = <&vreg_l8d>;
+	vdda-pll-supply = <&vreg_l4d>;
+	pll-supply = <&vreg_l4d>;
 	status = "okay";
 };
 
