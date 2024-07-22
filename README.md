@@ -1,51 +1,24 @@
-Current tip of the development: [jg/blackrock-v6.7.y](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/blackrock-v6.7.y), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
+Current tip of the development: [jg/ubuntu-blackrock-v6.10.y](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/ubuntu-blackrock-v6.10.y), now based on [steev/linux](https://github.com/steev/linux/), cross checked against [jhovold/linux](https://github.com/jhovold/linux.git) and [torvalds/linux](https://github.com/torvalds/linux.git)
 
 # **Recent Changes**
-* [Gunyah Hypervior](https://github.com/quic/gunyah-hypervisor) support is backed out again. My assumptions didn't hold, Gunyah is not relevant on this platform.
-* Power Management issues are resolved as it seems, having a clean and hardware-bound Windows installation on the local SSD appears to be required. I observed that you can repair unruly fan behaviour by booting into Windows, and afterwards rebooting to Linux. Still investigating to find the actual binding. Fan speed readout would be nice, too :grin:
-* DP suspend/resume behaviour has improved, even suspend/resume on my very odd Iiyama ProLite X83288UHSU works now - most of the time without changing VTs.
-* Display via USB-C works, actually. But only on USB-C #0 (the rearmost socket). With a display on USB-C #1 it won't boot (some BIOS stuff) or get a signal later. The mode used is USB-C alt mode (DP over USB-C) which has only one lane left for USB bus operation, limiting speeds to USB-2.
-* Docker and LXD both working nicely.
-* Bluetooth now has a default MAC address set up via the dtb - quite an improvement, it can now work out of the box. To get a unique MAC (the one stored in the machine is unknown) you can use [bootmac](https://gitlab.com/jglathe/bootmac/-/commits/jg/wdk2023) started from crontab. This should be in `/var/spool/cron/crontabs/root`, my command line is `@reboot sleep 7 && /usr/bin/bootmac -b -p AD5A`.
+* Build system has changed to Ubuntu-Mainline, including devkit_defconfig adapted to Ubuntu distro standards. Latest is 6.10.0, working nicely.
+* There is a branch for [el2](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/ubuntu-el2-blackrock-v6.10.y) (providing /dev/kvm suport), running 24/7 on another wdk.
+* There is also a branch for [pop-os](https://github.com/jglathe/linux_ms_dev_kit/tree/jg/pop-blackrock-v6.10.y) using the pop build system. Since 24.04 is still pre-alpha, running when I want to see the state of things 😁 I also have a tree for the [ISO builder](https://github.com/jglathe/pop-os-iso/tree/jg/arm64-x13s), giving a bootable installer ISO for Pop!_OS.
+* flash-kernel is now supported. Windows Dev Kit 2023 is not in the database, the required entries are in the [wdk2023-syshacks](https://github.com/jglathe/wdk2023_syshacks) repository. This works really well IMO, it makes you forget that there is some dtb handling required.It also works in combination with grub and systemd-boot (although systemd-bootmight be quite a PITA on the WDK).
+* Wireless (WCN6855) firmware has been [updated](https://github.com/jglathe/wdk2023_syshacks/tree/wlan) to .41, with a new board-2.bin to also include a working calibration set for the WDK. This is newer than what linux-firmware has. I'm trying to get the calibration upstream. 
 
 # **Bootable Image**
-A bootable image can be downloaded [here](https://drive.google.com/drive/folders/1sc_CpqOMTJNljfvRyLG-xdwB0yduje_O?usp=sharing). Some more details are in [this discussion](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-6907710). Now that the WDK is bootable from an USB stick (or SSD) I will take the previous tutorial on booting up the WDK with Linux offline. It will be replaced with a tutorial on how to install on SSD soon. [There is a short description on how to do this with the image.](https://github.com/linux-surface/surface-pro-x/issues/43#issuecomment-1705395207) I would recommend to read the discussions, though, before embarking on the install on the local SSD. Especially [here](https://github.com/jglathe/linux_ms_dev_kit/discussions/1#discussioncomment-7038835) regarding USB-C support.
+Preinstalled desktop images live [here](https://drive.google.com/drive/folders/1sc_CpqOMTJNljfvRyLG-xdwB0yduje_O?usp=drive_link). The latest is Ubuntu 24.04 with kernel 6.10 for wdk2023. Sometimes images for the Lenovo Thinkpad X13s are available, too. They can be written with the disks utility or Balena Etcher or Rufus (or dd for the adventurous) onto an USB stick or external SSD, and booted. 
 
-# **How to build and install your own kernel when you're up and running on the WDK2023**
-To build the kernel, you need to install the necessary tools:
+There are some special properties:
 
-`sudo apt install git bc bison flex libssl-dev make libc6-dev libncurses5-dev build-essential`
+- The first boot will try to [copy](https://github.com/jglathe/wdk2023_fw_fetch) device-specific firmwares (*8280.mbn) from the Windows installation of the internal nvme if it is accessible. Aferwards, it reboots once.
+- The image comes up with the Ubiquity installer. Should work well enough.
 
-Next, clone the git repo, check out the desired branch. In the example I use `jg/wdk2023-6.5.4`:
+The image is tested for the use case that the local Windows installation is accessible, might balk a lot if this is not the case. For operation reasons I would recommend to keep the installation. It helps with resetting the power management after a failed boot with Linux, and you get the newest firmware when available through Windows Update.
 
-you@yourwdk:~/src$ `git clone --branch jg/wdk2023-6.5.4 https://github.com/jglathe/linux_ms_dev_kit.git`
-
-Before compiling you need to configure for the wdk target. steev/linux maintains its own laptop_defconfig, which is IMO better fitting. I'm out of my depth with this config thing.
-
-you@yourwdk:~/src/linux_ms_dev_kit.git$ `make -j8 laptop_config`
-
-This generates a .config file with the configuration for the kernel to build. Afterwards, you can change the configuration with `make menuconfig`. The .config always appends a '+' for a locally compiled kernel, so the version would be `6.5.4+`.
-
-Time for doing changes / hacking.
-
-Afterwards, compile the kernel: `time make -j8 Image.gz dtbs modules`
-'time' just measures how long it takes, I find it useful. A full run should take ~25mins. This command builds all we need to do an install.
-
-The actual installation is a few steps:
-
-- If it's a new kernel version, we need to create the dtb target path: `sudo mkdir -p /boot/dtbs/6.5.4+/`.
-- copy the dtb to the target path: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo cp arch/arm64/boot/dts/qcom/sc8280xp-microsoft-dev-kit-2023.dtb /boot/dtb-6.5.4+/`
-- if it doesn't exist yet, we need to set a symlink named `dtb-<version>` to the dtb
-```
-cd /boot
-sudo ln -s dtbs/6.5.4+/sc8280xp-microsoft-dev-kit-2023.dtb dtb-6.5.4+
-```
-- install the kernel modules: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo make -j8 modules_install`
-- finally, install the kernel. This will invoke install scripts which also updates grub: you@yourwdk:~/src/linux_ms_dev_kit.git$ `sudo make install`
-
-On the next reboot, you can boot the new kernel.
-
-If you're stuck and need to clean up, this command is helpful: you@yourwdk:~/src/linux_ms_dev_kit.git$ `make -j8 mrproper`
+# **Kernel packages**
+Since installing / removing kernels is now only a use of apt and dpkg, pre-built package sets are available [here](https://drive.google.com/drive/folders/1Lps5o3FXroAJFDiKj18vutJbC1uld49s?usp=drive_link). I publish them occasionally, after some testing here.
 
 ## **Acknowledgements**
 The original tutorial from @chenguokai can be found [here](https://github.com/chenguokai/chenguokai/blob/master/tutorial-dev-kit-linux.md)
