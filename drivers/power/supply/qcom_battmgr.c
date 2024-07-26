@@ -322,6 +322,10 @@ static int qcom_battmgr_request(struct qcom_battmgr *battmgr, void *data, size_t
 
 	battmgr->error = 0;
 
+	if (!battmgr->client) {
+			printk(KERN_ERR "battmgr->client is NULL");
+			return -EINVAL; 
+	}
 	ret = pmic_glink_send(battmgr->client, data, len);
 	if (ret < 0)
 		return ret;
