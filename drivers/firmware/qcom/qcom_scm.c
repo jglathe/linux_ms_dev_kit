@@ -1669,9 +1669,9 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_get_id);
 /**
  * qcom_scm_qseecom_app_send() - Send to and receive data from a given QSEE app.
  * @app_id:   The ID of the target app.
- * @req:      Request buffer sent to the app (must be TZ memory)
+ * @req:      DMA address of the request buffer sent to the app.
  * @req_size: Size of the request buffer.
- * @rsp:      Response buffer, written to by the app (must be TZ memory)
+ * @rsp:      DMA address of the response buffer, written to by the app.
  * @rsp_size: Size of the response buffer.
  *
  * Sends a request to the QSEE app associated with the given ID and read back
@@ -1682,17 +1682,12 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_get_id);
  *
  * Return: Zero on success, nonzero on failure.
  */
-int qcom_scm_qseecom_app_send(u32 app_id, void *req, size_t req_size,
-			      void *rsp, size_t rsp_size)
+int qcom_scm_qseecom_app_send(u32 app_id, dma_addr_t req, size_t req_size,
+			      dma_addr_t rsp, size_t rsp_size)
 {
 	struct qcom_scm_qseecom_resp res = {};
 	struct qcom_scm_desc desc = {};
-	phys_addr_t req_phys;
-	phys_addr_t rsp_phys;
 	int status;
-
-	req_phys = qcom_tzmem_to_phys(req);
-	rsp_phys = qcom_tzmem_to_phys(rsp);
 
 	desc.owner = QSEECOM_TZ_OWNER_TZ_APPS;
 	desc.svc = QSEECOM_TZ_SVC_APP_ID_PLACEHOLDER;
@@ -1701,9 +1696,9 @@ int qcom_scm_qseecom_app_send(u32 app_id, void *req, size_t req_size,
 				     QCOM_SCM_RW, QCOM_SCM_VAL,
 				     QCOM_SCM_RW, QCOM_SCM_VAL);
 	desc.args[0] = app_id;
-	desc.args[1] = req_phys;
+	desc.args[1] = req;
 	desc.args[2] = req_size;
-	desc.args[3] = rsp_phys;
+	desc.args[3] = rsp;
 	desc.args[4] = rsp_size;
 
 	status = qcom_scm_qseecom_call(&desc, &res);
