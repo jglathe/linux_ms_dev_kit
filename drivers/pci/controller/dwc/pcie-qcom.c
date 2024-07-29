@@ -1639,7 +1639,7 @@ err_pm_runtime_put:
 	return ret;
 }
 
-static int qcom_pcie_remove(struct platform_device *pdev)
+static void qcom_pcie_remove(struct platform_device *pdev)
 {
 	struct qcom_pcie *pcie = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
@@ -1652,8 +1652,6 @@ static int qcom_pcie_remove(struct platform_device *pdev)
 
 	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
-
-	return 0;
 }
 
 static int qcom_pcie_suspend_noirq(struct device *dev)
