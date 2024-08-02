@@ -4306,6 +4306,7 @@ CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': 'y', 'arm64-gen
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y', 'armhf': 'y'}>
+CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64-generic': 'n', 'arm64-generic-64k': 'y', 'armhf': 'y'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_NOUVEAU                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
@@ -11217,7 +11218,7 @@ CONFIG_RESET_A10SR                              policy<{'arm64': 'm', 'arm64-gen
 CONFIG_RESET_ATTACK_MITIGATION                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'riscv64': 'y'}>
 CONFIG_RESET_BERLIN                             policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y'}>
 CONFIG_RESET_CONTROLLER                         policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'n'}>
-CONFIG_RESET_GPIO                               policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
+CONFIG_RESET_GPIO                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_RESET_HISI                               policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y'}>
 CONFIG_RESET_IMX7                               policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y'}>
 CONFIG_RESET_IMX8MP_AUDIOMIX                    policy<{'arm64-generic-64k': 'm', 'armhf': 'm'}>
