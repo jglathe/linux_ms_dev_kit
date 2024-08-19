@@ -171,6 +171,9 @@ CONFIG_DRM_AMDGPU_CIK                           note<'for zesty'>
 CONFIG_DRM_I915_REPLAY_GPU_HANGS_API            policy<{'amd64': 'n'}>
 CONFIG_DRM_I915_REPLAY_GPU_HANGS_API            note<'Only useful for upstream developers'>
 
+CONFIG_DRM_I915_REPLAY_GPU_HANGS_API            policy<{'amd64': 'n'}>
+CONFIG_DRM_I915_REPLAY_GPU_HANGS_API            note<'Only useful for upstream developers'>
+
 CONFIG_DRM_MGAG200                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
 CONFIG_DRM_MGAG200                              note<'LP: #1693337'>
 
