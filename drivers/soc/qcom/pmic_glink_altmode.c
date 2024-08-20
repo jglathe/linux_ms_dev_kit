@@ -520,7 +520,7 @@ static int pmic_glink_altmode_probe(struct auxiliary_device *adev,
 			return ret;
 	}
 
-	altmode->client = devm_pmic_glink_new_client(dev,
+	altmode->client = devm_pmic_glink_client_alloc(dev,
 						     altmode->owner_id,
 						     pmic_glink_altmode_callback,
 						     pmic_glink_altmode_pdr_notify,
@@ -528,7 +528,7 @@ static int pmic_glink_altmode_probe(struct auxiliary_device *adev,
 	if (IS_ERR(altmode->client))
 		return PTR_ERR(altmode->client);
 
-	pmic_glink_register_client(altmode->client);
+	pmic_glink_client_register(altmode->client);
 
 	return 0;
 }

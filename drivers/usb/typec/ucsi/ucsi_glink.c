@@ -68,9 +68,6 @@ struct pmic_glink_ucsi {
 
 	struct work_struct notify_work;
 	struct work_struct register_work;
-	spinlock_t state_lock;
-	bool ucsi_registered;
-	bool pd_running;
 
 	u8 read_buf[UCSI_BUF_SIZE];
 };
@@ -247,20 +244,8 @@ static void pmic_glink_ucsi_notify(struct work_struct *work)
 static void pmic_glink_ucsi_register(struct work_struct *work)
 {
 	struct pmic_glink_ucsi *ucsi = container_of(work, struct pmic_glink_ucsi, register_work);
-	unsigned long flags;
-	bool pd_running;
 
-	spin_lock_irqsave(&ucsi->state_lock, flags);
-	pd_running = ucsi->pd_running;
-	spin_unlock_irqrestore(&ucsi->state_lock, flags);
-
-	if (!ucsi->ucsi_registered && pd_running) {
-		ucsi_register(ucsi->ucsi);
-		ucsi->ucsi_registered = true;
-	} else if (ucsi->ucsi_registered && !pd_running) {
-		ucsi_unregister(ucsi->ucsi);
-		ucsi->ucsi_registered = false;
-	}
+	ucsi_register(ucsi->ucsi);
 }
 
 static void pmic_glink_ucsi_callback(const void *data, size_t len, void *priv)
@@ -284,12 +269,11 @@ static void pmic_glink_ucsi_callback(const void *data, size_t len, void *priv)
 static void pmic_glink_ucsi_pdr_notify(void *priv, int state)
 {
 	struct pmic_glink_ucsi *ucsi = priv;
-	unsigned long flags;
 
-	spin_lock_irqsave(&ucsi->state_lock, flags);
-	ucsi->pd_running = state == SERVREG_SERVICE_STATE_UP;
-	spin_unlock_irqrestore(&ucsi->state_lock, flags);
-	schedule_work(&ucsi->register_work);
+	if (state == SERVREG_SERVICE_STATE_UP)
+		schedule_work(&ucsi->register_work);
+	else if (state == SERVREG_SERVICE_STATE_DOWN)
+		ucsi_unregister(ucsi->ucsi);
 }
 
 static void pmic_glink_ucsi_destroy(void *data)
@@ -336,7 +320,6 @@ static int pmic_glink_ucsi_probe(struct auxiliary_device *adev,
 	INIT_WORK(&ucsi->register_work, pmic_glink_ucsi_register);
 	init_completion(&ucsi->read_ack);
 	init_completion(&ucsi->write_ack);
-	spin_lock_init(&ucsi->state_lock);
 	mutex_init(&ucsi->lock);
 
 	ucsi->ucsi = ucsi_create(dev, &pmic_glink_ucsi_ops);
@@ -384,14 +367,14 @@ static int pmic_glink_ucsi_probe(struct auxiliary_device *adev,
 		ucsi->port_orientation[port] = desc;
 	}
 
-	ucsi->client = devm_pmic_glink_new_client(dev, PMIC_GLINK_OWNER_USBC,
+	ucsi->client = devm_pmic_glink_client_alloc(dev, PMIC_GLINK_OWNER_USBC,
 						  pmic_glink_ucsi_callback,
 						  pmic_glink_ucsi_pdr_notify,
 						  ucsi);
 	if (IS_ERR(ucsi->client))
 		return PTR_ERR(ucsi->client);
 
-	pmic_glink_register_client(ucsi->client);
+	pmic_glink_client_register(ucsi->client);
 
 	return 0;
 }
