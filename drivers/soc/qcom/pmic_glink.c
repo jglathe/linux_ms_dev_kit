@@ -66,11 +66,11 @@ static void _devm_pmic_glink_release_client(struct device *dev, void *res)
 	spin_unlock_irqrestore(&pg->client_lock, flags);
 }
 
-struct pmic_glink_client *devm_pmic_glink_new_client(struct device *dev,
-						     unsigned int id,
-						     void (*cb)(const void *, size_t, void *),
-						     void (*pdr)(void *, int),
-						     void *priv)
+struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
+						       unsigned int id,
+						       void (*cb)(const void *, size_t, void *),
+						       void (*pdr)(void *, int),
+						       void *priv)
 {
 	struct pmic_glink_client *client;
 	struct pmic_glink *pg = dev_get_drvdata(dev->parent);
@@ -90,9 +90,9 @@ struct pmic_glink_client *devm_pmic_glink_new_client(struct device *dev,
 
 	return client;
 }
-EXPORT_SYMBOL_GPL(devm_pmic_glink_new_client);
+EXPORT_SYMBOL_GPL(devm_pmic_glink_client_alloc);
 
-void pmic_glink_register_client(struct pmic_glink_client *client)
+void pmic_glink_client_register(struct pmic_glink_client *client)
 {
 	struct pmic_glink *pg = client->pg;
 	unsigned long flags;
@@ -107,21 +107,13 @@ void pmic_glink_register_client(struct pmic_glink_client *client)
 	mutex_unlock(&pg->state_lock);
 
 }
-EXPORT_SYMBOL_GPL(pmic_glink_register_client);
+EXPORT_SYMBOL_GPL(pmic_glink_client_register);
 
 int pmic_glink_send(struct pmic_glink_client *client, void *data, size_t len)
 {
 	struct pmic_glink *pg = client->pg;
-	int ret;
 
-	mutex_lock(&pg->state_lock);
-	if (!pg->ept)
-		ret = -ECONNRESET;
-	else
-		ret = rpmsg_send(pg->ept, data, len);
-	mutex_unlock(&pg->state_lock);
-
-	return ret;
+	return rpmsg_send(pg->ept, data, len);
 }
 EXPORT_SYMBOL_GPL(pmic_glink_send);
 
