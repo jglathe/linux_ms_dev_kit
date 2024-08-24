@@ -1,6 +1,6 @@
 human_arch	= ARMv8
 build_arch	= arm64
-defconfig	= defconfig
+defconfig	= devkit_defconfig
 flavours	= generic
 build_image	= Image.gz
 kernel_file	= arch/$(build_arch)/boot/Image.gz
