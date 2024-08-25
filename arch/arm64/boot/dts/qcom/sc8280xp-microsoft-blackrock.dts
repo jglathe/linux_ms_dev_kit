@@ -1145,6 +1145,10 @@
 	status = "okay";
 };
 
+&camcc {
+	status = "disabled";	
+};
+
 &wsamacro {
 	status = "okay";
 };
