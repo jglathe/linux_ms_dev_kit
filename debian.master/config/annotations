@@ -10866,6 +10866,7 @@ CONFIG_RAID6_PQ_BENCHMARK                       policy<{'amd64': 'y', 'arm64': '
 CONFIG_RAID_ATTRS                               policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'm'}>
 CONFIG_RANDOM32_SELFTEST                        policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
 CONFIG_RANDOMIZE_BASE                           policy<{'amd64': 'y', 'arm64': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_RANDOMIZE_IDENTITY_BASE                  policy<{'s390x': 'n'}>
 CONFIG_RANDOMIZE_KSTACK_OFFSET                  policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
 CONFIG_RANDOMIZE_KSTACK_OFFSET_DEFAULT          policy<{'amd64': 'y', 'arm64': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
 CONFIG_RANDOMIZE_MEMORY                         policy<{'amd64': 'y'}>
@@ -11836,17 +11837,17 @@ CONFIG_SCTP_DEFAULT_COOKIE_HMAC_NONE            policy<{'amd64': 'n', 'arm64': '
 CONFIG_SCTP_DEFAULT_COOKIE_HMAC_SHA1            policy<{'amd64': 'y', 'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
 CONFIG_SC_CAMCC_7180                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_CAMCC_7280                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SC_CAMCC_8280XP                          policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
+CONFIG_SC_CAMCC_8280XP                          policy<{'arm64': 'm', 'armhf': '-'}>
 CONFIG_SC_DISPCC_7180                           policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_DISPCC_7280                           policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SC_DISPCC_8280XP                         policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SC_DISPCC_8280XP                         policy<{'arm64': 'm', 'armhf': '-'}>
 CONFIG_SC_GCC_7180                              policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_GCC_7280                              policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_GCC_8180X                             policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_GCC_8280XP                            policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
 CONFIG_SC_GPUCC_7180                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_GPUCC_7280                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SC_GPUCC_8280XP                          policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SC_GPUCC_8280XP                          policy<{'arm64': 'm', 'armhf': '-'}>
 CONFIG_SC_LPASSCC_7280                          policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SC_LPASSCC_8280XP                        policy<{'arm64': 'm'}>
 CONFIG_SC_LPASS_CORECC_7180                     policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
@@ -11855,15 +11856,15 @@ CONFIG_SC_VIDEOCC_7180                          policy<{'arm64': 'm', 'arm64-gen
 CONFIG_SC_VIDEOCC_7280                          policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDIO_UART                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': '-'}>
 CONFIG_SDMA_VERBOSITY                           policy<{'amd64': 'n'}>
-CONFIG_SDM_CAMCC_845                            policy<{'arm64': 'm', 'armhf': '-'}>
-CONFIG_SDM_DISPCC_845                           policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SDM_CAMCC_845                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
+CONFIG_SDM_DISPCC_845                           policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDM_GCC_660                              policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SDM_GCC_845                              policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SDM_GCC_845                              policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDM_GPUCC_660                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SDM_GPUCC_845                            policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SDM_GPUCC_845                            policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDM_LPASSCC_845                          policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDM_MMCC_660                             policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
-CONFIG_SDM_VIDEOCC_845                          policy<{'arm64': 'm', 'arm64-generic': 'y', 'armhf': '-'}>
+CONFIG_SDM_VIDEOCC_845                          policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': '-'}>
 CONFIG_SDR_MAX2175                              policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_SDR_PLATFORM_DRIVERS                     policy<{'amd64': 'y', 'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
 CONFIG_SDX_GCC_55                               policy<{'arm64': '-', 'armhf': 'm'}>
