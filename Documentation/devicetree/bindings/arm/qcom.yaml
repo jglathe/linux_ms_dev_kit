@@ -812,6 +812,7 @@ properties:
               - lenovo,thinkpad-x13s
               - qcom,sc8280xp-crd
               - qcom,sc8280xp-qrd
+              - microsoft,blackrock
           - const: qcom,sc8280xp
 
       - items:
