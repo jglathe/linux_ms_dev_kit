@@ -2604,6 +2604,8 @@
 			#clock-cells = <1>;
 			#phy-cells = <1>;
 
+			orientation-switch;
+
 			status = "disabled";
 
 			ports {
@@ -2672,6 +2674,8 @@
 			#clock-cells = <1>;
 			#phy-cells = <1>;
 
+			orientation-switch;
+
 			status = "disabled";
 
 			ports {
@@ -2739,6 +2743,8 @@
 
 			#clock-cells = <1>;
 			#phy-cells = <1>;
+
+			orientation-switch;
 
 			status = "disabled";
 
