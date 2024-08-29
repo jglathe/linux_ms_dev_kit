@@ -4176,6 +4176,8 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 			#power-domain-cells = <1>;
+
+			status = "disabled";
 		};
 
 		mdss0: display-subsystem@ae00000 {
