@@ -1,8 +1,8 @@
-linux (6.11.0-061100rc5.1-x1e.20240825190711) oracular; urgency=low
+linux (6.11.0-061100rc5.1-el2-x1e.20240825190711) oracular; urgency=low
 
   Mainline build at commit: v6.11.0-rc5 Sun Aug 25 19:07:11 2024 +1200
 
- -- Mainline Build <jens.glathe@oldschoolsolutions.biz>  Tue Aug 26 14:36:00 2024 +0200
+ -- Mainline Build <jens.glathe@oldschoolsolutions.biz>  Tue Aug 31 20:28:00 2024 +0200
  -- added changes from jhovold/wip/sc8280xp-6.11-rc5 and jhovold/wip/x1e80100-6.11-rc5
 
 
