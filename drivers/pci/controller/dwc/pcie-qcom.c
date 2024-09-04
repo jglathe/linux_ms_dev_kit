@@ -36,6 +36,7 @@
 
 #include "../../pci.h"
 #include "pcie-designware.h"
+#include "pcie-qcom-common.h"
 
 /* PARF registers */
 #define PARF_SYS_CTRL				0x00
@@ -284,6 +285,9 @@ static void qcom_ep_reset_deassert(struct qcom_pcie *pcie)
 static int qcom_pcie_start_link(struct dw_pcie *pci)
 {
 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+
+	if (pcie_link_speed[pci->max_link_speed] == PCIE_SPEED_16_0GT)
+		qcom_pcie_common_set_16gt_eq_settings(pci);
 
 	/* Enable Link Training state machine */
 	if (pcie->cfg->ops->ltssm_enable)
