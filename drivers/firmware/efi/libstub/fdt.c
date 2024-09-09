@@ -328,7 +328,7 @@ efi_status_t allocate_new_fdt_and_exit_boot(void *handle,
 		return EFI_SUCCESS;
 	}
 
-	efi_err("Exit boot services failed.\n");
+	efi_err("Exit boot services failed: 0x%x\n", status);
 
 fail_free_new_fdt:
 	efi_free(MAX_FDT_SIZE, *new_fdt_addr);
