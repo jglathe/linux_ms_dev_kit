@@ -4115,6 +4115,7 @@ CONFIG_DRM_AUX_BRIDGE                           policy<{'arm64': 'm', 'armhf': '
 CONFIG_DRM_AUX_HPD_BRIDGE                       policy<{'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_DRM_BOCHS                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'm'}>
 CONFIG_DRM_BRIDGE                               policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
+CONFIG_DRM_BRIDGE_CONNECTOR                     policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
 CONFIG_DRM_BUDDY                                policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_DRM_CDNS_DSI                             policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_DRM_CDNS_DSI_J721E                       policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
@@ -4135,7 +4136,7 @@ CONFIG_DRM_DISPLAY_DP_HELPER                    policy<{'amd64': 'y', 'arm64': '
 CONFIG_DRM_DISPLAY_DP_TUNNEL                    policy<{'amd64': 'y'}>
 CONFIG_DRM_DISPLAY_HDCP_HELPER                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
 CONFIG_DRM_DISPLAY_HDMI_HELPER                  policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
-CONFIG_DRM_DISPLAY_HDMI_STATE_HELPER            policy<{'arm64-generic-64k': 'y', 'armhf': 'y'}>
+CONFIG_DRM_DISPLAY_HDMI_STATE_HELPER            policy<{'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y'}>
 CONFIG_DRM_DISPLAY_HELPER                       policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_DRM_DW_HDMI                              policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'ppc64el': '-', 'riscv64': 'm'}>
 CONFIG_DRM_DW_HDMI_AHB_AUDIO                    policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'ppc64el': '-', 'riscv64': 'm'}>
@@ -4272,7 +4273,6 @@ CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': 'y', 'armhf': '
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y', 'armhf': 'y'}>
-CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n', 'armhf': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_NOUVEAU                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
@@ -9769,7 +9769,7 @@ CONFIG_PCIE_PLDA_HOST                           policy<{'arm64-generic-64k': 'y'
 CONFIG_PCIE_PME                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'riscv64': 'y'}>
 CONFIG_PCIE_PTM                                 policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
 CONFIG_PCIE_QCOM                                policy<{'arm64': 'y', 'armhf': 'y'}>
-CONFIG_PCIE_QCOM_CMN                            policy<{'arm64': 'y', 'armhf': 'y'}>
+CONFIG_PCIE_QCOM_COMMON                         policy<{'arm64': 'y', 'armhf': 'y'}>
 CONFIG_PCIE_QCOM_EP                             policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm'}>
 CONFIG_PCIE_RCAR_EP                             policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y', 'riscv64': 'y'}>
 CONFIG_PCIE_RCAR_GEN4                           policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'riscv64': 'm'}>
@@ -14376,6 +14376,7 @@ CONFIG_TYPEC_MUX_INTEL_PMC                      policy<{'amd64': 'm'}>
 CONFIG_TYPEC_MUX_IT5205                         policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_TYPEC_MUX_NB7VPQ904M                     policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_TYPEC_MUX_PI3USB30532                    policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
+CONFIG_TYPEC_MUX_PS8830                         policy<{'amd64': 'n', 'arm64': 'n', 'arm64-generic': 'm', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n'}>
 CONFIG_TYPEC_MUX_PTN36502                       policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_TYPEC_MUX_WCD939X_USBSS                  policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_TYPEC_NVIDIA_ALTMODE                     policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
