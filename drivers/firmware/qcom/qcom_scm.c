@@ -1730,6 +1730,9 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
 	{ .compatible = "qcom,x1e80100-crd" },
 	{ .compatible = "qcom,x1e80100-qcp" },
 	{ .compatible = "microsoft,win-dev-kit-2023" },
+	{ .compatible = "lenovo,yoga-slim7x" },	
+	{ .compatible = "asus,vivobook-s15" },	
+	{ .compatible = "hp,omnibook-x14" },		
 	{ }
 };
 
