@@ -1,6 +1,6 @@
-linux (6.11.0-061100rc7-x1e.20240908145028) oracular; urgency=low
+linux (6.11.0-061100rc7.1-x1e.20240913141017) oracular; urgency=low
 
-  Mainline build at commit: v6.11-rc7
+  Mainline build at commit: b7718454f937f v6.11-rc7+
 
- -- Mainline Build <jens.glathe@oldschoolsolutions.biz>  Mon, 12 Sep 2024 22:03:00 +0200
+ -- Mainline Build <jens.glathe@oldschoolsolutions.biz>  Mon, 14 Sep 2024 14:13:00 +0200
 
