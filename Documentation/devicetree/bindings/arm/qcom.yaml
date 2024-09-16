@@ -1051,6 +1051,7 @@ properties:
               - lenovo,yoga-slim7x
               - qcom,x1e80100-crd
               - qcom,x1e80100-qcp
+              - hp,omnibook-x14
           - const: qcom,x1e80100
 
   # Board compatibles go above
