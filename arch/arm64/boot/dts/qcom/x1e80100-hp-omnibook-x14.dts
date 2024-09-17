@@ -18,7 +18,8 @@
 	chassis-type = "laptop";
 
 	aliases {
-		serial1 = &uart21;
+		serial0 = &uart21;
+		serial1 = &uart14;
 	};
 
 	pmic-glink {
@@ -590,19 +591,12 @@
 		bias-disable;
 	};
 
-	bt_default: bt-default-state {
-		hstp-bt-en-pins {
-			pins = "gpio116";
-			function = "gpio";
-			drive-strength = <16>;
-			bias-disable;
-		};
-
-		hstp-sw-ctrl-pins {
-			pins = "gpio117";
-			function = "gpio";
-			bias-pull-down;
-		};
+	bt_en_default: bt-en-sleep {
+		pins = "gpio116";
+		function = "gpio";
+		output-low;
+		bias-disable;
+		drive-strength = <16>;
 	};
 
 };
@@ -675,11 +669,14 @@
 	remote-endpoint = <&pmic_glink_ss1_ss_in>;
 };
 
-&uart21 {
+&uart14 {
 	status = "okay";
 
-	bluetooth {
+	bluetooth: bt_wcn6855 {
 		compatible = "qcom,wcn6855-bt";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&bt_en_default>;
 
 //		vddio-supply = <&vreg_s10b>;
 //		vddbtcxmx-supply = <&vreg_s12b>;
@@ -690,11 +687,7 @@
 
 		max-speed = <3200000>;
 
-//		enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
-//		swctrl-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
-
-//		pinctrl-0 = <&bt_default>;
-//		pinctrl-names = "default";
+		enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
 		
 //		local-bd-address = [ 8e fd f0 00 5a ad ];
 	};
