@@ -343,6 +343,19 @@
 	clock-frequency = <400000>;
 	status = "okay";
 
+	keyboard@3a {
+		compatible = "hid-over-i2c";
+		reg = <0x3a>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&kybd_default>;
+		pinctrl-names = "default";
+
+		wakeup-source;
+	};
+
 	touchpad@15 {
 		compatible = "hid-over-i2c";
 		reg = <0x15>;
@@ -371,22 +384,17 @@
 	/* PS8830 USB4 Retimer? @ 0x8 */
 };
 
+&i2c4 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	/* is active on Windows */
+};
+
 &i2c5 {
 	clock-frequency = <400000>;
 	status = "okay";
 
-//	keyboard@3a {
-//		compatible = "hid-over-i2c";
-//		reg = <0x3a>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		pinctrl-0 = <&kybd_default>;
-//		pinctrl-names = "default";
-//
-//		wakeup-source;
-//	};
 
 	/* EC? @ 0x5b, 0x76 */
 };
@@ -396,6 +404,20 @@
 	status = "okay";
 
 	/* PS8830 USB4 Retimer? @ 0x8 */
+};
+
+&i2c8 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	/* is active on Windows */
+};
+
+&i2c9 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	/* is active on Windows */
 };
 
 &mdss {
@@ -529,7 +551,7 @@
 	kybd_default: kybd-default-state {
 		pins = "gpio67";
 		function = "gpio";
-		bias-disable;
+		bias-pull-up;
 	};
 
 	nvme_reg_en: nvme-reg-en-state {
@@ -588,7 +610,7 @@
 	tpad_default: tpad-default-state {
 		pins = "gpio3";
 		function = "gpio";
-		bias-disable;
+		bias-pull-up;
 	};
 
 	bt_en_default: bt-en-sleep {
@@ -688,7 +710,5 @@
 		max-speed = <3200000>;
 
 		enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
-		
-//		local-bd-address = [ 8e fd f0 00 5a ad ];
 	};
 };
