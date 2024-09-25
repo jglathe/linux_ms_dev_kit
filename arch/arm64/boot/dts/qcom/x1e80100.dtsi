@@ -4164,6 +4164,7 @@
 				iommus = <&apps_smmu 0x14e0 0x0>;
 				phys = <&usb_2_hsphy>;
 				phy-names = "usb2-phy";
+				dr_mode = "host";
 				maximum-speed = "high-speed";
 
 				ports {
