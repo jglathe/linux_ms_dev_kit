@@ -4273,6 +4273,7 @@ CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': 'y', 'armhf': '
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y', 'arm64-generic': 'n', 'armhf': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y', 'armhf': 'y'}>
+CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n', 'armhf': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y', 'arm64-generic': '-', 'armhf': 'y', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm', 'ppc64el': '-', 'riscv64': '-'}>
 CONFIG_DRM_NOUVEAU                              policy<{'amd64': 'm', 'arm64': 'm', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
@@ -9974,6 +9975,7 @@ CONFIG_PHY_MVEBU_A38X_COMPHY                    policy<{'arm64': 'm', 'arm64-gen
 CONFIG_PHY_MVEBU_CP110_COMPHY                   policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm'}>
 CONFIG_PHY_MVEBU_CP110_UTMI                     policy<{'arm64': 'm', 'arm64-generic': '-', 'armhf': 'm'}>
 CONFIG_PHY_MVEBU_SATA                           policy<{'armhf': 'y'}>
+CONFIG_PHY_NXP_PTN3222                          policy<{'arm64': 'n', 'arm64-generic': 'm', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n'}>
 CONFIG_PHY_OCELOT_SERDES                        policy<{'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm'}>
 CONFIG_PHY_PXA_28NM_HSIC                        policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
 CONFIG_PHY_PXA_28NM_USB2                        policy<{'amd64': 'm', 'arm64': 'm', 'arm64-generic': 'n', 'armhf': 'm', 'ppc64el': 'm', 'riscv64': 'm', 's390x': 'n'}>
