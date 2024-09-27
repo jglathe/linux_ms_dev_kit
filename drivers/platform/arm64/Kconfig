@@ -103,4 +103,16 @@ config EC_QCOM_HAMOA
 
 	  This driver currently supports Hamoa/Purwa/Glymur reference devices.
 
+config EC_LENOVO_YOGA_SLIM7X
+	tristate "Lenovo Yoga Slim 7x Embedded Controller driver"
+	depends on ARCH_QCOM || COMPILE_TEST
+	depends on I2C
+	help
+	  Select this option to enable driver for the EC found in the Lenovo
+	  Yoga Slim 7x.
+
+	  This driver currently supports reporting input event for microphone
+	  mute button, and reporting device suspend to the EC so it can take
+	  appropriate actions.
+
 endif # ARM64_PLATFORM_DEVICES
