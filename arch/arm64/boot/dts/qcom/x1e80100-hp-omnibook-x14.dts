@@ -1119,22 +1119,6 @@
 		output-low;
 	};
 
-	eusb5_reset_n: eusb5-reset-n-state {
-		pins = "gpio7";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
-		output-low;
-	};
-
-	eusb6_reset_n: eusb6-reset-n-state {
-		pins = "gpio184";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
-		output-low;
-	};
-
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio92";
 		function = "gpio";
