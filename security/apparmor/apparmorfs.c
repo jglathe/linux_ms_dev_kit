@@ -713,6 +713,11 @@ static int listener_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static bool notif_supported_version(struct apparmor_notif_common *unotif)
+{
+	return (unotif->version == APPARMOR_NOTIFY_VERSION);
+}
+
 /* todo: separate register and set filter */
 static long notify_set_filter(struct aa_listener *listener,
 			      unsigned long arg)
@@ -738,6 +743,12 @@ static long notify_set_filter(struct aa_listener *listener,
 	}
 	ret = size;
 
+	if (!notif_supported_version((struct apparmor_notif_common *)unotif)) {
+		ret = -ENOTSUPP;
+		goto out;
+	}
+
+	listener->version = unotif->base.version;
 	/* todo validate to known modes */
 	listener->mask = unotif->modeset;
 	AA_DEBUG(DEBUG_UPCALL, "setting filter mask to 0x%x", listener->mask);
@@ -812,7 +823,12 @@ static long notify_user_response(struct aa_listener *listener,
 			return -EFAULT;
 	}
 
+	if (!notif_supported_version((struct apparmor_notif_common *)&uresp)) {
+		error = ENOTSUPP;
+		goto out;
+	}
 	error = aa_listener_unotif_response(listener, &uresp, size);
+out:
 	aa_put_buffer((char *) big_resp);
 
 	return error;
@@ -2716,6 +2732,11 @@ static struct aa_sfs_entry aa_sfs_entry_notify[] = {
 	{ }
 };
 
+static struct aa_sfs_entry aa_sfs_entry_notify_versions[] = {
+	AA_SFS_FILE_BOOLEAN("v3",	1),
+	{ }
+};
+
 /* permstable v1: skipped
               v2: accept1 index, no accept2
               v3: accept1 index, accept2 flags
@@ -2731,6 +2752,7 @@ static struct aa_sfs_entry aa_sfs_entry_policy[] = {
 	AA_SFS_FILE_U64("state32",	1),
 	AA_SFS_DIR("unconfined_restrictions",   aa_sfs_entry_unconfined),
 	AA_SFS_DIR("notify",   aa_sfs_entry_notify),
+	AA_SFS_DIR("notify_versions",   aa_sfs_entry_notify_versions),
 	{ }
 };
 
