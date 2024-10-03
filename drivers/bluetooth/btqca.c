@@ -862,7 +862,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
 		case QCA_WCN6855:
 			qca_generate_hsp_nvm_name(config.fwname,
 				sizeof(config.fwname), ver, rom_ver,
-				boardid == 0x8c ? 0xb8c : boardid);
+				boardid == 0 ? boardid : (boardid < 0x0100 ? (boardid & 0x00ff)|0x0b00 : (boardid & 0x0fff)|0xb000));
 			break;
 		case QCA_WCN7850:
 			qca_get_nvm_name_generic(&config, "hmt", rom_ver, boardid);
