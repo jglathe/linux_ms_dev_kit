@@ -1002,12 +1002,6 @@
 
 		max-speed = <3200000>;
 
-		enable-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
-		swctrl-gpios = <&tlmm 132 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-0 = <&bt_default>;
-		pinctrl-names = "default";
-		
 		local-bd-address = [ 8d fd f0 00 5a ad ];
 	};
 };
