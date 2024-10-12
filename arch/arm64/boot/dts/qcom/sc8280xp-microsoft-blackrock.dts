@@ -61,6 +61,8 @@
 
 		dp-pwr-supply = <&vreg_misc_3p3>;
 
+		//hpd-gpios = <&tlmm 2 GPIO_ACTIVE_HIGH>;
+
 		port {
 			dp1_connector_in: endpoint {
 				remote-endpoint = <&mdss0_dp2_phy_out>;
@@ -996,6 +998,8 @@
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
 
 		max-speed = <3200000>;
+
+		local-bd-address = [ 8d fd f0 00 5a ad ];
 	};
 };
 
@@ -1160,6 +1164,11 @@
 
 	qcom,dmic-sample-rate = <4800000>;
 
+	status = "okay";
+};
+
+&venus {
+	firmware-name = "qcom/sc8280xp/MICROSOFT/blackrock/qcvss8280.mbn";
 	status = "okay";
 };
 
