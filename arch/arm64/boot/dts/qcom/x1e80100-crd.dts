@@ -325,7 +325,7 @@
 		regulator-min-microvolt = <1150000>;
 		regulator-max-microvolt = <1150000>;
 
-		gpio = <&pm8550ve_8_gpios 8 GPIO_ACTIVE_HIGH>;
+		gpio = <&pmc8380_5_gpios 8 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
 		pinctrl-0 = <&rtmr0_1p15_reg_en>;
@@ -1216,9 +1216,8 @@
 &pm8550_gpios {
 	rtmr0_3p3_reg_en: rtmr0-3p3-reg-en-state {
 		pins = "gpio11";
-		function = "func1";
-		input-disable;
-		output-enable;
+		function = "normal";
+		bias-disable;
 	};
 };
 
@@ -1228,21 +1227,13 @@
 		function = "normal";
 		bias-disable;
 	};
-
-	rtmr0_1p15_reg_en: rtmr0-1p15-reg-en-state {
-		pins = "gpio8";
-		function = "func1";
-		input-disable;
-		output-enable;
-	};
 };
 
 &pm8550ve_9_gpios {
 	rtmr0_1p8_reg_en: rtmr0-1p8-reg-en-state {
 		pins = "gpio8";
-		function = "func1";
-		input-disable;
-		output-enable;
+		function = "normal";
+		bias-disable;
 	};
 };
 
@@ -1253,6 +1244,14 @@
 		power-source = <1>; /* 1.8V */
 		input-disable;
 		output-enable;
+	};
+};
+
+&pmc8380_5_gpios {
+	rtmr0_1p15_reg_en: rtmr0-1p15-reg-en-state {
+		pins = "gpio8";
+		function = "normal";
+		bias-disable;
 	};
 };
 
