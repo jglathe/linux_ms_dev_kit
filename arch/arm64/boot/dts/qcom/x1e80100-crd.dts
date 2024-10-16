@@ -330,6 +330,8 @@
 
 		pinctrl-0 = <&rtmr0_1p15_reg_en>;
 		pinctrl-names = "default";
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr0_1p8: regulator-rtmr0-1p8 {
@@ -344,6 +346,8 @@
 
 		pinctrl-0 = <&rtmr0_1p8_reg_en>;
 		pinctrl-names = "default";
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr0_3p3: regulator-rtmr0-3p3 {
@@ -358,6 +362,8 @@
 
 		pinctrl-0 = <&rtmr0_3p3_reg_en>;
 		pinctrl-names = "default";
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr1_1p15: regulator-rtmr1-1p15 {
@@ -372,6 +378,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr1_1p15_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr1_1p8: regulator-rtmr1-1p8 {
@@ -386,6 +394,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr1_1p8_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr1_3p3: regulator-rtmr1-3p3 {
@@ -400,6 +410,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr1_3p3_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr2_1p15: regulator-rtmr2-1p15 {
@@ -414,6 +426,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr2_1p15_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr2_1p8: regulator-rtmr2-1p8 {
@@ -428,6 +442,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr2_1p8_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_rtmr2_3p3: regulator-rtmr2-3p3 {
@@ -442,6 +458,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&rtmr2_3p3_reg_en>;
+
+		regulator-boot-on;
 	};
 
 	vreg_nvme: regulator-nvme {
