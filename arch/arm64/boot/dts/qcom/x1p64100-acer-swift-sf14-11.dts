@@ -283,7 +283,7 @@
  
          regulator-boot-on;
      };
- 
+
      vreg_rtmr0_1p15: regulator-rtmr0-1p15 {
          compatible = "regulator-fixed";
  
@@ -712,7 +712,24 @@
      clock-frequency = <400000>;
  
      status = "okay";
- 
+
+     touchpad@68 {
+		compatible = "hid-over-i2c";
+		reg = <0x68>;
+
+		hid-descr-addr = <0x20>;
+		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+
+		wakeup-source;
+
+        //vdd-supply = <&vreg_misc_3p3>;
+        //vddl-supply = <&vreg_l12b_1p2>;
+
+        //pinctrl-0 = <&tpad_default>;
+        //pinctrl-names = "default";
+	};
+
+    
      /* ELAN06F1 or SYNA06F2 */
      keyboard@3a {
          compatible = "hid-over-i2c";
@@ -883,7 +900,7 @@
                  };
              };
  
-         };
+         }; 
      };
  };
  
@@ -911,6 +928,7 @@
 	status = "okay";
 
 };
+
  &lpass_tlmm {
      spkr_01_sd_n_active: spkr-01-sd-n-active-state {
          pins = "gpio12";
