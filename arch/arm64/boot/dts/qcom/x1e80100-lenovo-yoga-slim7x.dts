@@ -1071,7 +1071,7 @@
 	status = "okay";
 
 	embedded-controller@76 {
-		compatible = "lenovo,yoga-slim7x-ec";
+		compatible = "lenovo,yoga-slim7x-ec", "qcom,x1e-it8987-ec";
 		reg = <0x76>;
 
 		interrupts-extended = <&tlmm 66 IRQ_TYPE_EDGE_FALLING>;
