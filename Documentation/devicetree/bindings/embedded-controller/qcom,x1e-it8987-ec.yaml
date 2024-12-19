@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/platform/qcom,x1e-it8987-ec.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm Embedded Controller on IT8987 chip.
+
+maintainers:
+  - Maya Matuszczyk <maccraft123mc@gmail.com>
+
+description:
+  Most x1e80100 laptops have an EC running on IT8987 MCU chip. The EC controls
+  minor functions, like fans, power LED, and on some laptops it also handles
+  keyboard hotkeys.
+
+properties:
+  compatible:
+    oneOf:
+      - const: qcom,x1e-it8987-ec
+      - items:
+        - const: lenovo,yoga-slim7x-ec
+        - const: qcom,x1e-it8987-ec
+
+  reg:
+    const: 0x76
+
+  interrupts:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        embedded-controller@76 {
+            compatible = "lenovo,yoga-slim7x-ec", "qcom,x1e-it8987-ec";
+            reg = <0x76>;
+
+            interrupts-extended = <&tlmm 66 IRQ_TYPE_LEVEL_HIGH>;
+        };
+    };
+...
