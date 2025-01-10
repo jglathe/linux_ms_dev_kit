@@ -824,8 +824,8 @@
 };
 
 &usb_0_qmpphy {
-	vdda-phy-supply = <&vreg_l9d>;
-	vdda-pll-supply = <&vreg_l4d>;
+	vdda-phy-supply = <&vreg_l4d>;
+	vdda-pll-supply = <&vreg_l6d>;
 
 	orientation-switch;
 
@@ -861,8 +861,8 @@
 };
 
 &usb_1_qmpphy {
-	vdda-phy-supply = <&vreg_l4b>;
-	vdda-pll-supply = <&vreg_l3b>;
+	vdda-phy-supply = <&vreg_l3b>;
+	vdda-pll-supply = <&vreg_l6b>;
 
 	orientation-switch;
 
