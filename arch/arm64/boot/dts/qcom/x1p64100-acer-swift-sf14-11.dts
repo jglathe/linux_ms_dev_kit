@@ -704,7 +704,7 @@
      status = "okay";
  
      zap-shader {
-         firmware-name = "qcom/x1e80100/LENOVO/21N1/qcdxkmsuc8380.mbn";
+         firmware-name = "qcom/x1e80100/ACER/SF14-11/qcdxkmsuc8380.mbn";
      };
  };
  
@@ -1109,15 +1109,15 @@
  };
  
  &remoteproc_adsp {
-     firmware-name = "qcom/x1e80100/LENOVO/21N1/qcadsp8380.mbn",
-             "qcom/x1e80100/LENOVO/21N1/adsp_dtbs.elf";
+     firmware-name = "qcom/x1e80100/ACER/SF14-11/qcadsp8380.mbn",
+             "qcom/x1e80100/ACER/SF14-11/adsp_dtbs.elf";
  
      status = "okay";
  };
  
  &remoteproc_cdsp {
-     firmware-name = "qcom/x1e80100/LENOVO/21N1/qccdsp8380.mbn",
-             "qcom/x1e80100/LENOVO/21N1/cdsp_dtbs.elf";
+     firmware-name = "qcom/x1e80100/ACER/SF14-11/qccdsp8380.mbn",
+             "qcom/x1e80100/ACER/SF14-11/cdsp_dtbs.elf";
  
      status = "okay";
  };
@@ -1131,6 +1131,7 @@
      vdd18-supply = <&vreg_l3d_1p8>;
      vdd3-supply = <&vreg_l14b_3p0>;
  };
+ 
  &swr0 {
      status = "okay";
  
