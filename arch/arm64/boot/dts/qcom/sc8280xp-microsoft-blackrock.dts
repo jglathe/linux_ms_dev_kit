@@ -846,7 +846,7 @@
 
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
-	model = "microsoft/blackrock";
+	model = "SC8280XP-MICROSOFT-BACKROCK";
 
 	wcd-playback-dai-link {
 		link-name = "WCD Playback";
