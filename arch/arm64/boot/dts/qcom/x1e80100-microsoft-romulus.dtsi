@@ -1485,7 +1485,7 @@
 };
 
 &usb_1_ss0_qmpphy {
-	vdda-phy-supply = <&vreg_l2j>;
+	vdda-phy-supply = <&vreg_l3e>;
 	vdda-pll-supply = <&vreg_l1j>;
 
 	status = "okay";
