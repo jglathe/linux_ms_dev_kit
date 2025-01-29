@@ -400,7 +400,7 @@
 
 	sound {
 		compatible = "qcom,x1e80100-sndcard";
-		model = "X1E80100-LENOVO-Thinkpad-T14s";
+		model = "X1E80100-ASUS-Vivobook-S15";
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"IN1_HPHL", "HPHL_OUT",
