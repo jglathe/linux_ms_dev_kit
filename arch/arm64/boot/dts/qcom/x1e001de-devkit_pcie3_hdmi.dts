@@ -10,11 +10,11 @@
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
-#include "hamoa.dtsi"
-#include "hamoa-pmics.dtsi"
+#include "x1e80100.dtsi"
+#include "x1e80100-pmics.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. X1E001DE Snapdragon Devkit for Windows";
+	model = "Qualcomm Technologies, Inc. X1E001DE Snapdragon Devkit with PCIE3 and HDMI";
 	compatible = "qcom,x1e001de-devkit", "qcom,x1e001de", "qcom,x1e80100";
 
 	aliases {
@@ -611,7 +611,6 @@
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
 		};
 
 		vreg_l13b_3p0: ldo13 {
@@ -633,7 +632,6 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			regulator-always-on;
 		};
 
 		vreg_l16b_2p9: ldo16 {
@@ -851,8 +849,8 @@
 
 		vreg_l2j_1p2: ldo2 {
 			regulator-name = "vreg_l2j_1p2";
-			regulator-min-microvolt = <1256000>;
-			regulator-max-microvolt = <1256000>;
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -867,10 +865,10 @@
 
 &gpu {
 	status = "okay";
-};
 
-&gpu_zap_shader {
-	firmware-name = "qcom/x1e80100/Thundercomm/DEVKIT/qcdxkmsuc8380.mbn";
+	zap-shader {
+		firmware-name = "qcom/x1e80100/Thundercomm/DEVKIT/qcdxkmsuc8380.mbn";
+	};
 };
 
 &i2c1 {
@@ -883,6 +881,7 @@
 		reg = <0x08>;
 
 		clocks = <&rpmhcc RPMH_RF_CLK5>;
+		clock-names = "xo";
 
 		vdd-supply = <&vreg_rtmr2_1p15>;
 		vdd33-supply = <&vreg_rtmr2_3p3>;
@@ -891,10 +890,7 @@
 		vddat-supply = <&vreg_rtmr2_1p15>;
 		vddio-supply = <&vreg_rtmr2_1p8>;
 
-		reset-gpios = <&tlmm 185 GPIO_ACTIVE_LOW>;
-
-		pinctrl-0 = <&rtmr2_default>;
-		pinctrl-names = "default";
+		reset-gpios = <&tlmm 185 GPIO_ACTIVE_HIGH>;
 
 		orientation-switch;
 		retimer-switch;
@@ -942,6 +938,7 @@
 		reg = <0x08>;
 
 		clocks = <&rpmhcc RPMH_RF_CLK3>;
+		clock-names = "xo";
 
 		vdd-supply = <&vreg_rtmr0_1p15>;
 		vdd33-supply = <&vreg_rtmr0_3p3>;
@@ -950,10 +947,7 @@
 		vddat-supply = <&vreg_rtmr0_1p15>;
 		vddio-supply = <&vreg_rtmr0_1p8>;
 
-		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_LOW>;
-
-		pinctrl-0 = <&rtmr0_default>;
-		pinctrl-names = "default";
+		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_HIGH>;
 
 		retimer-switch;
 		orientation-switch;
@@ -1035,6 +1029,7 @@
 		reg = <0x8>;
 
 		clocks = <&rpmhcc RPMH_RF_CLK4>;
+		clock-names = "xo";
 
 		vdd-supply = <&vreg_rtmr1_1p15>;
 		vdd33-supply = <&vreg_rtmr1_3p3>;
@@ -1043,10 +1038,7 @@
 		vddat-supply = <&vreg_rtmr1_1p15>;
 		vddio-supply = <&vreg_rtmr1_1p8>;
 
-		reset-gpios = <&tlmm 176 GPIO_ACTIVE_LOW>;
-
-		pinctrl-0 = <&rtmr1_default>;
-		pinctrl-names = "default";
+		reset-gpios = <&tlmm 176 GPIO_ACTIVE_HIGH>;
 
 		retimer-switch;
 		orientation-switch;
@@ -1093,6 +1085,7 @@
 };
 
 &mdss_dp0_out {
+	data-lanes = <0 1>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1101,6 +1094,7 @@
 };
 
 &mdss_dp1_out {
+	data-lanes = <0 1>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1109,7 +1103,65 @@
 };
 
 &mdss_dp2_out {
+	data-lanes = <0 1>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+};
+
+&mdss_dp3 {
+	compatible = "qcom,x1e80100-dp";
+	/delete-property/ #sound-dai-cells;
+
+	status = "okay";
+
+	aux-bus {
+	 connector {
+			compatible = "dp-connector";
+//			dp-pwr-supply = <&vreg_misc_3p3>;
+
+			port {
+				dp_connector_in: endpoint {
+					remote-endpoint = <&mdss_dp3_out>;
+				};
+			};
+		};
+	};
+
+	ports {
+		port@1 {
+			reg = <1>;
+
+			mdss_dp3_out: endpoint {
+				data-lanes = <0 1 2 3>;
+				link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+
+				remote-endpoint = <&dp_connector_in>;
+			};
+		};
+	};
+};
+
+&mdss_dp3_phy {
+	vdda-phy-supply = <&vreg_l3j_0p8>;
+	vdda-pll-supply = <&vreg_l2j_1p2>;
+
+	status = "okay";
+};
+
+&pcie3 {
+	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+
+	pinctrl-0 = <&pcie3_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&pcie3_phy {
+//	vdda-phy-supply = <&vreg_l3c>;
+//	vdda-pll-supply = <&vreg_l3e>;
+
+	status = "okay";
 };
 
 &pcie4 {
@@ -1185,22 +1237,9 @@
 };
 
 &pm8550_gpios {
-	rtmr0_default: rtmr0-reset-n-active-state {
-		pins = "gpio10";
-		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
-
 	usb0_3p3_reg_en: usb0-3p3-reg-en-state {
 		pins = "gpio11";
 		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		bias-disable;
-		input-disable;
-		output-enable;
 	};
 };
 
@@ -1208,10 +1247,6 @@
 	usb0_pwr_1p15_en: usb0-pwr-1p15-en-state {
 		pins = "gpio8";
 		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		bias-disable;
-		input-disable;
-		output-enable;
 	};
 };
 
@@ -1219,10 +1254,6 @@
 	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		bias-disable;
-		input-disable;
-		output-enable;
 	};
 };
 
@@ -1340,6 +1371,29 @@
 		bias-disable;
 	};
 
+	pcie3_default: pcie3-default-state {
+		clkreq-n-pins {
+			pins = "gpio144";
+			function = "pcie3_clk";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		perst-n-pins {
+			pins = "gpio143";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		wake-n-pins {
+			pins = "gpio145";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	pcie4_default: pcie4-default-state {
 		clkreq-n-pins {
 			pins = "gpio147";
@@ -1407,20 +1461,6 @@
 			drive-strength = <2>;
 			bias-pull-up;
 		};
-	};
-
-	rtmr1_default: rtmr1-reset-n-active-state {
-		pins = "gpio176";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
-	};
-
-	rtmr2_default: rtmr2-reset-n-active-state {
-		pins = "gpio185";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-disable;
 	};
 
 	rtmr1_1p15_reg_en: rtmr1-1p15-reg-en-state {
@@ -1499,6 +1539,23 @@
 		function = "gpio";
 		drive-strength = <4>;
 		bias-disable;
+	};
+};
+
+&uart14 {
+	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,wcn7850-bt";
+		max-speed = <3200000>;
+
+		vddaon-supply = <&vreg_pmu_aon_0p59>;
+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 	};
 };
 
@@ -1612,15 +1669,6 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb3_repeater>;
-
-	status = "okay";
-};
-
-&usb_mp_hsphy1 {
-	vdd-supply = <&vreg_l2e_0p8>;
-	vdda12-supply = <&vreg_l3e_1p2>;
-
 	phys = <&eusb6_repeater>;
 
 	status = "okay";
@@ -1629,6 +1677,15 @@
 &usb_mp_qmpphy0 {
 	vdda-phy-supply = <&vreg_l3e_1p2>;
 	vdda-pll-supply = <&vreg_l3c_0p8>;
+
+	status = "okay";
+};
+
+&usb_mp_hsphy1 {
+	vdd-supply = <&vreg_l2e_0p8>;
+	vdda12-supply = <&vreg_l3e_1p2>;
+
+	phys = <&eusb3_repeater>;
 
 	status = "okay";
 };
