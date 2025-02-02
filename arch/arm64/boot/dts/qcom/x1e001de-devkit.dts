@@ -1118,6 +1118,19 @@
 
 	status = "okay";
 
+	aux-bus {
+	 connector {
+			compatible = "dp-connector";
+//			dp-pwr-supply = <&vreg_misc_3p3>;
+
+			port {
+				dp_connector_in: endpoint {
+					remote-endpoint = <&mdss_dp3_out>;
+				};
+			};
+		};
+	};
+
 	ports {
 		port@1 {
 			reg = <1>;
@@ -1125,6 +1138,8 @@
 			mdss_dp3_out: endpoint {
 				data-lanes = <0 1 2 3>;
 				link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+
+				remote-endpoint = <&dp_connector_in>;
 			};
 		};
 	};
@@ -1148,6 +1163,9 @@
 };
 
 &pcie3_phy {
+//	vdda-phy-supply = <&vreg_l3c>;
+//	vdda-pll-supply = <&vreg_l3e>;
+
 	status = "okay";
 };
 
@@ -1382,7 +1400,7 @@
 	pcie3_default: pcie3-default-state {
 		clkreq-n-pins {
 			pins = "gpio144";
-			function = "pcie4_clk";
+			function = "pcie3_clk";
 			drive-strength = <2>;
 			bias-pull-up;
 		};
