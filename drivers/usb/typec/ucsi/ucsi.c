@@ -1404,7 +1404,7 @@ void ucsi_connector_change(struct ucsi *ucsi, u8 num)
 	con = &ucsi->connector[num - 1];
 
 	if (!test_and_set_bit(EVENT_PENDING, &ucsi->flags))
-		schedule_work(&con->work);
+		queue_work(system_freezable_wq, &con->work);
 }
 EXPORT_SYMBOL_GPL(ucsi_connector_change);
 
