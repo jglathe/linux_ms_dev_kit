@@ -6,11 +6,16 @@
 
 /dts-v1/;
 
-#include "x1e80100.dtsi"
+#include "x1p42100.dtsi"
 #include "x1-asus-vivobook-s15.dtsi"
 
+/delete-node/ &pmc8380_6;
+/delete-node/ &pmc8380_6_thermal;
+// /delete-node/ &pm8010;
+// /delete-node/ &pm8010_thermal;
+
 / {
-	model = "ASUS Vivobook S 15";
+	model = "ASUS Vivobook S 15 X1P-42-100";
 	compatible = "asus,vivobook-s15", "qcom,x1e80100";
 	chassis-type = "laptop";
 };
@@ -19,6 +24,6 @@
 	status = "okay";
 
 	zap-shader {
-		firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcdxkmsuc8380.mbn";
+		firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcdxkmsucpurwa.mbn";
 	};
 };
