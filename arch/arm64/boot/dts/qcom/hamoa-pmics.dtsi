@@ -170,7 +170,7 @@
 			};
 		};
 
-		pm8010-thermal {
+		pm8010_thermal: pm8010-thermal {
 			polling-delay-passive = <100>;
 
 			thermal-sensors = <&pm8010_temp_alarm>;
