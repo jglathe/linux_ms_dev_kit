@@ -8,6 +8,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
 #include "hamoa.dtsi"
@@ -222,6 +223,39 @@
 				sound-dai = <&q6apm>;
 			};
 		};
+
+		wsa-dai-link {
+			link-name = "WSA Playback";
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
+			};
+
+			codec {
+				sound-dai = <&swr0 0>, <&lpass_wsamacro 0>,
+					    <&swr3 0>, <&lpass_wsa2macro 0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		va-dai-link {
+			link-name = "VA Capture";
+
+			cpu {
+				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
+			};
+
+			codec {
+				sound-dai = <&lpass_vamacro 0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
 	};
 
 	vreg_nvme: regulator-nvme {
@@ -250,7 +284,7 @@
 		gpio = <&pmc8380_5_gpios 8 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&usb0_pwr_1p15_en>;
+		pinctrl-0 = <&usb0_pwr_1p15_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -298,7 +332,7 @@
 		gpio = <&tlmm 188 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr1_1p15_reg_en>;
+		pinctrl-0 = <&usb1_pwr_1p15_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -314,7 +348,7 @@
 		gpio = <&tlmm 175 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr1_1p8_reg_en>;
+		pinctrl-0 = <&usb1_pwr_1p8_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -330,7 +364,7 @@
 		gpio = <&tlmm 186 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr1_3p3_reg_en>;
+		pinctrl-0 = <&usb1_pwr_3p3_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -346,7 +380,7 @@
 		gpio = <&tlmm 189 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr2_1p15_reg_en>;
+		pinctrl-0 = <&usb2_pwr_1p15_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -362,7 +396,7 @@
 		gpio = <&tlmm 126 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr2_1p8_reg_en>;
+		pinctrl-0 = <&usb2_pwr_1p8_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -378,7 +412,7 @@
 		gpio = <&tlmm 187 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&rtmr2_3p3_reg_en>;
+		pinctrl-0 = <&usb2_pwr_3p3_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -1084,6 +1118,11 @@
 	};
 };
 
+&lpass_vamacro {
+	vdd-micb-supply = <&vreg_l1b_1p8>;
+	qcom,dmic-sample-rate = <4800000>;
+};
+
 &mdss {
 	status = "okay";
 };
@@ -1204,8 +1243,21 @@
 	};
 };
 
-&pmc8380_5_gpios {
-	usb0_pwr_1p15_en: usb0-pwr-1p15-en-state {
+&pm8550ve_8_gpios {
+	misc_3p3_reg_en: misc-3p3-reg-en-state {
+		pins = "gpio6";
+		function = "normal";
+		bias-disable;
+		input-disable;
+		output-enable;
+		drive-push-pull;
+		power-source = <1>; /* 1.8 V */
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+	};
+};
+
+&pm8550ve_9_gpios {
+	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
 		power-source = <1>; /* 1.8 V */
@@ -1215,8 +1267,18 @@
 	};
 };
 
-&pm8550ve_9_gpios {
-	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
+&pmc8380_3_gpios {
+	edp_bl_en: edp-bl-en-state {
+		pins = "gpio4";
+		function = "normal";
+		power-source = <1>; /* 1.8 V */
+		input-disable;
+		output-enable;
+	};
+};
+
+&pmc8380_5_gpios {
+	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
 		power-source = <1>; /* 1.8 V */
@@ -1315,7 +1377,9 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <44 4>; /* SPI (TPM) */
+	gpio-reserved-ranges = <34 2>, /* Unused */
+			       <44 4>, /* SPI (TPM) */
+			       <238 1>; /* UFS Reset */
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
@@ -1423,42 +1487,42 @@
 		bias-disable;
 	};
 
-	rtmr1_1p15_reg_en: rtmr1-1p15-reg-en-state {
+	usb1_pwr_1p15_reg_en: usb1-pwr-1p15-reg-en-state {
 		pins = "gpio188";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 	};
 
-	rtmr1_1p8_reg_en: rtmr1-1p8-reg-en-state {
+	usb1_pwr_1p8_reg_en: usb1-pwr-1p8-reg-en-state {
 		pins = "gpio175";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 	};
 
-	rtmr1_3p3_reg_en: rtmr1-3p3-reg-en-state {
+	usb1_pwr_3p3_reg_en: usb1-pwr-3p3-reg-en-state {
 		pins = "gpio186";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 	};
 
-	rtmr2_1p15_reg_en: rtmr2-1p15-reg-en-state {
+	usb2_pwr_1p15_reg_en: usb2-pwr-1p15-reg-en-state {
 		pins = "gpio189";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 	};
 
-	rtmr2_1p8_reg_en: rtmr2-1p8-reg-en-state {
+	usb2_pwr_1p8_reg_en: usb2-pwr-1p8-reg-en-state {
 		pins = "gpio126";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 	};
 
-	rtmr2_3p3_reg_en: rtmr2-3p3-reg-en-state {
+	usb2_pwr_3p3_reg_en: usb2-pwr-3p3-reg-en-state {
 		pins = "gpio187";
 		function = "gpio";
 		drive-strength = <2>;
@@ -1499,6 +1563,23 @@
 		function = "gpio";
 		drive-strength = <4>;
 		bias-disable;
+	};
+};
+
+&uart14 {
+	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,wcn7850-bt";
+		max-speed = <3200000>;
+
+		vddaon-supply = <&vreg_pmu_aon_0p59>;
+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 	};
 };
 
