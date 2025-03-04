@@ -63,36 +63,10 @@ properties:
   iommus:
     maxItems: 1
 
-  video-decoder:
-    type: object
-
-    properties:
-      compatible:
-        const: venus-decoder
-
-    required:
-      - compatible
-
-    additionalProperties: false
-
-  video-encoder:
-    type: object
-
-    properties:
-      compatible:
-        const: venus-encoder
-
-    required:
-      - compatible
-
-    additionalProperties: false
-
 required:
   - compatible
   - power-domain-names
   - iommus
-  - video-decoder
-  - video-encoder
 
 unevaluatedProperties: false
 
@@ -101,6 +75,7 @@ examples:
     #include <dt-bindings/interrupt-controller/arm-gic.h>
     #include <dt-bindings/clock/qcom,gcc-sm8350.h>
     #include <dt-bindings/clock/qcom,sm8350-videocc.h>
+    #include <dt-bindings/interconnect/qcom,icc.h>
     #include <dt-bindings/interconnect/qcom,sm8350.h>
     #include <dt-bindings/power/qcom-rpmpd.h>
 
@@ -126,9 +101,12 @@ examples:
                              "vcodec0",
                              "mx";
 
-        interconnects = <&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_VENUS_CFG 0>,
-                        <&mmss_noc MASTER_VIDEO_P0 0 &mc_virt SLAVE_EBI1 0>,
-                        <&mmss_noc MASTER_VIDEO_P0 0 &gem_noc SLAVE_LLCC 0>;
+        interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
+                         &config_noc SLAVE_VENUS_CFG QCOM_ICC_TAG_ACTIVE_ONLY>,
+                        <&mmss_noc MASTER_VIDEO_P0 QCOM_ICC_TAG_ALWAYS
+                         &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
+                        <&mmss_noc MASTER_VIDEO_P0 QCOM_ICC_TAG_ALWAYS
+                         &gem_noc SLAVE_LLCC QCOM_ICC_TAG_ALWAYS>;
         interconnect-names = "cpu-cfg",
                              "video-mem",
                              "video-llcc";
@@ -138,12 +116,4 @@ examples:
         memory-region = <&pil_video_mem>;
 
         status = "disabled";
-
-        video-decoder {
-            compatible = "venus-decoder";
-        };
-
-        video-encoder {
-            compatible = "venus-encoder";
-        };
     };
