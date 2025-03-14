@@ -802,6 +802,8 @@
 
 		orientation = <0>; /* front facing */
 
+		rotation = <180>;
+
 		avdd-supply = <&vreg_l7b_2p8>;
 		dvdd-supply = <&vreg_l7b_2p8>;
 		dovdd-supply = <&vreg_cam_1p8>;
