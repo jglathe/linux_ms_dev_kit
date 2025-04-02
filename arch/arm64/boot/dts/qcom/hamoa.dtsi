@@ -6778,6 +6778,11 @@
 					bias-pull-up;
 				};
 			};
+
+			edp_hpd_active: edp-hpd-active-state {
+				pins = "gpio119";
+				function = "edp_hot";
+			};
 		};
 
 		ctcu@10001000 {
