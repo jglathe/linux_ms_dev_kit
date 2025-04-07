@@ -3866,6 +3866,14 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
 
 	while (1) {
 		pad = &entity->pads[0];
+
+		/*
+		 * Work around unresolved bug in camss (or v4l2) which can
+		 * result in pad being NULL here.
+		 */
+		if (WARN_ON(!pad))
+			return NULL;
+
 		if (!(pad->flags & MEDIA_PAD_FL_SINK))
 			return NULL;
 
