@@ -66,7 +66,6 @@ modules.order
 /vmlinux.32
 /vmlinux.map
 /vmlinux.symvers
-/vmlinux.unstripped
 /vmlinux-gdb.py
 /vmlinuz
 /System.map
@@ -84,7 +83,7 @@ modules.order
 #
 # Debian directory (make deb-pkg)
 #
-/debian/
+#/debian/
 
 #
 # Snap directory (make snap-pkg)
