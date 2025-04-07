@@ -1,0 +1,6 @@
+arch="arm64"
+supported="Snapdragon X Elite"
+target="Geared toward desktop systems."
+desc="=HUMAN= SMP"
+bootloader="grub-efi-arm64 [arm64]"
+provides="kvm-api-4"
