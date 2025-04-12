@@ -6,13 +6,13 @@
 
 /dts-v1/;
 
-#include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/input/gpio-keys.h>
-#include <dt-bindings/input/input.h>
-#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-
+#include "x1p42100.dtsi"
+#include "x1e80100-pmics.dtsi"
 #include "x1-acer-swift-14.dtsi"
+/delete-node/ &pmc8380_6;
+/delete-node/ &pmc8380_6_thermal;
+/delete-node/ &pm8010;
+/delete-node/ &pm8010_thermal;
 
 / {
    model = "Acer Swift Go 14 AI (SFG14-01)";  
