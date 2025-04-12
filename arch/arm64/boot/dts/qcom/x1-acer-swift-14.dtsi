@@ -17,7 +17,7 @@
 
 / {
    model = "Acer Swift AI";  
-   compatible = "acer,swift-ai","lenovo,thinkpad-t14s", "qcom,x1p64100", "qcom,x1e78100", "qcom,x1e80100";
+   compatible = "acer,swift-14","lenovo,thinkpad-t14s", "qcom,x1p64100", "qcom,x1e80100";
 	chassis-type = "laptop";
 
 	aliases {
@@ -171,7 +171,7 @@
 
 	sound {
 		compatible = "qcom,x1e80100-sndcard";
-		model = "X1E80100-LENOVO-Thinkpad-T14s";
+		model = "X1E80100-ACER-SWIFT-14";
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"IN1_HPHL", "HPHL_OUT",
@@ -1098,20 +1098,6 @@
 };
 
 &qupv3_2 {
-	status = "okay";
-};
-
-&remoteproc_adsp {
-	firmware-name = "qcom/x1e80100/ACER/SF14-11/qcadsp8380.mbn",
-			"qcom/x1e80100/ACER/SF14-11/adsp_dtbs.elf";
-
-	status = "okay";
-};
-
-&remoteproc_cdsp {
-	firmware-name = "qcom/x1e80100/ACER/SF14-11/qccdsp8380.mbn",
-			"qcom/x1e80100/ACER/SF14-11/cdsp_dtbs.elf";
-
 	status = "okay";
 };
 
