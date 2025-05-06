@@ -7129,9 +7129,9 @@
 				};
 			};
 
-			edp_hpd_active: edp-hpd-active-state {
+			edp0_hpd_active: edp0-hpd-active-state {
 				pins = "gpio119";
-				function = "edp_hot";
+				function = "edp0_hot";
 			};
 		};
 
