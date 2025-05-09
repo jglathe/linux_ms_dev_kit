@@ -17,8 +17,8 @@ properties:
     description:
       ADC channel number.
       See include/dt-bindings/iio/adc/qcom,spmi-vadc.h
-      For PMIC7 ADC, the channel numbers are specified separately per PMIC
-      in the PMIC-specific files in include/dt-bindings/iio/adc.
+      For PMIC7 ADC and PMIC5 Gen3 ADC, the channel numbers are specified
+      separately per PMIC in the PMIC-specific files in include/dt-bindings/iio/adc.
     maxItems: 1
 
   label:
