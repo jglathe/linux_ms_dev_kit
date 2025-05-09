@@ -70,9 +70,9 @@ patternProperties:
         maxItems: 1
         description: |
           ADC channel number.
-          See include/dt-bindings/iio/qcom,spmi-vadc.h
+          See include/dt-bindings/iio/adc/qcom,spmi-vadc.h
           For PMIC7 ADC, the channel numbers are specified separately per PMIC
-          in the PMIC-specific files in include/dt-bindings/iio/.
+          in the PMIC-specific files in include/dt-bindings/iio/adc.
 
       label:
         description: |
@@ -276,8 +276,8 @@ examples:
     };
 
   - |
-    #include <dt-bindings/iio/qcom,spmi-adc7-pmk8350.h>
-    #include <dt-bindings/iio/qcom,spmi-adc7-pm8350.h>
+    #include <dt-bindings/iio/adc/qcom,spmi-adc7-pmk8350.h>
+    #include <dt-bindings/iio/adc/qcom,spmi-adc7-pm8350.h>
     #include <dt-bindings/interrupt-controller/irq.h>
 
     pmic {
