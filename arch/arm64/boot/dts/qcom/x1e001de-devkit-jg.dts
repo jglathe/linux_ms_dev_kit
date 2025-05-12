@@ -1169,7 +1169,13 @@
 };
 
 &pcie4_port0 {
-	wifi@0 {
+	lan@0 {
+		compatible = "pci8086,125c";
+		reg = <0x10000 0x0 0x0 0x0 0x0>;
+		aspm-no-l0s;
+		aspm-no-l1;
+	};
+	wifi@1 {
 		compatible = "pci17cb,1107";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
 
