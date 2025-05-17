@@ -30,6 +30,15 @@ config REGULATOR_DEBUG
 	help
 	  Say yes here to enable debugging support.
 
+config REGULATOR_DUMMY_CONSUMER
+	tristate "Dummy regulator consumer support"
+	help
+	  This driver provides a dummy consumer for a device behind an
+	  USB phy (for example) that needs power supplies, but has no
+	  own device node since it's enumerated by USB.
+
+	  If unsure, say no.
+
 config REGULATOR_FIXED_VOLTAGE
 	tristate "Fixed voltage regulator support"
 	help
