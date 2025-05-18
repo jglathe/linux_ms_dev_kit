@@ -1169,13 +1169,7 @@
 };
 
 &pcie4_port0 {
-	lan@0 {
-		compatible = "pci8086,125c";
-		reg = <0x10000 0x0 0x0 0x0 0x0>;
-		aspm-no-l0s;
-		aspm-no-l1;
-	};
-	wifi@1 {
+	wifi@0,0 {
 		compatible = "pci17cb,1107";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
 
@@ -1188,6 +1182,12 @@
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
 		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+	};
+	lan@0,0 {
+		compatible = "pci8086,125c";
+		reg = <0x10000 0x0 0x0 0x0 0x0>;
+		aspm-no-l0s;
+		aspm-no-l1;
 	};
 };
 
