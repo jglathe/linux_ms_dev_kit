@@ -66,13 +66,6 @@ static const struct onboard_dev_pdata ti_tusb8020b_data = {
 	.is_hub = true,
 };
 
-static const struct onboard_dev_pdata bison_intcamera_data = {
-	.reset_us = 1000,
-	.num_supplies = 1,
-	.supply_names = { "vdd" },
-	.is_hub = false,
-};
-
 static const struct onboard_dev_pdata corechips_sl6341_data = {
 	.reset_us = 10000,
 	.num_supplies = 2,
@@ -131,6 +124,13 @@ static const struct onboard_dev_pdata xmos_xvf3500_data = {
 	.reset_us = 1,
 	.num_supplies = 2,
 	.supply_names = { "vdd", "vddio" },
+	.is_hub = false,
+};
+
+static const struct onboard_dev_pdata bison_intcamera_data = {
+	.reset_us = 1000,
+	.num_supplies = 1,
+	.supply_names = { "vdd" },
 	.is_hub = false,
 };
 
