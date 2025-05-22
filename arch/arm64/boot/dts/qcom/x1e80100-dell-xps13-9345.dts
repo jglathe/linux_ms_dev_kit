@@ -21,7 +21,6 @@
 	chassis-type = "laptop";
 
 	aliases {
-		serial0 = &uart21;
 		serial1 = &uart14;
 	};
 
@@ -1408,11 +1407,6 @@
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 	};
-};
-
-&uart21 {
-	compatible = "qcom,geni-debug-uart";
-	status = "okay";
 };
 
 &usb_1_ss0_hsphy {
