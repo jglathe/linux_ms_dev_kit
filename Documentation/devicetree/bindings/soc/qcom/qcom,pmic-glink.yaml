@@ -40,8 +40,10 @@ properties:
               - qcom,milos-pmic-glink
               - qcom,sm8650-pmic-glink
               - qcom,sm8750-pmic-glink
-              - qcom,x1e80100-pmic-glink
           - const: qcom,sm8550-pmic-glink
+          - const: qcom,pmic-glink
+      - items:
+          - const: qcom,x1e80100-pmic-glink
           - const: qcom,pmic-glink
 
   '#address-cells':
