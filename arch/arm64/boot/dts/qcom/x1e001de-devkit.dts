@@ -55,7 +55,6 @@
 
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
-			     "qcom,sm8550-pmic-glink",
 			     "qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
