@@ -1088,7 +1088,6 @@ properties:
 
       - items:
           - enum:
-              - acer,swift-sf14-11
               - asus,vivobook-s15
               - asus,zenbook-a14-ux3407ra
               - dell,inspiron-14-plus-7441
@@ -1102,6 +1101,12 @@ properties:
               - qcom,x1e80100-crd
               - qcom,x1e80100-qcp
           - const: qcom,x1e80100
+
+      - items:
+          - enum:
+              - acer,swift-sf14-11
+              - asus,zenbook-a14-ux3407qa
+          - const: qcom,x1p64100
 
       - items:
           - enum:
