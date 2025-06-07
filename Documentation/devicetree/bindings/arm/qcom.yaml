@@ -1092,6 +1092,7 @@ properties:
               - acer,swift-go14-01
               - asus,zenbook-a14-ux3407qa
               - hp,omnibook-x14-fe1
+              - lenovo,ideapad-5
               - lenovo,thinkbook-16
               - qcom,x1p42100-crd
           - const: qcom,x1p42100
