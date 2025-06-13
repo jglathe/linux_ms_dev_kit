@@ -104,7 +104,7 @@
 			compatible = "usb-c-connector";
 			reg = <1>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -141,7 +141,7 @@
 			compatible = "usb-c-connector";
 			reg = <2>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -1232,7 +1232,7 @@
 	rtmr0_default: rtmr0-reset-n-active-state {
 		pins = "gpio10";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <1>; /* 1.8 V */
 		bias-disable;
 		input-disable;
 		output-enable;
@@ -1241,7 +1241,7 @@
 	usb0_3p3_reg_en: usb0-3p3-reg-en-state {
 		pins = "gpio11";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <1>; /* 1.8 V */
 		bias-disable;
 		input-disable;
 		output-enable;
@@ -1265,7 +1265,7 @@
 	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <1>; /* 1.8 V */
 		bias-disable;
 		input-disable;
 		output-enable;
@@ -1276,7 +1276,7 @@
 	edp_bl_en: edp-bl-en-state {
 		pins = "gpio4";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <1>; /* 1.8 V */
 		input-disable;
 		output-enable;
 	};
@@ -1286,7 +1286,7 @@
 	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <1>; /* 1.8 V */
 		bias-disable;
 		input-disable;
 		output-enable;
@@ -1586,7 +1586,6 @@
 	};
 };
 
-
 &uart21 {
 	compatible = "qcom,geni-debug-uart";
 	status = "okay";
@@ -1701,18 +1700,18 @@
 	status = "okay";
 };
 
-&usb_mp_qmpphy0 {
-	vdda-phy-supply = <&vreg_l3e_1p2>;
-	vdda-pll-supply = <&vreg_l3c_0p8>;
-
-	status = "okay";
-};
-
 &usb_mp_hsphy1 {
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
 	phys = <&eusb3_repeater>;
+
+	status = "okay";
+};
+
+&usb_mp_qmpphy0 {
+	vdda-phy-supply = <&vreg_l3e_1p2>;
+	vdda-pll-supply = <&vreg_l3c_0p8>;
 
 	status = "okay";
 };
