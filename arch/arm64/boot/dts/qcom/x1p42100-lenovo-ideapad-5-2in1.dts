@@ -57,13 +57,6 @@
 		#sound-dai-cells = <1>;
 	};
 
-	backlight: backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pm8550_pwm 3 500000>;
-
-		power-supply = <&vreg_edp_bl>;
-	};
-
 	camera {
 		compatible = "regulator-dummy-consumer";
 
@@ -1173,10 +1166,6 @@
 	vdda-phy-supply = <&vreg_l1d_0p8>;
 	vdda-pll-supply = <&vreg_l2j_1p2>;
 
-	status = "okay";
-};
-
-&pm8550_pwm {
 	status = "okay";
 };
 
