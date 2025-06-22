@@ -1117,11 +1117,13 @@
 };
 
 &pcie3 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pcie3_default>;
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
 
+	pinctrl-0 = <&pcie3_default>;
+	pinctrl-names = "default";
+
+	max-link-speed = <1>;
 	status = "okay";
 };
 
