@@ -9114,6 +9114,7 @@ CONFIG_REGULATOR_DA9121                         policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_DA9210                         policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_DA9211                         policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_DEBUG                          policy<{'arm64': 'n'}>
+CONFIG_REGULATOR_DUMMY_CONSUMER                 policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_FAN53555                       policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_FAN53880                       policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_FP9931                         policy<{'arm64': 'm'}>
