@@ -709,7 +709,7 @@ CONFIG_ADXRS450                                 policy<{'arm64': 'm'}>
 CONFIG_AD_SIGMA_DELTA                           policy<{'arm64': 'm'}>
 CONFIG_AF8133J                                  policy<{'arm64': 'm'}>
 CONFIG_AFE4403                                  policy<{'arm64': 'm'}>
-CONFIG_AFE4404                                  policy<{'arm64': 'm'}>
+CONFIG_AFE4404                                  policy<{'arm64': 'n'}>
 CONFIG_AFFS_FS                                  policy<{'arm64': 'm'}>
 CONFIG_AFS_DEBUG                                policy<{'arm64': 'n'}>
 CONFIG_AFS_DEBUG_CURSOR                         policy<{'arm64': 'n'}>
@@ -3749,7 +3749,7 @@ CONFIG_EEPROM_EE1004                            policy<{'arm64': 'm'}>
 CONFIG_EEPROM_IDT_89HPESX                       policy<{'arm64': 'm'}>
 CONFIG_EEPROM_MAX6875                           policy<{'arm64': 'm'}>
 CONFIG_EFI                                      policy<{'arm64': 'y'}>
-CONFIG_EFI_ARMSTUB_DTB_LOADER                   policy<{'arm64': 'n'}>
+CONFIG_EFI_ARMSTUB_DTB_LOADER                   policy<{'arm64': 'y'}>
 CONFIG_EFI_BOOTLOADER_CONTROL                   policy<{'arm64': 'm'}>
 CONFIG_EFI_CAPSULE_LOADER                       policy<{'arm64': 'm'}>
 CONFIG_EFI_COCO_SECRET                          policy<{'arm64': 'y'}>
@@ -10631,7 +10631,7 @@ CONFIG_SND_SOC_AMD_ACP                          policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_AMD_CZ_DA7219MX98357_MACH        policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_AMD_CZ_RT5645_MACH               policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_AMD_ST_ES8336_MACH               policy<{'arm64': 'm'}>
-CONFIG_SND_SOC_APPLE_MCA                        policy<{'arm64': 'm'}>
+CONFIG_SND_SOC_APPLE_MCA                        policy<{'arm64': 'n'}>
 CONFIG_SND_SOC_APQ8016_SBC                      policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_AUDIO_IIO_AUX                    policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_AW8738                           policy<{'arm64': 'm'}>
