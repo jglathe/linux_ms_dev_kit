@@ -32,6 +32,7 @@ config REGULATOR_DEBUG
 
 config REGULATOR_DUMMY_CONSUMER
 	tristate "Dummy regulator consumer support"
+	depends on REGULATOR
 	help
 	  This driver provides a dummy consumer for a device behind an
 	  USB phy (for example) that needs power supplies, but has no
