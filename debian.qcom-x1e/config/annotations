@@ -120,6 +120,15 @@ CONFIG_CRYPTO_SHA512_ARM64_CE                   note<'LP: #2034061'>
 CONFIG_DEBUG_FS                                 policy<{'arm64': 'y'}>
 CONFIG_DEBUG_FS                                 note<'required debug option'>
 
+CONFIG_DEBUG_INFO                               policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO                               note<'required for debug packages'>
+
+CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_BTF                           note<'Needs newer pahole for armhf'>
+
+CONFIG_DEBUG_INFO_SPLIT                         policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_SPLIT                         note<'LP: #1413664'>
+
 CONFIG_DEBUG_KERNEL                             policy<{'arm64': 'y'}>
 CONFIG_DEBUG_KERNEL                             note<'required debug option'>
 
@@ -2874,16 +2883,22 @@ CONFIG_DEBUG_CGROUP_REF                         policy<{'arm64': 'n'}>
 CONFIG_DEBUG_CLOSURES                           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_DEVRES                             policy<{'arm64': 'n'}>
 CONFIG_DEBUG_DRIVER                             policy<{'arm64': 'n'}>
+CONFIG_DEBUG_EFI                                policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FORCE_FUNCTION_ALIGN_64B           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FORCE_WEAK_PER_CPU                 policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FS_ALLOW_ALL                       policy<{'arm64': 'y'}>
 CONFIG_DEBUG_FS_ALLOW_NONE                      policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FS_DISALLOW_MOUNT                  policy<{'arm64': 'n'}>
 CONFIG_DEBUG_GPIO                               policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_BTF_MODULES                   policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_COMPRESSED_NONE               policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_COMPRESSED_ZLIB               policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_COMPRESSED_ZSTD               policy<{'arm64': 'n'}>
 CONFIG_DEBUG_INFO_DWARF4                        policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_DWARF5                        policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_DWARF5                        policy<{'arm64': 'y'}>
 CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT       policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_NONE                          policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_NONE                          policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_REDUCED                       policy<{'arm64': 'n'}>
 CONFIG_DEBUG_IRQFLAGS                           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_KERNEL_DC                          policy<{'arm64': 'n'}>
 CONFIG_DEBUG_KMEMLEAK                           policy<{'arm64': 'n'}>
@@ -3832,6 +3847,7 @@ CONFIG_EXTCON_USBC_TUSB320                      policy<{'arm64': 'm'}>
 CONFIG_EXTCON_USB_GPIO                          policy<{'arm64': 'm'}>
 CONFIG_EXTENDED_MODVERSIONS                     policy<{'arm64': 'y'}>
 CONFIG_EXTRA_FIRMWARE                           policy<{'arm64': '""'}>
+CONFIG_EXT_GROUP_SCHED                          policy<{'arm64': 'y'}>
 CONFIG_EZCHIP_NPS_MANAGEMENT_ENET               policy<{'arm64': 'm'}>
 CONFIG_EZX_PCAP                                 policy<{'arm64': 'y'}>
 CONFIG_F2FS_CHECK_FS                            policy<{'arm64': 'n'}>
@@ -4144,6 +4160,7 @@ CONFIG_FUNCTION_GRAPH_RETVAL                    policy<{'arm64': 'y'}>
 CONFIG_FUNCTION_GRAPH_TRACER                    policy<{'arm64': 'y'}>
 CONFIG_FUNCTION_PROFILER                        policy<{'arm64': 'y'}>
 CONFIG_FUNCTION_TRACER                          policy<{'arm64': 'y'}>
+CONFIG_FUNCTION_TRACE_ARGS                      policy<{'arm64': 'y'}>
 CONFIG_FUN_CORE                                 policy<{'arm64': 'm'}>
 CONFIG_FUN_ETH                                  policy<{'arm64': 'm'}>
 CONFIG_FUSE_DAX                                 policy<{'arm64': 'y'}>
@@ -4199,8 +4216,10 @@ CONFIG_GCC_NO_STRINGOP_OVERFLOW                 policy<{'arm64': 'y'}>
 CONFIG_GCC_SUPPORTS_DYNAMIC_FTRACE_WITH_ARGS    policy<{'arm64': 'y'}>
 CONFIG_GCC_VERSION                              policy<{'arm64': '140200'}>
 CONFIG_GCOV_KERNEL                              policy<{'arm64': 'n'}>
+CONFIG_GDB_SCRIPTS                              policy<{'arm64': 'y'}>
 CONFIG_GEHC_PMC_ADC                             policy<{'arm64': 'm'}>
 CONFIG_GEMINI_ETHERNET                          policy<{'arm64': 'm'}>
+CONFIG_GENDWARFKSYMS                            policy<{'arm64': 'n'}>
 CONFIG_GENERIC_ADC_BATTERY                      policy<{'arm64': 'm'}>
 CONFIG_GENERIC_ADC_THERMAL                      policy<{'arm64': 'm'}>
 CONFIG_GENERIC_ALLOCATOR                        policy<{'arm64': 'y'}>
@@ -6662,6 +6681,7 @@ CONFIG_MODPROBE_PATH                            policy<{'arm64': '"/sbin/modprob
 CONFIG_MODULES                                  policy<{'arm64': 'y'}>
 CONFIG_MODULES_TREE_LOOKUP                      policy<{'arm64': 'y'}>
 CONFIG_MODULES_USE_ELF_RELA                     policy<{'arm64': 'y'}>
+CONFIG_MODULE_ALLOW_BTF_MISMATCH                policy<{'arm64': 'n'}>
 CONFIG_MODULE_ALLOW_MISSING_NAMESPACE_IMPORTS   policy<{'arm64': 'n'}>
 CONFIG_MODULE_COMPRESS                          policy<{'arm64': 'y'}>
 CONFIG_MODULE_COMPRESS_ALL                      policy<{'arm64': 'y'}>
@@ -7273,6 +7293,7 @@ CONFIG_NET_PTP_CLASSIFY                         policy<{'arm64': 'y'}>
 CONFIG_NET_REDIRECT                             policy<{'arm64': 'y'}>
 CONFIG_NET_RX_BUSY_POLL                         policy<{'arm64': 'y'}>
 CONFIG_NET_SCHED                                policy<{'arm64': 'y'}>
+CONFIG_NET_SCH_BPF                              policy<{'arm64': 'n'}>
 CONFIG_NET_SCH_CAKE                             policy<{'arm64': 'm'}>
 CONFIG_NET_SCH_CBS                              policy<{'arm64': 'm'}>
 CONFIG_NET_SCH_CHOKE                            policy<{'arm64': 'm'}>
@@ -7853,6 +7874,8 @@ CONFIG_PAGE_SIZE_4KB                            policy<{'arm64': 'y'}>
 CONFIG_PAGE_SIZE_LESS_THAN_256KB                policy<{'arm64': 'y'}>
 CONFIG_PAGE_SIZE_LESS_THAN_64KB                 policy<{'arm64': 'y'}>
 CONFIG_PAGE_TABLE_CHECK                         policy<{'arm64': 'n'}>
+CONFIG_PAHOLE_HAS_LANG_EXCLUDE                  policy<{'arm64': 'y'}>
+CONFIG_PAHOLE_HAS_SPLIT_BTF                     policy<{'arm64': 'y'}>
 CONFIG_PAHOLE_VERSION                           policy<{'arm64': '129'}>
 CONFIG_PALMAS_GPADC                             policy<{'arm64': 'm'}>
 CONFIG_PANEL                                    policy<{'arm64': 'm'}>
@@ -8582,6 +8605,7 @@ CONFIG_PRINTK_CALLER                            policy<{'arm64': 'n'}>
 CONFIG_PRINTK_INDEX                             policy<{'arm64': 'n'}>
 CONFIG_PRINTK_TIME                              policy<{'arm64': 'y'}>
 CONFIG_PROBE_EVENTS                             policy<{'arm64': 'y'}>
+CONFIG_PROBE_EVENTS_BTF_ARGS                    policy<{'arm64': 'y'}>
 CONFIG_PROC_CHILDREN                            policy<{'arm64': 'y'}>
 CONFIG_PROC_EVENTS                              policy<{'arm64': 'y'}>
 CONFIG_PROC_FS                                  policy<{'arm64': 'y'}>
@@ -9527,9 +9551,10 @@ CONFIG_RTW89_PCI                                policy<{'arm64': 'm'}>
 CONFIG_RT_GROUP_SCHED                           policy<{'arm64': 'n'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190101'}>
+CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190107'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108200'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108401'}>
 CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
@@ -9616,6 +9641,7 @@ CONFIG_SCD4X                                    policy<{'arm64': 'm'}>
 CONFIG_SCF_TORTURE_TEST                         policy<{'arm64': 'n'}>
 CONFIG_SCHEDSTATS                               policy<{'arm64': 'y'}>
 CONFIG_SCHED_AUTOGROUP                          policy<{'arm64': 'y'}>
+CONFIG_SCHED_CLASS_EXT                          policy<{'arm64': 'y'}>
 CONFIG_SCHED_CLUSTER                            policy<{'arm64': 'y'}>
 CONFIG_SCHED_CORE                               policy<{'arm64': 'y'}>
 CONFIG_SCHED_HRTICK                             policy<{'arm64': 'y'}>
@@ -11500,10 +11526,10 @@ CONFIG_SYSTEM_BLACKLIST_KEYRING                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_DATA_VERIFICATION                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_EXTRA_CERTIFICATE                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_EXTRA_CERTIFICATE_SIZE            policy<{'arm64': '4096'}>
-CONFIG_SYSTEM_REVOCATION_KEYS                   policy<{'arm64': '""'}>
+CONFIG_SYSTEM_REVOCATION_KEYS                   policy<{'arm64': '"debian/canonical-revoked-certs.pem"'}>
 CONFIG_SYSTEM_REVOCATION_LIST                   policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_TRUSTED_KEYRING                   policy<{'arm64': 'y'}>
-CONFIG_SYSTEM_TRUSTED_KEYS                      policy<{'arm64': '""'}>
+CONFIG_SYSTEM_TRUSTED_KEYS                      policy<{'arm64': '"debian/canonical-certs.pem"'}>
 CONFIG_SYSV68_PARTITION                         policy<{'arm64': 'y'}>
 CONFIG_SYSVIPC                                  policy<{'arm64': 'y'}>
 CONFIG_SYSVIPC_COMPAT                           policy<{'arm64': 'y'}>
