@@ -57,12 +57,6 @@
 		#sound-dai-cells = <1>;
 	};
 
-	camera {
-		compatible = "regulator-dummy-consumer";
-
-		vdd-supply = <&vreg_cam_5p0>;
-	};
-
 	dp-connector {
 		compatible = "dp-connector";
 		label = "hdmi";
@@ -108,7 +102,7 @@
 			compatible = "usb-c-connector";
 			reg = <0>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -145,7 +139,7 @@
 			compatible = "usb-c-connector";
 			reg = <1>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -175,15 +169,6 @@
 					};
 				};
 			};
-		};
-	};
-
-	reserved-memory {
-		linux,cma {
-			compatible = "shared-dma-pool";
-			size = <0x0 0x8000000>;
-			reusable;
-			linux,cma-default;
 		};
 	};
 
@@ -308,21 +293,6 @@
 		};
 	};
 
-	vreg_cam_5p0: regulator-cam-5p0 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_CAM_5P0";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-
-		gpio = <&tlmm 44 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&cam_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
 
 	vreg_edp_3p3: regulator-edp-3p3 {
 		compatible = "regulator-fixed";
@@ -336,22 +306,6 @@
 
 		pinctrl-0 = <&edp_reg_en>;
 		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_edp_bl: regulator-edp-bl {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VBL9";
-		regulator-min-microvolt = <3600000>;
-		regulator-max-microvolt = <3600000>;
-
-		gpio = <&pmc8380_3_gpios 10 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_bl_reg_en>;
 
 		regulator-boot-on;
 	};
@@ -852,10 +806,10 @@
 
 &gpu {
 	status = "okay";
+};
 
-	zap-shader {
-		firmware-name = "qcom/x1p42100/LENOVO/83HL/qcdxkmsucpurwa.mbn";
-	};
+&gpu_zap_shader {
+	firmware-name = "qcom/x1p42100/LENOVO/83HL/qcdxkmsucpurwa.mbn";
 };
 
 &i2c2 {
@@ -1080,8 +1034,8 @@
 	aux-bus {
 		panel {
 			compatible = "samsung,atna40ct01", "samsung,atna33xc20";
-			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 
+			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 			pinctrl-0 = <&edp_bl_en>;
 			pinctrl-names = "default";
 
@@ -1315,15 +1269,10 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
+		<44 4>, 
 		<72 2>, /* Secure EC I2C connection (?) */
 		<238 1>; /* UFS Reset */
 
-	cam_reg_en: cam-reg-en-state {
-		pins = "gpio44";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-disable;
-	};
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
@@ -1479,50 +1428,34 @@
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
-		mode-pins {
-			pins = "gpio166";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <2>;
-			output-high;
-		};
-
 		oe-n-pins {
 			pins = "gpio168";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
 			pins = "gpio167";
 			function = "gpio";
-			bias-disable;
+			bias-pul-up;
 			drive-strength = <2>;
 		};
 
 	};
 
 	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
-		mode-pins {
-			pins = "gpio177";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <2>;
-			output-high;
-		};
-
 		oe-n-pins {
 			pins = "gpio179";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
 			pins = "gpio178";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 	};
