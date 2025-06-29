@@ -558,8 +558,8 @@
 
 		vreg_l12b_1p2: ldo12 {
 			regulator-name = "vreg_l12b_1p2";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1200000>;
+			regulator-min-microvolt = <1150000>;
+			regulator-max-microvolt = <1250000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -714,8 +714,8 @@
 
 		vreg_l1i_1p8: ldo1 {
 			regulator-name = "vreg_l1i_1p8";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
+			regulator-min-microvolt = <1750000>;
+			regulator-max-microvolt = <1850000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
