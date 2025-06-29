@@ -796,7 +796,7 @@
 	firmware-name = "qcom/x1p42100/LENOVO/83HL/qcdxkmsucpurwa.mbn";
 };
 
-&i2c2 {
+&i2c0 {
 	clock-frequency = <400000>;
 
 	pinctrl-0 = <&qup_i2c2_data_clk>, <&tpad_default>, <&kybd_default>;
@@ -817,19 +817,19 @@
 		wakeup-source;
 	};
 
-//	/* CIRQ1080 or SYNA2BA6 */
-//	touchpad@2c {
-//		compatible = "hid-over-i2c";
-//		reg = <0x2c>;
-//
-//		hid-descr-addr = <0x20>;
-//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	/* CIRQ1080 or SYNA2BA6 */
+	touchpad@2c {
+		compatible = "hid-over-i2c";
+		reg = <0x2c>;
+
+		hid-descr-addr = <0x20>;
+		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
 
 	/* FTCS0038 */
 	touchpad@38 {
@@ -858,19 +858,35 @@
 		wakeup-source;
 	};
 
-//	/* GXTP5100 */
-//	touchpad@5d {
-//		compatible = "hid-over-i2c";
-//		reg = <0x5d>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	/* GXTP5100 */
+	touchpad@5d {
+		compatible = "hid-over-i2c";
+		reg = <0x5d>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
+};
+
+&i2c1 {
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	/* 3d PS883x */
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	/* 1st PS883x */
 };
 
 &i2c5 {
@@ -930,25 +946,12 @@
 	};
 };
 
-&i2c8 {
+&i2c7 {
 	clock-frequency = <400000>;
 
 	status = "okay";
 
-	/* WACF2200 */
-	touchscreen@a {
-		compatible = "hid-over-i2c";
-		reg = <0x0a>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 51 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l15b_1p8>;
-
-		pinctrl-0 = <&ts0_default>;
-		pinctrl-names = "default";
-	};
+	/* 2nd PS883x */
 };
 
 &lpass_tlmm {
@@ -1407,21 +1410,6 @@
 		pins = "gpio3";
 		function = "gpio";
 		bias-pull-up;
-	};
-
-	ts0_default: ts0-default-state {
-		int-n-pins {
-			pins = "gpio51";
-			function = "gpio";
-			bias-disable;
-		};
-
-		reset-n-pins {
-			pins = "gpio48";
-			function = "gpio";
-			output-high;
-			drive-strength = <16>;
-		};
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
