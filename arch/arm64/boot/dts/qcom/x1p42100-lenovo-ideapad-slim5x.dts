@@ -507,7 +507,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l1b_1p8: ldo1 {
+		vreg_l1b_1p8: ldo1 { // not present
 			regulator-name = "vreg_l1b_1p8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
@@ -528,24 +528,10 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l5b_3p0: ldo5 {
-			regulator-name = "vreg_l5b_3p0";
-			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
 		vreg_l6b_1p8: ldo6 {
 			regulator-name = "vreg_l6b_1p8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <2960000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l7b_2p8: ldo7 {
-			regulator-name = "vreg_l7b_2p8";
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -598,13 +584,6 @@
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
-		};
-
-		vreg_l16b_2p9: ldo16 {
-			regulator-name = "vreg_l16b_2p9";
-			regulator-min-microvolt = <2912000>;
-			regulator-max-microvolt = <2912000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l17b_2p5: ldo17 {
@@ -719,27 +698,6 @@
 			regulator-name = "vreg_s1f_0p7";
 			regulator-min-microvolt = <700000>;
 			regulator-max-microvolt = <1100000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l1f_1p0: ldo1 {
-			regulator-name = "vreg_l1f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l2f_1p0: ldo2 {
-			regulator-name = "vreg_l2f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l3f_1p0: ldo3 {
-			regulator-name = "vreg_l3f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
