@@ -22,8 +22,8 @@
 /delete-node/ &pm8010_thermal;
 
 / {
-	model = "Lenovo IdeaPad 5 14Q8X9";
-	compatible = "lenovo,ideapad-5", "qcom,x1p42100";
+	model = "Lenovo IdeaPad 5 2in1 14Q8X9";
+	compatible = "lenovo,ideapad-5-2in1", "qcom,x1p42100";
 	chassis-type = "laptop";
 
 	aliases {
@@ -68,8 +68,6 @@
 		compatible = "regulator-dummy-consumer";
 
 		vdd-supply = <&vreg_cam_5p0>;
-
-		status = "okay";
 	};
 
 	dp-connector {
@@ -863,7 +861,7 @@
 	status = "okay";
 
 	zap-shader {
-		firmware-name = "qcom/x1p42100/LENOVO/83HL/qcdxkmsucpurwa.mbn";
+		firmware-name = "qcom/x1p42100/LENOVO/83GH/qcdxkmsucpurwa.mbn";
 	};
 };
 
@@ -1088,11 +1086,9 @@
 
 	aux-bus {
 		panel {
-			compatible = "edp-panel";
-
-			backlight = <&backlight>;
-
+			compatible = "samsung,atna40ct01", "samsung,atna33xc20";
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
+
 			pinctrl-0 = <&edp_bl_en>;
 			pinctrl-names = "default";
 
@@ -1225,15 +1221,15 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83HL/qcadsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83HL/adsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcadsp8380.mbn",
+			"qcom/x1p42100/LENOVO/83GH/adsp_dtbs.elf";
 
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83HL/qccdsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83HL/cdsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/83GH/qccdsp8380.mbn",
+			"qcom/x1p42100/LENOVO/83GH/cdsp_dtbs.elf";
 
 	status = "okay";
 };
