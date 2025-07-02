@@ -974,6 +974,17 @@
 	};
 };
 
+&i2c13 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	rtc@68 {
+		compatible = "dallas,ds1308";
+		reg = <0x68>;
+		vcc-supply = <&vreg_l15b_1p8>;
+	};
+};
+
 &mdss {
 	status = "okay";
 };
@@ -1100,6 +1111,11 @@
 		input-disable;
 		output-enable;
 	};
+};
+
+&pmk8550_rtc {
+	/* DS1308 RTC is more useful since it is backed by battery */
+	status = "disabled";
 };
 
 &qupv3_0 {
