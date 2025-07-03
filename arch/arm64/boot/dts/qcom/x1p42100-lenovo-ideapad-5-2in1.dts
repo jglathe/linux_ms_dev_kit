@@ -852,10 +852,10 @@
 
 &gpu {
 	status = "okay";
+};
 
-	zap-shader {
-		firmware-name = "qcom/x1p42100/LENOVO/83GH/qcdxkmsucpurwa.mbn";
-	};
+&gpu_zap_shader {
+	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcdxkmsucpurwa.mbn";
 };
 
 &i2c2 {
@@ -1450,50 +1450,34 @@
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
-		mode-pins {
-			pins = "gpio166";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <2>;
-			output-high;
-		};
-
 		oe-n-pins {
 			pins = "gpio168";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
 			pins = "gpio167";
 			function = "gpio";
-			bias-disable;
+			bias-pul-up;
 			drive-strength = <2>;
 		};
 
 	};
 
 	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
-		mode-pins {
-			pins = "gpio177";
-			function = "gpio";
-			bias-disable;
-			drive-strength = <2>;
-			output-high;
-		};
-
 		oe-n-pins {
 			pins = "gpio179";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
 			pins = "gpio178";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 	};
