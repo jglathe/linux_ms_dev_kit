@@ -59,30 +59,34 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pmk8550_pwm 0 4266537>;
-		enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
+		pwms = <&pmk8550_pwm 0 5000000>;
+
+		brightness-levels = <0 2048 4096 8192 16384 65535>;
+		num-interpolated-steps = <20>;
+		default-brightness-level = <80>;
+
 		power-supply = <&vreg_edp_bl>;
 
-		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
-		pinctrl-names = "default";
+//		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
+//		pinctrl-names = "default";
 	};
 
-	dp-connector {
-		compatible = "dp-connector";
-		label = "hdmi";
-		type = "full-size";
-
-		hpd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-0 = <&hdmi_hpd_default>;
-		pinctrl-names = "default";
-
-		port {
-			dp_connector_in: endpoint {
-				remote-endpoint = <&usb_1_ss2_qmpphy_out>;
-			};
-		};
-	};
+//	dp-connector {
+//		compatible = "dp-connector";
+//		label = "hdmi";
+//		type = "full-size";
+//
+//		hpd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+//
+//		pinctrl-0 = <&hdmi_hpd_default>;
+//		pinctrl-names = "default";
+//
+//		port {
+//			dp_connector_in: endpoint {
+//				remote-endpoint = <&usb_1_ss2_qmpphy_out>;
+//			};
+//		};
+//	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -994,21 +998,21 @@
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
-&mdss_dp2 {
-	status = "okay";
-};
+//&mdss_dp2 {
+//	status = "okay";
+//};
+//
+//&mdss_dp2_out {
+//	data-lanes = <0 1 2 3>;
+//	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+//};
 
-&mdss_dp2_out {
-	data-lanes = <0 1 2 3>;
-	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-};
-
-&mdss_dp2_phy {
-//	vdda-phy-supply = <&vreg_l3b>;
-// 	vdda-pll-supply = <&vreg_l6b>;
-
-	status = "okay";
-};
+//&mdss_dp2_phy {
+////	vdda-phy-supply = <&vreg_l3b>;
+////	vdda-pll-supply = <&vreg_l6b>;
+//
+//	status = "okay";
+//};
 
 &mdss_dp3 {
 	/delete-property/ #sound-dai-cells;
@@ -1021,6 +1025,7 @@
 	aux-bus {
 		panel {
 			compatible = "edp-panel";
+//			compatible = "samsung,atna40ct01", "samsung,atna33xc20";
 
 			backlight = <&backlight>;
 
@@ -1563,9 +1568,9 @@
 
 &usb_1_ss2_dwc3 {
 	dr_mode = "host";
-//	maximum-speed = "high-speed";
-//	phys = <&usb_1_ss2_hsphy>;
-//	phy-names = "usb2-phy";
+	maximum-speed = "high-speed";
+	phys = <&usb_1_ss2_hsphy>;
+	phy-names = "usb2-phy";
 };
 
 &usb_1_ss2_hsphy {
@@ -1577,16 +1582,16 @@
 	status = "okay";
 };
 
-&usb_1_ss2_qmpphy {
-	vdda-phy-supply = <&vreg_l2j_1p2>;
-	vdda-pll-supply = <&vreg_l2d_0p9>;
+//&usb_1_ss2_qmpphy {
+//	vdda-phy-supply = <&vreg_l2j_1p2>;
+//	vdda-pll-supply = <&vreg_l2d_0p9>;
+//
+//	status = "okay";
+//};
 
-	status = "okay";
-};
-
-&usb_1_ss2_qmpphy_out {
-	remote-endpoint = <&dp_connector_in>;
-};
+//&usb_1_ss2_qmpphy_out {
+//	remote-endpoint = <&dp_connector_in>;
+//};
 
 &usb_2 {
 	status = "okay";
