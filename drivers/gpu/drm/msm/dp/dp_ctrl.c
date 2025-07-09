@@ -6,6 +6,7 @@
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
 
 #include <linux/types.h>
+#include <linux/clk/clk-conf.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/phy/phy.h>
@@ -98,6 +99,7 @@ struct msm_dp_ctrl_private {
 	bool core_clks_on;
 	bool link_clks_on;
 	bool stream_clks_on;
+	bool clk_defaults_set;
 };
 
 static int msm_dp_aux_link_configure(struct drm_dp_aux *aux,
@@ -1491,6 +1493,14 @@ static int msm_dp_ctrl_enable_mainlink_clocks(struct msm_dp_ctrl_private *ctrl)
 
 	phy_configure(phy, &ctrl->phy_opts);
 	phy_power_on(phy);
+
+	if (!ctrl->clk_defaults_set) {
+		ret = of_clk_set_defaults(ctrl->dev->of_node, false);
+		if (ret)
+			return ret;
+
+		ctrl->clk_defaults_set = true;
+	}
 
 	dev_pm_opp_set_rate(ctrl->dev, ctrl->link->link_params.rate * 1000);
 	ret = msm_dp_ctrl_link_clk_enable(&ctrl->msm_dp_ctrl);
