@@ -22,6 +22,7 @@
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_dp.h>
 #include <linux/usb/typec_mux.h>
+#include "../../usb/typec/mux.h"
 
 #include <drm/bridge/aux-bridge.h>
 
@@ -3766,6 +3767,9 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	struct qmp_combo *qmp = typec_switch_get_drvdata(sw);
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 
+	/* print out call parameter */
+	printk(KERN_INFO "%s: qmp_combo_switch_set() enter new_orientation=%d, altmode=%d, orientation=%d\n", dev_name(&sw->dev),orientation,qmp->dp_powered_on,qmp->orientation);
+
 	if (orientation == qmp->orientation || orientation == TYPEC_ORIENTATION_NONE)
 		return 0;
 
@@ -3785,6 +3789,9 @@ static int qmp_combo_typec_switch_set(struct typec_switch_dev *sw,
 	}
 	mutex_unlock(&qmp->phy_mutex);
 
+	/* print out result */
+	printk(KERN_INFO "%s: qmp_combo_switch_set() exit new_orientation=%d, altmode=%d, orientation=%d\n", dev_name(&sw->dev),orientation,qmp->dp_powered_on,qmp->orientation);
+
 	return 0;
 }
 
@@ -3794,6 +3801,9 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 	enum qmpphy_mode new_mode;
 	unsigned int svid;
+
+	/* print out call parameter */
+	printk(KERN_INFO "%s: qmp_combo_mux_set() enter mode=%d, altmode=%d\n", dev_name(&mux->dev),(int)state->mode,qmp->dp_powered_on);
 
 	guard(mutex)(&qmp->phy_mutex);
 
@@ -3867,6 +3877,9 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 				cfg->dp_aux_init(qmp);
 		}
 	}
+
+	/* print out result */
+	printk(KERN_INFO "%s: qmp_combo_mux_set() exit mode=%d, new_mode=%d, altmode=%d\n", dev_name(&mux->dev),(int)state->mode,(int)new_mode,qmp->dp_powered_on);
 
 	return 0;
 }
