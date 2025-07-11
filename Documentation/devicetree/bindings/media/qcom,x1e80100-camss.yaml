@@ -17,7 +17,7 @@ properties:
     const: qcom,x1e80100-camss
 
   reg:
-    maxItems: 17
+    maxItems: 13
 
   reg-names:
     items:
@@ -27,10 +27,6 @@ properties:
       - const: csid2
       - const: csid_lite0
       - const: csid_lite1
-      - const: csiphy0
-      - const: csiphy1
-      - const: csiphy2
-      - const: csiphy4
       - const: csitpg0
       - const: csitpg1
       - const: csitpg2
@@ -40,7 +36,7 @@ properties:
       - const: vfe_lite1
 
   clocks:
-    maxItems: 29
+    maxItems: 21
 
   clock-names:
     items:
@@ -55,14 +51,6 @@ properties:
       - const: cphy_rx_clk_src
       - const: csid
       - const: csid_csiphy_rx
-      - const: csiphy0
-      - const: csiphy0_timer
-      - const: csiphy1
-      - const: csiphy1_timer
-      - const: csiphy2
-      - const: csiphy2_timer
-      - const: csiphy4
-      - const: csiphy4_timer
       - const: gcc_axi_hf
       - const: gcc_axi_sf
       - const: vfe0
@@ -75,7 +63,7 @@ properties:
       - const: vfe_lite_csid
 
   interrupts:
-    maxItems: 13
+    maxItems: 9
 
   interrupt-names:
     items:
@@ -84,14 +72,16 @@ properties:
       - const: csid2
       - const: csid_lite0
       - const: csid_lite1
-      - const: csiphy0
-      - const: csiphy1
-      - const: csiphy2
-      - const: csiphy4
       - const: vfe0
       - const: vfe1
       - const: vfe_lite0
       - const: vfe_lite1
+
+  phys:
+    maxItems: 4
+
+  phy-names:
+    maxItems: 4
 
   interconnects:
     maxItems: 4
@@ -166,13 +156,13 @@ required:
   - clock-names
   - interrupts
   - interrupt-names
+  - phys
+  - phy-names
   - interconnects
   - interconnect-names
   - iommus
   - power-domains
   - power-domain-names
-  - vdd-csiphy-0p8-supply
-  - vdd-csiphy-1p2-supply
   - ports
 
 additionalProperties: false
@@ -199,10 +189,6 @@ examples:
                   <0 0x0acbb000 0 0x2000>,
                   <0 0x0acc6000 0 0x1000>,
                   <0 0x0acca000 0 0x1000>,
-                  <0 0x0ace4000 0 0x1000>,
-                  <0 0x0ace6000 0 0x1000>,
-                  <0 0x0ace8000 0 0x1000>,
-                  <0 0x0acec000 0 0x4000>,
                   <0 0x0acf6000 0 0x1000>,
                   <0 0x0acf7000 0 0x1000>,
                   <0 0x0acf8000 0 0x1000>,
@@ -217,10 +203,6 @@ examples:
                         "csid2",
                         "csid_lite0",
                         "csid_lite1",
-                        "csiphy0",
-                        "csiphy1",
-                        "csiphy2",
-                        "csiphy4",
                         "csitpg0",
                         "csitpg1",
                         "csitpg2",
@@ -240,14 +222,6 @@ examples:
                      <&camcc CAM_CC_CPHY_RX_CLK_SRC>,
                      <&camcc CAM_CC_CSID_CLK>,
                      <&camcc CAM_CC_CSID_CSIPHY_RX_CLK>,
-                     <&camcc CAM_CC_CSIPHY0_CLK>,
-                     <&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-                     <&camcc CAM_CC_CSIPHY1_CLK>,
-                     <&camcc CAM_CC_CSI1PHYTIMER_CLK>,
-                     <&camcc CAM_CC_CSIPHY2_CLK>,
-                     <&camcc CAM_CC_CSI2PHYTIMER_CLK>,
-                     <&camcc CAM_CC_CSIPHY4_CLK>,
-                     <&camcc CAM_CC_CSI4PHYTIMER_CLK>,
                      <&gcc GCC_CAMERA_HF_AXI_CLK>,
                      <&gcc GCC_CAMERA_SF_AXI_CLK>,
                      <&camcc CAM_CC_IFE_0_CLK>,
@@ -270,14 +244,6 @@ examples:
                           "cphy_rx_clk_src",
                           "csid",
                           "csid_csiphy_rx",
-                          "csiphy0",
-                          "csiphy0_timer",
-                          "csiphy1",
-                          "csiphy1_timer",
-                          "csiphy2",
-                          "csiphy2_timer",
-                          "csiphy4",
-                          "csiphy4_timer",
                           "gcc_axi_hf",
                           "gcc_axi_sf",
                           "vfe0",
@@ -294,10 +260,6 @@ examples:
                         <GIC_SPI 431 IRQ_TYPE_EDGE_RISING>,
                         <GIC_SPI 468 IRQ_TYPE_EDGE_RISING>,
                         <GIC_SPI 359 IRQ_TYPE_EDGE_RISING>,
-                        <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>,
-                        <GIC_SPI 478 IRQ_TYPE_EDGE_RISING>,
-                        <GIC_SPI 479 IRQ_TYPE_EDGE_RISING>,
-                        <GIC_SPI 122 IRQ_TYPE_EDGE_RISING>,
                         <GIC_SPI 465 IRQ_TYPE_EDGE_RISING>,
                         <GIC_SPI 467 IRQ_TYPE_EDGE_RISING>,
                         <GIC_SPI 469 IRQ_TYPE_EDGE_RISING>,
@@ -308,14 +270,15 @@ examples:
                               "csid2",
                               "csid_lite0",
                               "csid_lite1",
-                              "csiphy0",
-                              "csiphy1",
-                              "csiphy2",
-                              "csiphy4",
                               "vfe0",
                               "vfe1",
                               "vfe_lite0",
                               "vfe_lite1";
+
+            phys = <&csiphy0>, <&csiphy1>,
+                   <&csiphy2>, <&csiphy4>;
+            phy-names = "csiphy0", "csiphy1",
+                        "csiphy2", "csiphy4";
 
             interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
                              &config_noc SLAVE_CAMERA_CFG QCOM_ICC_TAG_ACTIVE_ONLY>,
@@ -347,9 +310,6 @@ examples:
             power-domain-names = "ife0",
                                  "ife1",
                                  "top";
-
-            vdd-csiphy-0p8-supply = <&csiphy_0p8_supply>;
-            vdd-csiphy-1p2-supply = <&csiphy_1p2_supply>;
 
             ports {
                 #address-cells = <1>;
