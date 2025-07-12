@@ -84,6 +84,7 @@
 
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
+			     "qcom,sm8550-pmic-glink",
 			     "qcom,pmic-glink";
 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
@@ -409,6 +410,42 @@
 		regulator-max-microvolt = <3700000>;
 
 		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	vreg_wcn_0p95: regulator-wcn-0p95 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_0P95";
+		regulator-min-microvolt = <950000>;
+		regulator-max-microvolt = <950000>;
+
+		vin-supply = <&vreg_wcn_3p3>;
+	};
+
+	vreg_wcn_1p9: regulator-wcn-1p9 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_1P9";
+		regulator-min-microvolt = <1900000>;
+		regulator-max-microvolt = <1900000>;
+
+		vin-supply = <&vreg_wcn_3p3>;
+	};
+
+	vreg_wcn_3p3: regulator-wcn-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&wcn_sw_en>;
+		pinctrl-names = "default";
+
 		regulator-boot-on;
 	};
 };
@@ -748,9 +785,9 @@
 
 	status = "okay";
 
-	/* Left-side display-adjacent port, PS8833 */
+	/* Left-side display-adjacent port */
 	typec-mux@8 {
-		compatible = "parade,ps8830";
+		compatible = "parade,ps8833", "parade,ps8830";
 		reg = <0x08>;
 
 		clocks = <&rpmhcc RPMH_RF_CLK3>;
@@ -840,7 +877,7 @@
 		pinctrl-names = "default";
 	};
 
-	/* EC */
+	/* EC @0x5b */
 };
 
 &i2c7 {
@@ -848,9 +885,9 @@
 
 	status = "okay";
 
-	/* Left-side user-adjacent port, PS8833 */
+	/* Left-side user-adjacent port */
 	typec-mux@8 {
-		compatible = "parade,ps8830";
+		compatible = "parade,ps8833", "parade,ps8830";
 		reg = <0x08>;
 
 		clocks = <&rpmhcc RPMH_RF_CLK4>;
@@ -962,7 +999,6 @@
 };
 
 &mdss_dp3 {
-	compatible = "qcom,x1e80100-dp";
 	/delete-property/ #sound-dai-cells;
 
 	status = "okay";
@@ -1199,14 +1235,6 @@
 	gpio-reserved-ranges = <44 4>,  /* SPI11, TZ Protected */
 			       <90 1>;	/* Unknown, TZ Protected */
 
-	bt_en_default: bt-en-sleep {
-		pins = "gpio116";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-disable;
-		output-low;
-	};
-
 	cam_indicator_en: cam-indicator-en-state {
 		pins = "gpio110";
 		function = "gpio";
@@ -1339,6 +1367,27 @@
 		drive-strength = <16>;
 		bias-disable;
 		output-low;
+	};
+
+	wcn_bt_en: wcn-bt-en-state {
+		pins = "gpio116";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+	};
+
+	wcn_sw_en: wcn-sw-en-state {
+		pins = "gpio214";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	wcn_wlan_en: wcn-wlan-en-state {
+		pins = "gpio117";
+		function = "gpio";
+		drive-strength = <8>;
+		bias-disable;
 	};
 };
 
