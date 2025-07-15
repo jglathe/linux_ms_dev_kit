@@ -53,11 +53,11 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-	lan {
-		compatible = "regulator-dummy-consumer";
+//	lan {
+//		compatible = "regulator-dummy-consumer";
 
-		vdd-supply = <&vreg_wcn_3p3>;
-	};
+//		vdd-supply = <&vreg_wcn_3p3>;
+//	};
 
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
@@ -1080,6 +1080,8 @@
 &pcie4 {
 	perst-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
+
+	vddpe-3v3-supply = <&vreg_wcn_3p3>;
 
 	pinctrl-0 = <&pcie4_default>;
 	pinctrl-names = "default";
