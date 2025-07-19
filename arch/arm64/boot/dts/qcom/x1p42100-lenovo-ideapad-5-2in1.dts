@@ -63,22 +63,22 @@
 		vdd-supply = <&vreg_cam_5p0>;
 	};
 
-	dp-connector {
-		compatible = "dp-connector";
-		label = "hdmi";
-		type = "full-size";
-
-		hpd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-0 = <&hdmi_hpd_default>;
-		pinctrl-names = "default";
-
-		port {
-			dp_connector_in: endpoint {
-				remote-endpoint = <&usb_1_ss2_qmpphy_out>;
-			};
-		};
-	};
+//	dp-connector {
+//		compatible = "dp-connector";
+//		label = "hdmi";
+//		type = "full-size";
+//
+//		hpd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+//
+//		pinctrl-0 = <&hdmi_hpd_default>;
+//		pinctrl-names = "default";
+//
+//		port {
+//			dp_connector_in: endpoint {
+//				remote-endpoint = <&usb_1_ss2_qmpphy_out>;
+//			};
+//		};
+//	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -108,7 +108,7 @@
 			compatible = "usb-c-connector";
 			reg = <0>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -145,7 +145,7 @@
 			compatible = "usb-c-connector";
 			reg = <1>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -175,15 +175,6 @@
 					};
 				};
 			};
-		};
-	};
-
-	reserved-memory {
-		linux,cma {
-			compatible = "shared-dma-pool";
-			size = <0x0 0x8000000>;
-			reusable;
-			linux,cma-default;
 		};
 	};
 
@@ -336,22 +327,6 @@
 
 		pinctrl-0 = <&edp_reg_en>;
 		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_edp_bl: regulator-edp-bl {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VBL9";
-		regulator-min-microvolt = <3600000>;
-		regulator-max-microvolt = <3600000>;
-
-		gpio = <&pmc8380_3_gpios 10 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_bl_reg_en>;
 
 		regulator-boot-on;
 	};
@@ -548,24 +523,10 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l5b_3p0: ldo5 {
-			regulator-name = "vreg_l5b_3p0";
-			regulator-min-microvolt = <3000000>;
-			regulator-max-microvolt = <3000000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
 		vreg_l6b_1p8: ldo6 {
 			regulator-name = "vreg_l6b_1p8";
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <2960000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l7b_2p8: ldo7 {
-			regulator-name = "vreg_l7b_2p8";
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -618,13 +579,6 @@
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
-		};
-
-		vreg_l16b_2p9: ldo16 {
-			regulator-name = "vreg_l16b_2p9";
-			regulator-min-microvolt = <2912000>;
-			regulator-max-microvolt = <2912000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l17b_2p5: ldo17 {
@@ -739,27 +693,6 @@
 			regulator-name = "vreg_s1f_0p7";
 			regulator-min-microvolt = <700000>;
 			regulator-max-microvolt = <1100000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l1f_1p0: ldo1 {
-			regulator-name = "vreg_l1f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l2f_1p0: ldo2 {
-			regulator-name = "vreg_l2f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
-
-		vreg_l3f_1p0: ldo3 {
-			regulator-name = "vreg_l3f_1p0";
-			regulator-min-microvolt = <1024000>;
-			regulator-max-microvolt = <1024000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
@@ -879,19 +812,19 @@
 		wakeup-source;
 	};
 
-//	/* CIRQ1080 or SYNA2BA6 */
-//	touchpad@2c {
-//		compatible = "hid-over-i2c";
-//		reg = <0x2c>;
-//
-//		hid-descr-addr = <0x20>;
-//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	/* CIRQ1080 or SYNA2BA6 */
+	touchpad@2c {
+		compatible = "hid-over-i2c";
+		reg = <0x2c>;
+
+		hid-descr-addr = <0x20>;
+		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
 
 	/* FTCS0038 */
 	touchpad@38 {
@@ -920,19 +853,19 @@
 		wakeup-source;
 	};
 
-//	/* GXTP5100 */
-//	touchpad@5d {
-//		compatible = "hid-over-i2c";
-//		reg = <0x5d>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	/* GXTP5100 */
+	touchpad@5d {
+		compatible = "hid-over-i2c";
+		reg = <0x5d>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
 };
 
 &i2c5 {
@@ -1053,21 +986,21 @@
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
-&mdss_dp2 {
-	status = "okay";
-};
+//&mdss_dp2 {
+//	status = "okay";
+//};
+//
+//&mdss_dp2_out {
+//	data-lanes = <0 1 2 3>;
+//	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+//};
 
-&mdss_dp2_out {
-	data-lanes = <0 1 2 3>;
-	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-};
-
-&mdss_dp2_phy {
-//	vdda-phy-supply = <&vreg_l3b>;
-// 	vdda-pll-supply = <&vreg_l6b>;
-
-	status = "okay";
-};
+//&mdss_dp2_phy {
+////	vdda-phy-supply = <&vreg_l3b>;
+////	vdda-pll-supply = <&vreg_l6b>;
+//
+//	status = "okay";
+//};
 
 &mdss_dp3 {
 	/delete-property/ #sound-dai-cells;
@@ -1079,7 +1012,8 @@
 
 	aux-bus {
 		panel {
-			compatible = "samsung,atna40ct01", "samsung,atna33xc20";
+			compatible = "edp-panel";
+
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 
 			pinctrl-0 = <&edp_bl_en>;
@@ -1189,11 +1123,6 @@
 		power-source = <1>; /* 1.8V */
 		input-disable;
 		output-enable;
-	};
-
-	edp_bl_reg_en: edp-bl-reg-en-state {
-		pins = "gpio10";
-		function = "normal";
 	};
 };
 
@@ -1600,9 +1529,9 @@
 
 &usb_1_ss2_dwc3 {
 	dr_mode = "host";
-//	maximum-speed = "high-speed";
-//	phys = <&usb_1_ss2_hsphy>;
-//	phy-names = "usb2-phy";
+	maximum-speed = "high-speed";
+	phys = <&usb_1_ss2_hsphy>;
+	phy-names = "usb2-phy";
 };
 
 &usb_1_ss2_hsphy {
@@ -1614,16 +1543,16 @@
 	status = "okay";
 };
 
-&usb_1_ss2_qmpphy {
-	vdda-phy-supply = <&vreg_l2j_1p2>;
-	vdda-pll-supply = <&vreg_l2d_0p9>;
+//&usb_1_ss2_qmpphy {
+//	vdda-phy-supply = <&vreg_l2j_1p2>;
+//	vdda-pll-supply = <&vreg_l2d_0p9>;
+//
+//	status = "okay";
+//};
 
-	status = "okay";
-};
-
-&usb_1_ss2_qmpphy_out {
-	remote-endpoint = <&dp_connector_in>;
-};
+//&usb_1_ss2_qmpphy_out {
+//	remote-endpoint = <&dp_connector_in>;
+//};
 
 &usb_2 {
 	status = "okay";
