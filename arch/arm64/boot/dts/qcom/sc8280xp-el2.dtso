@@ -45,3 +45,9 @@
 &scm {
 	qcom,shm-bridge-vmid = <QCOM_SCM_VMID_SELF_OWNER>;
 };
+
+&venus {
+	video-firmware {
+		iommus = <&apps_smmu 0x2a02 0x400>;
+	};
+};
