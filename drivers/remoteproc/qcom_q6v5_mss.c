@@ -2057,7 +2057,7 @@ static int q6v5_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	rproc->auto_boot = false;
+	rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
 	qproc = rproc->priv;
