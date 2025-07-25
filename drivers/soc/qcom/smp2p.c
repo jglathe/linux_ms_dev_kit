@@ -238,7 +238,7 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 	for (i = smp2p->valid_entries; i < in->valid_entries; i++) {
 		list_for_each_entry(entry, &smp2p->inbound, node) {
 			memcpy(buf, in->entries[i].name, sizeof(buf));
-			if (!strcmp(buf, entry->name)) {
+			if (!strncmp(buf, entry->name, SMP2P_MAX_ENTRY_NAME)) {
 				entry->value = &in->entries[i].value;
 				break;
 			}
