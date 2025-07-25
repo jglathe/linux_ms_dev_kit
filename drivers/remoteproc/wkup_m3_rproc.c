@@ -170,7 +170,7 @@ static int wkup_m3_rproc_probe(struct platform_device *pdev)
 	if (!rproc)
 		return -ENOMEM;
 
-	rproc->auto_boot = false;
+	rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	rproc->sysfs_read_only = true;
 
 	wkupm3 = rproc->priv;
