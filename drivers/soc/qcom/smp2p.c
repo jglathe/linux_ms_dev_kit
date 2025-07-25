@@ -73,7 +73,7 @@ struct smp2p_smem_item {
 	u32 flags;
 
 	struct {
-		u8 name[SMP2P_MAX_ENTRY_NAME];
+		char name[SMP2P_MAX_ENTRY_NAME];
 		u32 value;
 	} entries[SMP2P_MAX_ENTRY];
 } __packed;
@@ -228,7 +228,6 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 	struct smp2p_entry *entry;
 	int irq_pin;
 	u32 status;
-	char buf[SMP2P_MAX_ENTRY_NAME];
 	u32 val;
 	int i;
 
@@ -237,8 +236,7 @@ static void qcom_smp2p_notify_in(struct qcom_smp2p *smp2p)
 	/* Match newly created entries */
 	for (i = smp2p->valid_entries; i < in->valid_entries; i++) {
 		list_for_each_entry(entry, &smp2p->inbound, node) {
-			memcpy(buf, in->entries[i].name, sizeof(buf));
-			if (!strncmp(buf, entry->name, SMP2P_MAX_ENTRY_NAME)) {
+			if (!strncmp(in->entries[i].name, entry->name, SMP2P_MAX_ENTRY_NAME)) {
 				entry->value = &in->entries[i].value;
 				break;
 			}
@@ -439,14 +437,12 @@ static int qcom_smp2p_outbound_entry(struct qcom_smp2p *smp2p,
 				     struct device_node *node)
 {
 	struct smp2p_smem_item *out = smp2p->out;
-	char buf[SMP2P_MAX_ENTRY_NAME] = {};
 
 	if (out->valid_entries == out->total_entries)
 		return -ENOMEM;
 
 	/* Allocate an entry from the smem item */
-	strscpy(buf, entry->name, SMP2P_MAX_ENTRY_NAME);
-	memcpy(out->entries[out->valid_entries].name, buf, SMP2P_MAX_ENTRY_NAME);
+	strscpy(out->entries[out->valid_entries].name, entry->name, SMP2P_MAX_ENTRY_NAME);
 
 	/* Make the logical entry reference the physical value */
 	entry->value = &out->entries[out->valid_entries].value;
