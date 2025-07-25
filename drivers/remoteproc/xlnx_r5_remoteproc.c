@@ -925,7 +925,7 @@ static struct zynqmp_r5_core *zynqmp_r5_add_rproc_core(struct device *cdev)
 
 	r5_rproc->recovery_disabled = true;
 	r5_rproc->has_iommu = false;
-	r5_rproc->auto_boot = false;
+	r5_rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	r5_core = r5_rproc->priv;
 	r5_core->dev = cdev;
 	r5_core->np = dev_of_node(cdev);
