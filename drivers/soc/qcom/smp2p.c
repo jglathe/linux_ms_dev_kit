@@ -438,20 +438,22 @@ static void smp2p_irq_print_chip(struct irq_data *irqd, struct seq_file *p)
 	seq_printf(p, "%8s", dev_name(entry->smp2p->dev));
 }
 
-static int smp2p_irq_get_irqchip_state(struct irq_data *irqd, enum irqchip_irq_state which,
-				       bool *state)
+static int smp2p_get_irqchip_state(struct irq_data *irqd,
+				   enum irqchip_irq_state which, bool *state)
 {
 	struct smp2p_entry *entry = irq_data_get_irq_chip_data(irqd);
+	irq_hw_number_t irq = irqd_to_hwirq(irqd);
 	u32 val;
 
 	if (which != IRQCHIP_STATE_LINE_LEVEL)
 		return -EINVAL;
 
-	if (!entry->value)
-		return -ENODEV;
-
-	val = readl(entry->value);
-	*state = !!(val & BIT(irqd_to_hwirq(irqd)));
+	if (entry->value) {
+		val = readl(entry->value);
+		*state = !!(val & BIT(irq));
+	} else {
+		*state = 0;
+	}
 
 	return 0;
 }
@@ -462,7 +464,7 @@ static struct irq_chip smp2p_irq_chip = {
 	.irq_unmask     = smp2p_unmask_irq,
 	.irq_set_type	= smp2p_set_irq_type,
 	.irq_print_chip = smp2p_irq_print_chip,
-	.irq_get_irqchip_state = smp2p_irq_get_irqchip_state,
+	.irq_get_irqchip_state = smp2p_get_irqchip_state,
 };
 
 static int smp2p_irq_map(struct irq_domain *d,
