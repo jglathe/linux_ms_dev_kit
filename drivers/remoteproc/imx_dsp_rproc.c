@@ -1198,7 +1198,7 @@ static int imx_dsp_rproc_probe(struct platform_device *pdev)
 	}
 
 	init_completion(&priv->pm_comp);
-	rproc->auto_boot = false;
+	rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	ret = rproc_add(rproc);
 	if (ret) {
 		dev_err(dev, "rproc_add failed\n");
