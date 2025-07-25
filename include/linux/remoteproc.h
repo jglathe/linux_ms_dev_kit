@@ -504,6 +504,27 @@ enum rproc_features {
 };
 
 /**
+ * enum rproc_auto_boot - auto boot strategy for remoteproc during initial boot
+ *
+ * @RPROC_AUTO_BOOT_DISABLED: The remoteproc will be left offline (or detached).
+ * @RPROC_AUTO_BOOT_ATTACH_OR_START: The remoteproc will be attached (if it is
+ *				     already running). Otherwise, it will be
+ *				     started with new loaded firmware.
+ * @RPROC_FEAT_REBOOT_IF_FW_AVAILABLE: The remoteproc will be restarted if
+ *				       requesting new firmware succeeds. If
+ *				       the firmware is missing and the
+ *				       remoteproc is already running, it will
+ *				       be attached instead. A remoteproc
+ *				       implementing this must handle stop()
+ *				       being called in detached state.
+ */
+enum rproc_auto_boot {
+	RPROC_AUTO_BOOT_DISABLED,
+	RPROC_AUTO_BOOT_ATTACH_OR_START,
+	RPROC_AUTO_BOOT_RESTART_IF_FW_AVAILABLE,
+};
+
+/**
  * struct rproc - represents a physical remote processor device
  * @node: list node of this rproc object
  * @domain: iommu domain
@@ -577,7 +598,7 @@ struct rproc {
 	struct resource_table *cached_table;
 	size_t table_sz;
 	bool has_iommu;
-	bool auto_boot;
+	enum rproc_auto_boot auto_boot;
 	bool sysfs_read_only;
 	struct list_head dump_segments;
 	int nb_vdev;
