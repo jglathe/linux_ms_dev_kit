@@ -1080,8 +1080,12 @@ static int imx_rproc_probe(struct platform_device *pdev)
 			return dev_err_probe(dev, PTR_ERR(priv->clk), "Failed to enable clock\n");
 	}
 
-	if (rproc->state != RPROC_DETACHED)
-		rproc->auto_boot = of_property_read_bool(np, "fsl,auto-boot");
+	if (rproc->state != RPROC_DETACHED) {
+		if (of_property_read_bool(np, "fsl,auto-boot"))
+			rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
+		else
+			rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
+	}
 
 	if (dcfg->flags & IMX_RPROC_NEED_SYSTEM_OFF) {
 		/*
