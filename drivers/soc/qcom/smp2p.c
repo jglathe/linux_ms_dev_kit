@@ -618,9 +618,6 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Kick the outgoing edge after allocating entries */
-	qcom_smp2p_kick(smp2p);
-
 	ret = devm_request_threaded_irq(&pdev->dev, irq,
 					NULL, qcom_smp2p_intr,
 					IRQF_ONESHOT,
@@ -629,6 +626,9 @@ static int qcom_smp2p_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to request interrupt\n");
 		goto unwind_interfaces;
 	}
+
+	/* Kick the outgoing edge after allocating entries */
+	qcom_smp2p_kick(smp2p);
 
 	/*
 	 * Treat smp2p interrupt as wakeup source, but keep it disabled
