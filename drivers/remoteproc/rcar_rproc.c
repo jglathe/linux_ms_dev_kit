@@ -182,7 +182,7 @@ static int rcar_rproc_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, rproc);
 
 	/* Manually start the rproc */
-	rproc->auto_boot = false;
+	rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 
 	ret = devm_rproc_add(dev, rproc);
 	if (ret) {
