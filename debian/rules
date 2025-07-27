@@ -72,11 +72,6 @@ $(foreach _m,$(all_dkms_modules), \
   $(eval do_$(_m) ?= $(if $(filter $(_m),$(filter-out $(dkms_exclude),$(dkms_include) $(subst any,$(_m),$(subst $(arch),$(_m),$(dkms_$(_m)_archs))))),true,false)) \
 )
 
-# Don't build tools in a cross compile environment.
-ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
-	do_tools=false
-endif
-
 # Are any of the kernel signing options enabled.
 any_signed=$(sort $(filter-out false,$(uefi_signed) $(opal_signed) $(sipl_signed)))
 ifeq ($(any_signed),true)
@@ -109,11 +104,11 @@ endif
 
 # Being used to build a mainline build -- turn off things which do not work.
 ifeq ($(do_mainline_build),true)
-	do_extras_package=false
 	do_tools=false
 	no_dumpfile=1
 $(foreach _m,$(all_dkms_modules),$(eval do_$(_m) = false))
 	do_skip_checks=true
+	do_sources_list = false
 endif
 
 # Disable tools build and packaging if do_tools != true
@@ -168,7 +163,7 @@ UBUNTU_COMPATIBLE_SIGNING=$(shell grep -qx ' *Subject: C = GB, ST = Isle of Man,
 
 # Misc stuff
 debian/control: debian/canonical-revoked-certs.pem $(DEBIAN)/changelog FORCE
-	debian/scripts/control-create $(DEB_SOURCE) > $@
+	$(SHELL) debian/scripts/control-create $(DEB_SOURCE) > $@
 	sed -i -e 's/PKGVER/$(DEB_VERSION_UPSTREAM)/g'                          \
 	        -e 's/ABINUM/$(abinum)/g'                                       \
 		-e 's/SRCPKGNAME/$(DEB_SOURCE)/g'                               \
