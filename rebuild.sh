@@ -11,7 +11,7 @@ dh_clean
 
 rm -rf debian/build/build-qcom-x1e/_____________________________________dkms/
 
-export LLVM=1
+#export LLVM=1
 
 # Detect if we're on ARM64/AArch64
 if uname -m | grep -q 'aarch64\|arm64'; then
