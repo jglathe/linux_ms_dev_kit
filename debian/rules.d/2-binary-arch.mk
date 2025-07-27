@@ -8,7 +8,7 @@ build_dir = $(builddir)/build-$*
 # TODO this is probably wrong, and should be using $(DEB_HOST_MULTIARCH)
 shlibdeps_opts = $(if $(CROSS_COMPILE),-- -l$(CROSS_COMPILE:%-=/usr/%)/lib)
 
-# These are used by both binary-% and binary-perarch targets.
+# These are used by binary-perarch target.
 BPFTOOL_VERSION_MAJOR = $(shell sed -ne \
 	's,^#define LIBBPF_MAJOR_VERSION \(.*\)$$,\1,p' \
 	tools/lib/bpf/libbpf_version.h)
@@ -71,10 +71,14 @@ endif
 
 	# Collect the list of kernel source files used for this build. Need to do this early
 	# before modules are stripped. Fail if the resulting file is empty.
+ifeq ($(do_sources_list),true)
 	find $(build_dir) \( -name vmlinux -o -name \*.ko \) -exec dwarfdump -i {} \; | \
 		grep -E 'DW_AT_(call|decl)_file' | sed -n 's|.*\s/|/|p' | sort -u > \
 		$(build_dir)/sources.list
 	test -s $(build_dir)/sources.list
+else
+	true > $(build_dir)/sources.list
+endif
 
 	$(stamp)
 
@@ -116,7 +120,6 @@ endef
 # Install the finished build
 $(stampdir)/stamp-install-%: pkgdir_bin = $(CURDIR)/debian/$(bin_pkg_name)-$*
 $(stampdir)/stamp-install-%: pkgdir = $(CURDIR)/debian/$(mods_pkg_name)-$*
-$(stampdir)/stamp-install-%: pkgdir_ex = $(CURDIR)/debian/$(mods_extra_pkg_name)-$*
 $(stampdir)/stamp-install-%: pkgdir_bldinfo = $(CURDIR)/debian/$(bldinfo_pkg_name)-$*
 $(stampdir)/stamp-install-%: bindoc = $(pkgdir)/usr/share/doc/$(bin_pkg_name)-$*
 $(stampdir)/stamp-install-%: dbgpkgdir = $(CURDIR)/debian/$(bin_pkg_name)-$*-dbgsym
@@ -156,9 +159,6 @@ endif
 	)
 ifeq ($(do_dbgsym_package),true)
 	dh_prep -p$(bin_pkg_name)-$*-dbgsym
-endif
-ifeq ($(do_extras_package),true)
-	dh_prep -p$(mods_extra_pkg_name)-$*
 endif
 ifeq ($(do_linux_tools),true)
  ifeq ($(do_tools_bpftool),true)
@@ -216,32 +216,6 @@ endif
 		sort -u \
 		>>$(pkgdir)/lib/modprobe.d/blacklist_$(DEB_SOURCE)_$(abi_release)-$*.conf
 
-ifeq ($(do_extras_package),true)
-	#
-	# Remove all modules not in the inclusion list.
-	#
-	if [ -f $(DEBIAN)/control.d/$*.inclusion-list ] ; then \
-		/sbin/depmod -v -b $(pkgdir) $(abi_release)-$* | \
-			sed -e "s@$(pkgdir)/lib/modules/$(abi_release)-$*/kernel/@@g" | \
-			awk '{ print $$1 " " $$NF}' >$(build_dir)/module-inclusion.depmap; \
-		mkdir -p $(pkgdir_ex)/lib/modules/$(abi_release)-$*; \
-		mv $(pkgdir)/lib/modules/$(abi_release)-$*/kernel \
-			$(pkgdir_ex)/lib/modules/$(abi_release)-$*/kernel; \
-		$(SHELL) debian/scripts/module-inclusion --master \
-			$(pkgdir_ex)/lib/modules/$(abi_release)-$*/kernel \
-			$(pkgdir)/lib/modules/$(abi_release)-$*/kernel \
-			$(DEBIAN)/control.d/$*.inclusion-list \
-			$(build_dir)/module-inclusion.depmap 2>&1 | \
-				tee $*.inclusion-list.log; \
-		/sbin/depmod -b $(pkgdir) -ea -F $(pkgdir)/boot/System.map-$(abi_release)-$* \
-			$(abi_release)-$* 2>&1 |tee $*.depmod.log; \
-		if [ `grep -c 'unknown symbol' $*.depmod.log` -gt 0 ]; then \
-			echo "EE: Unresolved module dependencies in base package!"; \
-			exit 1; \
-		fi \
-	fi
-endif
-
 ifeq ($(no_dumpfile),)
 	makedumpfile -g $(pkgdir)/boot/vmcoreinfo-$(abi_release)-$* \
 		-x $(build_dir)/vmlinux
@@ -262,13 +236,6 @@ endif
 	$(call install_control,$(bin_pkg_name)-$*,image,postinst postrm preinst prerm)
 	install -d $(pkgdir)/usr/lib/linux/triggers
 	$(call install_control,$(mods_pkg_name)-$*,extra,postinst postrm)
-ifeq ($(do_extras_package),true)
-	# Install the postinit/postrm scripts in the extras package.
-	if [ -f $(DEBIAN)/control.d/$*.inclusion-list ] ; then	\
-		install -d $(pkgdir_ex)/usr/lib/linux/triggers; \
-		$(call install_control,$(mods_extra_pkg_name)-$*,extra,postinst postrm); \
-	fi
-endif
 	$(foreach _m,$(all_standalone_dkms_modules), \
 	  $(if $(enable_$(_m)), \
 	    install -d $(dkms_$(_m)_pkgdir)/usr/lib/linux/triggers; \
@@ -341,7 +308,7 @@ endif
 	$(call install_control,$(hdrs_pkg_name)-$*,headers,postinst)
 
 	# At the end of the package prep, run the module signature check
-	debian/scripts/checks/module-signature-check "$*" "$(pkgdir)" "$(pkgdir_ex)" $(do_skip_checks)
+	debian/scripts/checks/module-signature-check "$*" "$(pkgdir)" $(do_skip_checks)
 
 	#
 	# Remove files which are generated at installation by postinst,
@@ -405,7 +372,6 @@ ifeq ($(do_dbgsym_package),true)
 	# Add .gnu_debuglink sections to each stripped .ko
 	# pointing to unstripped verson
 	find $(pkgdir) \
-	  $(if $(filter true,$(do_extras_package)),$(pkgdir_ex)) \
 	  -name '*.ko' | while read path_module ; do \
 		module="/lib/modules/$${path_module#*/lib/modules/}"; \
 		if [[ -f "$(dbgpkgdir)/usr/lib/debug/$$module" ]] ; then \
@@ -434,7 +400,7 @@ endif
 		$(build_dir)/Module.symvers | sort > $(abi_dir)/$*
 
 	# Build the final ABI modules information.
-	find $(pkgdir_bin) $(pkgdir) $(pkgdir_ex) \( -name '*.ko' -o -name '*.ko.*' \) | \
+	find $(pkgdir_bin) $(pkgdir) \( -name '*.ko' -o -name '*.ko.*' \) | \
 		sed -e 's/.*\/\([^\/]*\)\.ko.*/\1/' | sort > $(abi_dir)/$*.modules
 
 	# Build the final ABI built-in modules information.
@@ -444,7 +410,7 @@ endif
 	fi
 
 	# Build the final ABI firmware information.
-	find $(pkgdir_bin) $(pkgdir) $(pkgdir_ex) -name \*.ko | \
+	find $(pkgdir_bin) $(pkgdir) -name \*.ko | \
 	while read ko; do \
 		/sbin/modinfo $$ko | grep ^firmware || true; \
 	done | sort -u >$(abi_dir)/$*.fwinfo
@@ -457,7 +423,7 @@ endif
 	fi
 
 	# Build the final ABI compiler information.
-	ko=$$(find $(pkgdir_bin) $(pkgdir) $(pkgdir_ex) -name \*.ko | head -1); \
+	ko=$$(find $(pkgdir_bin) $(pkgdir) -name \*.ko | head -1); \
 	readelf -p .comment "$$ko" | gawk ' \
 		($$1 == "[") { \
 			printf("%s", $$3); \
@@ -559,7 +525,6 @@ binary-arch-headers: $(stampdir)/stamp-install-arch-headers
 -include $(builddir)/skipped-dkms.mk
 binary-%: pkgimg = $(bin_pkg_name)-$*
 binary-%: pkgimg_mods = $(mods_pkg_name)-$*
-binary-%: pkgimg_ex = $(mods_extra_pkg_name)-$*
 binary-%: pkgbldinfo = $(bldinfo_pkg_name)-$*
 binary-%: pkghdr = $(hdrs_pkg_name)-$*
 binary-%: pkgrust = $(rust_pkg_name)-$*
@@ -578,12 +543,6 @@ binary-%: $(stampdir)/stamp-install-%
 
 	$(call dh_all,$(pkgimg)) -- -Znone
 	$(call dh_all,$(pkgimg_mods))$(if $(do_zstd_ko), -- -Znone)
-
-ifeq ($(do_extras_package),true)
-	if [ -f $(DEBIAN)/control.d/$*.inclusion-list ] ; then \
-		$(call dh_all_inline,$(pkgimg_ex))$(if $(do_zstd_ko), -- -Znone); \
-	fi
-endif
 
 	$(foreach _m,$(all_standalone_dkms_modules), \
 	  $(if $(enable_$(_m)),$(call dh_all,$(dkms_$(_m)_pkg_name)-$*)$(if $(do_zstd_ko), -- -Znone);)\
@@ -629,18 +588,6 @@ ifeq ($(do_linux_tools),true)
 		$(call dh_all_inline,linux-bpf-dev) ; \
 	fi
   endif
-  ifneq ($(filter $(bpftool_pkg_name),$(packages_enabled)),)
-	if [ $* = $(firstword $(flavours)) ] ; then \
-		$(call dh_all_inline,$(bpftool_pkg_name),$(BPFTOOL_GENCONTROL_ARGS)) ; \
-	fi
-  endif
- endif
- ifeq ($(do_tools_perf),true)
-  ifneq ($(filter $(perf_pkg_name),$(packages_enabled)),)
-	if [ $* = $(firstword $(flavours)) ] ; then \
-		$(call dh_all_inline,$(perf_pkg_name)) ; \
-	fi
-  endif
  endif
 endif
 
@@ -665,14 +612,14 @@ ifeq ($(do_tools_usbip),true)
 	chmod 755 $(builddirpa)/tools/usb/usbip/autogen.sh
 	cd $(builddirpa)/tools/usb/usbip && ./autogen.sh
 	chmod 755 $(builddirpa)/tools/usb/usbip/configure
-	cd $(builddirpa)/tools/usb/usbip && ./configure --prefix=$(builddirpa)/tools/usb/usbip/bin
+	cd $(builddirpa)/tools/usb/usbip && ./configure --host=$(DEB_HOST_GNU_TYPE) --prefix=$(builddirpa)/tools/usb/usbip/bin
 	cd $(builddirpa)/tools/usb/usbip && make install CFLAGS="-g -O2 -static" CROSS_COMPILE=$(CROSS_COMPILE)
 endif
 ifeq ($(do_tools_acpidbg),true)
 	cd $(builddirpa)/tools/power/acpi && make clean && make CFLAGS="-g -O2 -static -I$(builddirpa)/include" CROSS_COMPILE=$(CROSS_COMPILE) acpidbg
 endif
 ifeq ($(do_tools_rtla),true)
-	cd $(builddirpa) && $(kmake) -C tools/tracing/rtla clean && $(kmake) LD=ld -C tools/tracing/rtla static
+	cd $(builddirpa) && $(kmake) -C tools/tracing/rtla clean && $(kmake) LD=$(CROSS_COMPILE)ld HOSTLD=ld -C tools/tracing/rtla static
 endif
 ifeq ($(do_tools_cpupower),true)
 	make -C $(builddirpa)/tools/power/cpupower \
@@ -731,16 +678,17 @@ ifeq ($(do_tools_rtla),true)
 endif
 ifeq ($(do_tools_perf),true)
 	install -d $(perfpkgdir)/usr/bin
-	install -d $(perfpkgdir)/usr/lib
 	install -m755 $(builddirpa)/tools/perf/perf \
 		$(perfpkgdir)/usr/bin/perf
 ifeq ($(do_tools_perf_jvmti),true)
+	install -d $(perfpkgdir)/usr/lib
 	install -m644 $(builddirpa)/tools/perf/libperf-jvmti.so \
 		$(perfpkgdir)/usr/lib/
 endif
 ifeq ($(do_tools_perf_python),true)
+	install -d $(perfpkgdir)/usr/lib/python3/dist-packages
 	install -m644 $(builddirpa)/tools/perf/python/perf.*.so \
-		$(perfpkgdir)/usr/lib/
+		$(perfpkgdir)/usr/lib/python3/dist-packages/
 endif
 endif # do_tools_perf
 ifeq ($(do_tools_bpftool),true)
@@ -780,23 +728,21 @@ ifeq ($(do_cloud_tools),true)
 endif
 ifeq ($(do_linux_tools),true)
   ifeq ($(do_tools_bpftool),true)
-    ifneq ($(filter $(bpftoolpkg),$(packages_enabled)),)
-		if [ $* = $(firstword $(flavours)) ] ; then \
-			$(call dh_all_inline,$(bpftoolpkg),$(BPFTOOL_GENCONTROL_ARGS)) ; \
-		fi
+    ifneq ($(filter $(bpftool_pkg_name),$(packages_enabled)),)
+	$(call dh_all_inline,$(bpftoolpkg),$(BPFTOOL_GENCONTROL_ARGS))
     endif
   endif
   ifeq ($(do_tools_perf),true)
-    ifneq ($(filter $(perfpkg),$(packages_enabled)),)
-		if [ $* = $(firstword $(flavours)) ] ; then \
-			$(call dh_all_inline,$(perfpkg)) ; \
-		fi
+    ifneq ($(filter $(perf_pkg_name),$(packages_enabled)),)
+	$(call dh_all_inline,$(perfpkg))
     endif
   endif
 endif
 
+binary-debs-deps-$(do_flavour_image_package) += $(addprefix binary-,$(flavours))
+
 .PHONY: binary-debs
-binary-debs: binary-perarch $(addprefix binary-,$(flavours))
+binary-debs: binary-perarch $(binary-debs-deps-true)
 	@echo Debug: $@
 
 build-arch-deps-$(do_flavour_image_package) += $(addprefix $(stampdir)/stamp-install-,$(flavours))
@@ -805,8 +751,7 @@ build-arch-deps-$(do_flavour_image_package) += $(addprefix $(stampdir)/stamp-ins
 build-arch: $(build-arch-deps-true)
 	@echo Debug: $@
 
-binary-arch-deps-$(do_flavour_image_package) += binary-debs
-binary-arch-deps-true += binary-arch-headers
+binary-arch-deps-true += binary-debs binary-arch-headers
 ifneq ($(do_common_headers_indep),true)
 binary-arch-deps-$(do_flavour_header_package) += binary-headers
 endif
