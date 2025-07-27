@@ -69,11 +69,11 @@ ifneq ($(do_full_build),false)
   uploadnum	:= $(uploadnum)-Ubuntu
 endif
 
-DEB_HOST_MULTIARCH = $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
-DEB_HOST_GNU_TYPE  = $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE = $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
-DEB_HOST_ARCH = $(shell dpkg-architecture -qDEB_HOST_ARCH)
-DEB_BUILD_ARCH = $(shell dpkg-architecture -qDEB_BUILD_ARCH)
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_ARCH ?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+DEB_BUILD_ARCH ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 #
 # Detect invocations of the form 'fakeroot debian/rules binary arch=armhf'
@@ -92,7 +92,7 @@ export gcc?=gcc-14
 export rustc?=rustc
 export rustfmt?=rustfmt
 export bindgen?=bindgen
-GCC_BUILD_DEPENDS=\ $(gcc), $(gcc)-aarch64-linux-gnu [arm64] <cross>, $(gcc)-arm-linux-gnueabihf [armhf] <cross>, $(gcc)-powerpc64le-linux-gnu [ppc64el] <cross>, $(gcc)-riscv64-linux-gnu [riscv64] <cross>, $(gcc)-s390x-linux-gnu [s390x] <cross>, $(gcc)-x86-64-linux-gnu [amd64] <cross>,
+GCC_BUILD_DEPENDS=\ $(gcc):native, $(gcc)-aarch64-linux-gnu [arm64] <cross>, $(gcc)-arm-linux-gnueabihf [armhf] <cross>, $(gcc)-powerpc64le-linux-gnu [ppc64el] <cross>, $(gcc)-riscv64-linux-gnu [riscv64] <cross>, $(gcc)-s390x-linux-gnu [s390x] <cross>, $(gcc)-x86-64-linux-gnu [amd64] <cross>,
 
 builddir	:= $(CURDIR)/debian/build
 stampdir	:= $(CURDIR)/debian/stamps
@@ -105,7 +105,6 @@ stampdir	:= $(CURDIR)/debian/stamps
 bin_pkg_name_signed=linux-image-$(abi_release)
 bin_pkg_name_unsigned=linux-image-unsigned-$(abi_release)
 mods_pkg_name=linux-modules-$(abi_release)
-mods_extra_pkg_name=linux-modules-extra-$(abi_release)
 bldinfo_pkg_name=linux-buildinfo-$(abi_release)
 hdrs_pkg_name=linux-headers-$(abi_release)
 rust_pkg_name=linux-lib-rust-$(abi_release)
@@ -126,11 +125,6 @@ do_common_headers_indep=true
 
 # build tools
 ifneq ($(wildcard $(CURDIR)/tools),)
-	ifeq ($(do_tools),)
-		ifneq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
-			do_tools=false
-		endif
-	endif
 	do_tools?=true
 else
 	do_tools?=false
@@ -158,6 +152,13 @@ do_dtbs=false
 do_zstd_ko=true
 ifeq ($(DEB_DISTRIBUTION),jammy)
 do_zstd_ko=
+endif
+
+# Generate a list of source files used for the build
+ifeq ($(DEB_SOURCE),linux-unstable)
+	do_sources_list = false
+else
+	do_sources_list = true
 endif
 
 # Support parallel=<n> in DEB_BUILD_OPTIONS (see #209008)
