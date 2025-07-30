@@ -54,6 +54,14 @@
 	status = "okay";
 };
 
+&remoteproc_adsp {
+	qcom,broken-reset;
+};
+
+&remoteproc_cdsp {
+	qcom,broken-reset;
+};
+
 /*
  * The "SBSA watchdog" is implemented in software in Gunyah
  * and can't be used when running in EL2.
