@@ -205,7 +205,7 @@ static int qcom_pas_shutdown_poll_decrypt(struct qcom_pas *pas)
 
 	do {
 		msleep(QCOM_PAS_DECRYPT_SHUTDOWN_DELAY_MS);
-		ret = qcom_pas_shutdown(pas->pas_id);
+		ret = qcom_scm_pas_shutdown(pas->pas_id);
 	} while (ret == -EINVAL && --retry_num);
 
 	return ret;
@@ -221,9 +221,9 @@ static int qcom_pas_unprepare(struct rproc *rproc)
 	 * auth_and_reset() was successful, but in other cases clean it up
 	 * here.
 	 */
-	qcom_pas_metadata_release(pas->pas_ctx);
+	qcom_scm_pas_metadata_release(pas->pas_ctx);
 	if (pas->dtb_pas_id)
-		qcom_pas_metadata_release(pas->dtb_pas_ctx);
+		qcom_scm_pas_metadata_release(pas->dtb_pas_ctx);
 
 	return 0;
 }
@@ -572,6 +572,13 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
 	.coredump = qcom_pas_minidump,
 };
 
+static const struct rproc_ops qcom_pas_ops_no_reset = {
+	.attach = qcom_pas_attach,
+	.da_to_va = qcom_pas_da_to_va,
+	.stop = qcom_pas_stop,
+	.panic = qcom_pas_panic,
+};
+
 static int qcom_pas_init_clock(struct qcom_pas *pas)
 {
 	pas->xo = devm_clk_get(pas->dev, "xo");
@@ -809,6 +816,9 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (desc->minidump_id)
 		ops = &qcom_pas_minidump_ops;
 
+	if (device_property_read_bool(&pdev->dev, "qcom,broken-reset"))
+		ops = &qcom_pas_ops_no_reset;
+
 	rproc = devm_rproc_alloc(&pdev->dev, desc->sysmon_name, ops, fw_name, sizeof(*pas));
 
 	if (!rproc) {
@@ -817,10 +827,14 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	}
 
 	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
-	if (desc->auto_boot)
-		rproc->auto_boot = RPROC_AUTO_BOOT_RESTART_IF_FW_AVAILABLE;
-	else
+	if (desc->auto_boot) {
+		if (ops->start)
+			rproc->auto_boot = RPROC_AUTO_BOOT_RESTART_IF_FW_AVAILABLE;
+		else
+			rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
+	} else {
 		rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
+	}
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
 	pas = rproc->priv;
@@ -881,6 +895,13 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	 */
 	qcom_q6v5_read_smp2p_state(&pas->q6v5);
 
+	if (rproc->state == RPROC_OFFLINE && !ops->start) {
+		dev_err(&pdev->dev, "reset broken and remoteproc not running during boot, exiting\n");
+		/* Release all resources, but return 0 so we don't block sync_state() */
+		ret = 0;
+		goto deinit_q6v5;
+	}
+
 	qcom_add_glink_subdev(rproc, &pas->glink_subdev, desc->ssr_name);
 	qcom_add_smd_subdev(rproc, &pas->smd_subdev);
 	qcom_add_pdm_subdev(rproc, &pas->pdm_subdev);
@@ -918,6 +939,7 @@ deinit_remove_pdm_smd_glink:
 	qcom_remove_pdm_subdev(rproc, &pas->pdm_subdev);
 	qcom_remove_smd_subdev(rproc, &pas->smd_subdev);
 	qcom_remove_glink_subdev(rproc, &pas->glink_subdev);
+deinit_q6v5:
 	qcom_q6v5_deinit(&pas->q6v5);
 detach_proxy_pds:
 	qcom_pas_pds_detach(pas, pas->proxy_pds, pas->proxy_pd_count);
@@ -925,6 +947,7 @@ unassign_mem:
 	qcom_pas_unassign_memory_region(pas);
 free_rproc:
 	device_init_wakeup(pas->dev, false);
+	pas->rproc = NULL;
 
 	return ret;
 }
@@ -932,6 +955,9 @@ free_rproc:
 static void qcom_pas_remove(struct platform_device *pdev)
 {
 	struct qcom_pas *pas = platform_get_drvdata(pdev);
+
+	if (!pas->rproc)
+		return;
 
 	if (pas->bam_dmux)
 		of_platform_device_destroy(&pas->bam_dmux->dev, NULL);
