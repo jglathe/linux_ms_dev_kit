@@ -13,6 +13,14 @@
 	status = "disabled";
 };
 
+&remoteproc_adsp {
+	qcom,broken-reset;
+};
+
+&remoteproc_mpss {
+	/* Reset is implemented in TZ firmware, so no qcom,broken-reset here */
+};
+
 &scm {
 	qcom,shm-bridge-vmid = <QCOM_SCM_VMID_SELF_OWNER>;
 };
