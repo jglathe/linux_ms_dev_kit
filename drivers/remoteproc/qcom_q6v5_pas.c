@@ -442,6 +442,13 @@ static int qcom_pas_stop(struct rproc *rproc)
 	return ret;
 }
 
+static int qcom_pas_attach_running(struct rproc *rproc)
+{
+	struct qcom_pas *pas = rproc->priv;
+
+	return qcom_q6v5_attach(&pas->q6v5);
+}
+
 static void *qcom_pas_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
 {
 	struct qcom_pas *pas = rproc->priv;
@@ -603,6 +610,7 @@ static const struct rproc_ops qcom_pas_ops = {
 	.unprepare = qcom_pas_unprepare,
 	.start = qcom_pas_start,
 	.stop = qcom_pas_stop,
+	.attach = qcom_pas_attach,
 	.da_to_va = qcom_pas_da_to_va,
 	.parse_fw = qcom_pas_parse_firmware,
 	.load = qcom_pas_load,
@@ -615,6 +623,7 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
 	.unprepare = qcom_pas_unprepare,
 	.start = qcom_pas_start,
 	.stop = qcom_pas_stop,
+	.attach = qcom_pas_attach,
 	.da_to_va = qcom_pas_da_to_va,
 	.parse_fw = qcom_pas_parse_firmware,
 	.load = qcom_pas_load,
@@ -891,12 +900,17 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
 	if (desc->auto_boot) {
-		if (broken_reset && no_pas_scm)
-			rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
-		else
-			rproc->auto_boot = desc->auto_boot;
-	} else
+		if (ops->start) {
+			rproc->auto_boot = RPROC_AUTO_BOOT_RESTART_IF_FW_AVAILABLE;
+		} else {
+			if (broken_reset && no_pas_scm)
+				rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
+			else
+				rproc->auto_boot = desc->auto_boot;
+		}
+	} else {
 		rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
+	}
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
 	pas = rproc->priv;
@@ -997,6 +1011,7 @@ deinit_remove_pdm_smd_glink:
 	qcom_remove_pdm_subdev(rproc, &pas->pdm_subdev);
 	qcom_remove_smd_subdev(rproc, &pas->smd_subdev);
 	qcom_remove_glink_subdev(rproc, &pas->glink_subdev);
+deinit_q6v5:
 	qcom_q6v5_deinit(&pas->q6v5);
 detach_proxy_pds:
 	qcom_pas_pds_detach(pas, pas->proxy_pds, pas->proxy_pd_count);
