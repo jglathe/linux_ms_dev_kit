@@ -42,6 +42,22 @@
 	status = "okay";
 };
 
+&remoteproc_adsp {
+	qcom,broken-reset;
+};
+
+&remoteproc_slpi {
+	qcom,broken-reset;
+};
+
+&remoteproc_nsp0 {
+	qcom,broken-reset;
+};
+
+&remoteproc_nsp1 {
+	qcom,broken-reset;
+};
+
 &scm {
 	qcom,shm-bridge-vmid = <QCOM_SCM_VMID_SELF_OWNER>;
 };
