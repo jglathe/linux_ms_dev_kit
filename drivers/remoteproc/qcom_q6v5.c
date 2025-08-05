@@ -235,6 +235,35 @@ unsigned long qcom_q6v5_panic(struct qcom_q6v5 *q6v5)
 EXPORT_SYMBOL_GPL(qcom_q6v5_panic);
 
 /**
+ * qcom_q6v5_read_smp2p_state() - check the initial state during boot using SMP2P
+ * @q6v5:	reference to qcom_q6v5 context
+ *
+ * Read the current state of the SMP2P interrupts and attempt to determine if
+ * the remoteproc is already running. If yes, the remoteproc state is set to
+ * RPROC_DETACHED. Drivers can use this to add support for attaching to
+ * remoteprocs during boot.
+ *
+ * There is a small chance for false-positives, so drivers should combine this
+ * with device-specific status information if possible.
+ */
+void qcom_q6v5_read_smp2p_state(struct qcom_q6v5 *q6v5)
+{
+	bool handover = false;
+	bool ready = false;
+	bool fatal = false;
+	bool stop = false;
+
+	irq_get_irqchip_state(q6v5->handover_irq, IRQCHIP_STATE_LINE_LEVEL, &handover);
+	irq_get_irqchip_state(q6v5->ready_irq, IRQCHIP_STATE_LINE_LEVEL, &ready);
+	irq_get_irqchip_state(q6v5->fatal_irq, IRQCHIP_STATE_LINE_LEVEL, &fatal);
+	irq_get_irqchip_state(q6v5->stop_irq, IRQCHIP_STATE_LINE_LEVEL, &stop);
+
+	if (ready && handover && !stop && !fatal)
+		q6v5->rproc->state = RPROC_DETACHED;
+}
+EXPORT_SYMBOL_GPL(qcom_q6v5_read_smp2p_state);
+
+/**
  * qcom_q6v5_init() - initializer of the q6v5 common struct
  * @q6v5:	handle to be initialized
  * @pdev:	platform_device reference for acquiring resources
