@@ -36,6 +36,25 @@ static int q6v5_load_state_toggle(struct qcom_q6v5 *q6v5, bool enable)
 	return ret;
 }
 
+static int q6v5_init(struct qcom_q6v5 *q6v5, bool handover_issued)
+{
+	int ret;
+
+	/* Always send correct load state in case it was not done before */
+	ret = q6v5_load_state_toggle(q6v5, true);
+	if (ret)
+		return ret;
+
+	reinit_completion(&q6v5->start_done);
+	reinit_completion(&q6v5->stop_done);
+
+	q6v5->running = true;
+	q6v5->handover_issued = handover_issued;
+
+	enable_irq(q6v5->handover_irq);
+	return 0;
+}
+
 /**
  * qcom_q6v5_prepare() - reinitialize the qcom_q6v5 context before start
  * @q6v5:	reference to qcom_q6v5 context to be reinitialized
@@ -52,23 +71,34 @@ int qcom_q6v5_prepare(struct qcom_q6v5 *q6v5)
 		return ret;
 	}
 
-	ret = q6v5_load_state_toggle(q6v5, true);
+	ret = q6v5_init(q6v5, false);
 	if (ret) {
 		icc_set_bw(q6v5->path, 0, 0);
 		return ret;
 	}
 
-	reinit_completion(&q6v5->start_done);
-	reinit_completion(&q6v5->stop_done);
-
-	q6v5->running = true;
-	q6v5->handover_issued = false;
-
-	enable_irq(q6v5->handover_irq);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qcom_q6v5_prepare);
+
+/**
+ * qcom_q6v5_attach() - attach to already running qcom_q6v5 remoteproc
+ * @q6v5:	reference to qcom_q6v5 context to be attached
+ *
+ * Return: 0 on success, negative errno on failure
+ */
+int qcom_q6v5_attach(struct qcom_q6v5 *q6v5)
+{
+	int ret;
+
+	ret = q6v5_init(q6v5, true);
+	if (ret)
+		return ret;
+
+	complete(&q6v5->start_done);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qcom_q6v5_attach);
 
 /**
  * qcom_q6v5_unprepare() - unprepare the qcom_q6v5 context after stop
