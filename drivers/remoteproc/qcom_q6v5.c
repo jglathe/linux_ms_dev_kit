@@ -272,8 +272,13 @@ int qcom_q6v5_request_stop(struct qcom_q6v5 *q6v5, struct qcom_sysmon *sysmon)
 
 	q6v5->running = false;
 
+<<<<<<< HEAD
 	/* A watchdog/fatal IRQ clears running; logical crashes still need a stop. */
 	if (!was_running || qcom_sysmon_shutdown_acked(sysmon))
+=======
+	/* Don't perform SMP2P dance if remote crashed or already stopped */
+	if (q6v5->rproc->state == RPROC_CRASHED || qcom_sysmon_shutdown_acked(sysmon))
+>>>>>>> 0ca7f0fc41200 (remoteproc: qcom_q6v5: Send SMP2P stop signal in attached/detached state)
 		return 0;
 
 	qcom_smem_state_update_bits(q6v5->state,
