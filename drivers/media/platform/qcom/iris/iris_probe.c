@@ -13,6 +13,7 @@
 
 #include "iris_core.h"
 #include "iris_ctrls.h"
+#include "iris_firmware.h"
 #include "iris_vidc.h"
 
 static int iris_init_icc(struct iris_core *core)
@@ -203,6 +204,8 @@ static void iris_remove(struct platform_device *pdev)
 
 	v4l2_device_unregister(&core->v4l2_dev);
 
+	iris_fw_deinit(core);
+
 	mutex_destroy(&core->lock);
 }
 
@@ -260,6 +263,10 @@ static int iris_probe(struct platform_device *pdev)
 	core->iris_platform_data->init_hfi_response_ops(core);
 
 	ret = iris_init_resources(core);
+	if (ret)
+		return ret;
+
+	ret = iris_fw_init(core);
 	if (ret)
 		return ret;
 
