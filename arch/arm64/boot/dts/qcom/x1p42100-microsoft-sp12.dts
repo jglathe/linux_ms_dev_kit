@@ -646,14 +646,10 @@
 // Graphics Pocessing Unit
 &gpu {
 	status = "okay";
+};
 
-	vddcx-supply = <&vreg_mmcx>;
-	zap-shader {
-		memory-region = <&gpu_microcode_mem>;
+&gpu_zap_shader {
 		firmware-name = "qcom/gen71500_zap.mbn";
-	};
-
-
 };
 
 // Display system
@@ -734,15 +730,6 @@
 		
 	};	
 
-	vreg_mmcx: vreg_mmcx {
-		compatible = "regulator-fixed";
-		regulator-name = "vreg_mmcx";
-		regulator-min-microvolt = <950000>;
-		regulator-max-microvolt = <950000>;
-
-		regulator-boot-on;
-		regulator-always-on;
-	};
 };
 
 // Backlight PWM Controller
