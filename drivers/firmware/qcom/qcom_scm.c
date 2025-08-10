@@ -2012,6 +2012,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
 	{ .compatible = "lenovo,yoga-slim7x" },
 	{ .compatible = "medion,sprchrgd14s1" },
 	{ .compatible = "microsoft,arcata", },
+	{ .compatible = "microsoft,sp12", },
 	{ .compatible = "microsoft,blackrock" },
 	{ .compatible = "microsoft,denali", },
 	{ .compatible = "microsoft,romulus13", },
