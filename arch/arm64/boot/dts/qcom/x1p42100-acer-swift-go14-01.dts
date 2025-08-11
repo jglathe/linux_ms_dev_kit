@@ -11,8 +11,6 @@
 #include "x1-acer-swift-14.dtsi"
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
-/delete-node/ &pm8010;
-/delete-node/ &pm8010_thermal;
 
 / {
    model = "Acer Swift Go 14 AI (SFG14-01)";  
