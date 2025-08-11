@@ -16,9 +16,6 @@
 #include "hamoa.dtsi"
 #include "hamoa-pmics.dtsi"
 
-/delete-node/ &pm8010;
-/delete-node/ &pm8010_thermal;
-
 / {
 	model = "Dell XPS 13 9345";
 	compatible = "dell,xps13-9345", "qcom,x1e80100";
