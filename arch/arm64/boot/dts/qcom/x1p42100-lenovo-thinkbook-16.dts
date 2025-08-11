@@ -1025,7 +1025,7 @@
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1>;
+	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1034,7 +1034,7 @@
 };
 
 &mdss_dp1_out {
-	data-lanes = <0 1>;
+	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1276,12 +1276,6 @@
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
 			       <72 2>; /* Secure EC I2C connection (?) */
-
-	edp_hpd_default: edp-hpd-default-state {
-		pins = "gpio119";
-		function = "edp0_hot";
-		bias-disable;
-	};
 
 	cam_reg_en: cam-reg-en-state {
 		pins = "gpio44";
