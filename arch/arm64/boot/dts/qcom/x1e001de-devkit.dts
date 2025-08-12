@@ -1430,6 +1430,11 @@
 	status = "okay";
 };
 
+&pm8010 {
+	/* Used for the CSI connectors, which are not modeled at the moment */
+	status = "okay";
+};
+
 &pm8550_gpios {
 	rtmr0_default: rtmr0-reset-n-active-state {
 		pins = "gpio10";
