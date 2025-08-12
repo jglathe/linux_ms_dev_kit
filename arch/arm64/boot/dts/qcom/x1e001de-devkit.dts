@@ -293,6 +293,24 @@
 		regulator-boot-on;
 	};
 
+	vreg_g_card: regulator-g-card-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "G_CARD_POWER_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&pmc8380_3_gpios 6 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&g_card_reg_en>;
+		pinctrl-names = "default";
+
+		vin-supply = <&vreg_wcn_3p3>;
+
+		regulator-boot-on;
+	};
+
 	hdmi_5v: regulator-hdmi-5v {
 		compatible = "regulator-fixed";
 
@@ -1244,6 +1262,28 @@
 	status = "okay";
 };
 
+&pcie3 {
+	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_HIGH>;
+
+	pinctrl-0 = <&pcie3_default>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&pcie3_phy {
+	vdda-phy-supply = <&vreg_l3c_0p8>;
+	vdda-pll-supply = <&vreg_l3e_1p2>;
+
+	status = "okay";
+};
+
+&pcie3_port {
+	vpcie3v3-supply = <&vreg_g_card>;
+	vpcie3v3aux-supply = <&vreg_g_card>;
+};
+
 &pcie4 {
 	perst-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
@@ -1330,6 +1370,17 @@
 		pins = "gpio11";
 		function = "normal";
 		power-source = <1>; /* 1.8 V */
+		bias-disable;
+		input-disable;
+		output-enable;
+	};
+};
+
+&pmc8380_3_gpios {
+	g_card_reg_en: g-card-reg-en-state {
+		pins = "gpio6";
+		function = "normal";
+		power-source = <0>;
 		bias-disable;
 		input-disable;
 		output-enable;
@@ -1544,6 +1595,29 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
+	};
+
+	pcie3_default: pcie3-default-state {
+		clkreq-n-pins {
+			pins = "gpio144";
+			function = "pcie3_clk";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		perst-n-pins {
+			pins = "gpio143";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		wake-n-pins {
+			pins = "gpio145";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
 	};
 
 	pcie4_default: pcie4-default-state {
