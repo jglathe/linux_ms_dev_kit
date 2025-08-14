@@ -58,6 +58,7 @@ properties:
           - qcom,sm8550-qmp-ufs-phy
           - qcom,sm8650-qmp-ufs-phy
           - qcom,sm8750-qmp-ufs-phy
+          - qcom,x1e80100-qmp-ufs-phy
 
   reg:
     maxItems: 1
@@ -127,6 +128,7 @@ allOf:
               - qcom,sm8550-qmp-ufs-phy
               - qcom,sm8650-qmp-ufs-phy
               - qcom,sm8750-qmp-ufs-phy
+              - qcom,x1e80100-qmp-ufs-phy
     then:
       properties:
         clocks:
