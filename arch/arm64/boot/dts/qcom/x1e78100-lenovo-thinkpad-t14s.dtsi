@@ -1011,6 +1011,7 @@
 		assigned-clock-rates = <19200000>;
 
 		orientation = <0>; /* front facing */
+		rotation = <0>; /* not rotated */
 
 		avdd-supply = <&vreg_l7m_2p8>;
 		dvdd-supply = <&vreg_l2m_1p2>;
