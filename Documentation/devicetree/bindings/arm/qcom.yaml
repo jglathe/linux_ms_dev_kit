@@ -1122,6 +1122,7 @@ properties:
       - items:
           - enum:
               - acer,swift-go14-01
+              - asus,vivobook-s15-x1p4
               - asus,zenbook-a14-ux3407qa-lcd
               - asus,zenbook-a14-ux3407qa-oled
           - const: asus,zenbook-a14-ux3407qa
