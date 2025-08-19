@@ -19,8 +19,6 @@
 
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
-/delete-node/ &pm8010;
-/delete-node/ &pm8010_thermal;
 
 / {
 	model = "Surface Pro 12 inch";
