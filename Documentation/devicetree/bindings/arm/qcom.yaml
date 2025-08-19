@@ -1188,7 +1188,6 @@ properties:
           - const: qcom,x1p42100
 
       - items:
-          - const: acer,swift-go14-01
           - enum:
               - asus,zenbook-a14-ux3407qa-lcd
               - asus,zenbook-a14-ux3407qa-oled
@@ -1203,6 +1202,7 @@ properties:
 
       - items:
           - enum:
+              - acer,swift-go14-01              
               - asus,vivobook-s15-x1p4
               - hp,omnibook-x14-fe1
               - lenovo,ideapad-5
