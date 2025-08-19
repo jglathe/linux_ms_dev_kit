@@ -11,12 +11,10 @@
 
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
-// /delete-node/ &pm8010;
-// /delete-node/ &pm8010_thermal;
 
 / {
 	model = "ASUS Vivobook S 15 X1P-42-100";
-	compatible = "asus,vivobook-s15", "qcom,x1e80100";
+	compatible = "asus,vivobook-s15-x1p4", "qcom,x1p42100";
 	chassis-type = "laptop";
 };
 
