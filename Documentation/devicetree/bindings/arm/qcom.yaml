@@ -1090,6 +1090,7 @@ properties:
       - items:
           - enum:
               - acer,swift-go14-01
+              - asus,vivobook-s15-x1p4
               - asus,zenbook-a14-ux3407qa
               - hp,omnibook-x14-fe1
               - lenovo,ideapad-5
