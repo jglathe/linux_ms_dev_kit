@@ -992,7 +992,6 @@
 	};
 };
 
-
 &mdss_dp3_phy {
 	vdda-phy-supply = <&vreg_l3j_0p8>;
 	vdda-pll-supply = <&vreg_l2j_1p2>;
