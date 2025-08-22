@@ -1007,8 +1007,10 @@
 };
 
 &mdss_dp3 {
-	compatible = "qcom,x1e80100-dp";
 	/delete-property/ #sound-dai-cells;
+
+	pinctrl-0 = <&edp0_hpd_default>;
+	pinctrl-names = "default";
 
 	status = "okay";
 
@@ -1028,19 +1030,13 @@
 			};
 		};
 	};
+};
 
-	ports {
-		port@1 {
-			reg = <1>;
+&mdss_dp3_out {
+	data-lanes = <0 1 2 3>;
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 
-			mdss_dp3_out: endpoint {
-				data-lanes = <0 1 2 3>;
-				link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-
-				remote-endpoint = <&edp_panel_in>;
-			};
-		};
-	};
+	remote-endpoint = <&edp_panel_in>;
 };
 
 &mdss_dp3_phy {
