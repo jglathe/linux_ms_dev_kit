@@ -1633,8 +1633,9 @@ void msm_dp_bridge_atomic_enable(struct drm_bridge *drm_bridge,
 	if (hpd_state == ST_DISPLAY_OFF) {
 		msm_dp_display_host_phy_init(msm_dp_display);
 		force_link_train = true;
-	}
-
+	} else if (dp->is_edp) {  /* Force retrain for eDP on resume */
+               force_link_train = true;
+        }
 	msm_dp_display_enable(msm_dp_display, force_link_train);
 
 	rc = msm_dp_display_post_enable(dp);
