@@ -1212,7 +1212,7 @@ CONFIG_AS_HAS_CFI_NEGATE_RA_STATE               policy<{'arm64': 'y'}>
 CONFIG_AS_HAS_MOPS                              policy<{'arm64': 'y'}>
 CONFIG_AS_HAS_NON_CONST_ULEB128                 policy<{'arm64': 'y'}>
 CONFIG_AS_IS_GNU                                policy<{'arm64': 'y'}>
-CONFIG_AS_VERSION                               policy<{'arm64': '24400'}>
+CONFIG_AS_VERSION                               policy<{'arm64': '24500'}>
 CONFIG_AT76C50X_USB                             policy<{'arm64': 'm'}>
 CONFIG_AT803X_PHY                               policy<{'arm64': 'y'}>
 CONFIG_ATA                                      policy<{'arm64': 'y'}>
@@ -1880,7 +1880,7 @@ CONFIG_CC_NO_ARRAY_BOUNDS                       policy<{'arm64': 'y'}>
 CONFIG_CC_NO_STRINGOP_OVERFLOW                  policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE              policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_SIZE                     policy<{'arm64': 'n'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc-14 (Ubuntu 14.2.0-19ubuntu2) 14.2.0"'}>
+CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc-14 (Ubuntu 14.3.0-4ubuntu2) 14.3.0"'}>
 CONFIG_CDNS_I3C_MASTER                          policy<{'arm64': 'm'}>
 CONFIG_CDROM                                    policy<{'arm64': 'y'}>
 CONFIG_CDROM_PKTCDVD                            policy<{'arm64': 'n'}>
@@ -3220,7 +3220,6 @@ CONFIG_DRM_MSM_HDMI_HDCP                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
-CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'y'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -3305,6 +3304,7 @@ CONFIG_DRM_PANEL_RONBO_RB070D30                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS581VF01             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS639RQ08             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_ATNA33XC20             policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_SAMSUNG_ATNA40CT01             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_DB7430                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_LD9040                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_S6D16D0                policy<{'arm64': 'm'}>
@@ -4208,7 +4208,7 @@ CONFIG_GARP                                     policy<{'arm64': 'm'}>
 CONFIG_GCC10_NO_ARRAY_BOUNDS                    policy<{'arm64': 'y'}>
 CONFIG_GCC_NO_STRINGOP_OVERFLOW                 policy<{'arm64': 'y'}>
 CONFIG_GCC_SUPPORTS_DYNAMIC_FTRACE_WITH_ARGS    policy<{'arm64': 'y'}>
-CONFIG_GCC_VERSION                              policy<{'arm64': '140200'}>
+CONFIG_GCC_VERSION                              policy<{'arm64': '140300'}>
 CONFIG_GCOV_KERNEL                              policy<{'arm64': 'n'}>
 CONFIG_GDB_SCRIPTS                              policy<{'arm64': 'y'}>
 CONFIG_GEHC_PMC_ADC                             policy<{'arm64': 'm'}>
@@ -5872,7 +5872,7 @@ CONFIG_LD_CAN_USE_KEEP_IN_OVERLAY               policy<{'arm64': 'y'}>
 CONFIG_LD_IS_BFD                                policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN                           policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN_LEVEL                     policy<{'arm64': '"warn"'}>
-CONFIG_LD_VERSION                               policy<{'arm64': '24400'}>
+CONFIG_LD_VERSION                               policy<{'arm64': '24500'}>
 CONFIG_LEDS_88PM860X                            policy<{'arm64': 'm'}>
 CONFIG_LEDS_AAT1290                             policy<{'arm64': 'm'}>
 CONFIG_LEDS_ADP5520                             policy<{'arm64': 'm'}>
@@ -9546,7 +9546,7 @@ CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
 CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190107'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108401'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108501'}>
 CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
