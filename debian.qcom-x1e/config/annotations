@@ -3355,6 +3355,7 @@ CONFIG_DRM_PANEL_RONBO_RB070D30                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS581VF01             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS639RQ08             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_ATNA33XC20             policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_SAMSUNG_ATNA40CT01             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_DB7430                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_LD9040                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_S6D16D0                policy<{'arm64': 'm'}>
