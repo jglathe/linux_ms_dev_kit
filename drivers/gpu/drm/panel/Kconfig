@@ -765,6 +765,19 @@ config DRM_PANEL_SAMSUNG_ATNA33XC20
 	  be handled by the DRM_PANEL_SIMPLE driver because its power
 	  sequencing is non-standard.
 
+config DRM_PANEL_SAMSUNG_ATNA40CT01
+	tristate "Samsung ATNA40CT01 eDP panel"
+	depends on OF
+	depends on BACKLIGHT_CLASS_DEVICE
+	depends on PM
+	select DRM_DISPLAY_DP_HELPER
+	select DRM_DISPLAY_HELPER
+	select DRM_DISPLAY_DP_AUX_BUS
+	help
+	  DRM panel driver for the Samsung ATNA40CT01 panel. This panel can't
+	  be handled by the DRM_PANEL_SIMPLE driver because its power
+	  sequencing is non-standard.
+
 config DRM_PANEL_SAMSUNG_DB7430
 	tristate "Samsung DB7430-based DPI panels"
 	depends on OF && SPI && GPIOLIB
