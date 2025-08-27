@@ -7,6 +7,7 @@
 #include <net/mac80211.h>
 #include <net/cfg80211.h>
 #include <linux/etherdevice.h>
+#include <linux/of.h>
 
 #include "mac.h"
 #include "core.h"
@@ -14254,7 +14255,7 @@ static int ath12k_mac_hw_register(struct ath12k_hw *ah)
 	int ret, i, j;
 	u32 ht_cap = U32_MAX, antennas_rx = 0, antennas_tx = 0;
 	bool is_6ghz = false, is_raw_mode = false, is_monitor_disable = false;
-	u8 *mac_addr = NULL;
+	const u8 *mac_addr = NULL;
 	u8 mbssid_max_interfaces = 0;
 
 	wiphy->max_ap_assoc_sta = 0;
@@ -14308,6 +14309,12 @@ static int ath12k_mac_hw_register(struct ath12k_hw *ah)
 
 	wiphy->available_antennas_rx = antennas_rx;
 	wiphy->available_antennas_tx = antennas_tx;
+
+	const u8 *addr;
+	addr = of_get_property(ah->dev->of_node, "local-mac-address", &ret);
+	if (addr && ret == ETH_ALEN) {
+		mac_addr = addr;
+	}
 
 	SET_IEEE80211_PERM_ADDR(hw, mac_addr);
 	SET_IEEE80211_DEV(hw, ab->dev);
