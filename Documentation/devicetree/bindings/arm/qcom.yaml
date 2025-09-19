@@ -1055,6 +1055,11 @@ properties:
 
       - items:
           - enum:
+              - lenovo,ideapad-slim3
+          - const: qcom,x126100
+
+      - items:
+          - enum:
               - qcom,x1e001de-devkit
           - const: qcom,x1e001de
           - const: qcom,x1e80100
