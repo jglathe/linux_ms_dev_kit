@@ -1010,6 +1010,7 @@
 
 	aux-bus {
 		panel {
+//			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
 
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
