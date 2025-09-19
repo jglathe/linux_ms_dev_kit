@@ -2319,6 +2319,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
 	{ .compatible = "lenovo,flex-5g" },
 	{ .compatible = "lenovo,ideacentre-mini-01q8x10" },
 	{ .compatible = "lenovo,ideapad-5-2in1" },
+	{ .compatible = "lenovo,ideapad-slim3" },
 	{ .compatible = "lenovo,ideapad-slim5x" },
 	{ .compatible = "lenovo,thinkbook-16" },
 	{ .compatible = "lenovo,thinkpad-t14s" },
