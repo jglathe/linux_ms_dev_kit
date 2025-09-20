@@ -21,7 +21,7 @@
 
 / {
 	model = "Lenovo ThinkBook 16 Gen 7 QOY";
-	compatible = "lenovo,thinkbook-16", "qcom,x1p42100";
+	compatible = "lenovo,thinkbook-16", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 
 	aliases {
