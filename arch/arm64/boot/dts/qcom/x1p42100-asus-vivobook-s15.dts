@@ -14,7 +14,7 @@
 
 / {
 	model = "ASUS Vivobook S 15 X1P-42-100";
-	compatible = "asus,vivobook-s15-x1p4", "qcom,x1p42100";
+	compatible = "asus,vivobook-s15-x1p4", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 };
 
