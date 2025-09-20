@@ -21,7 +21,7 @@
 
 / {
 	model = "Lenovo IdeaPad Slim 3 15Q8X10";
-	compatible = "lenovo,ideapad-slim3", "qcom,x126100";
+	compatible = "lenovo,ideapad-slim3", "lenovo,thinkpad-t14s", "qcom,x126100", "qcom,x1p42100";
 	chassis-type = "laptop";
 
 	aliases {
