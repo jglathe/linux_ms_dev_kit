@@ -764,6 +764,35 @@ static int ov02c10_init_state(struct v4l2_subdev *sd,
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int ov02c10_get_register(struct v4l2_subdev *sd,
+				struct v4l2_dbg_register *reg)
+{
+	struct ov02c10 *ov02c10 = to_ov02c10(sd);
+	int ret;
+	u64 val;
+
+	if (reg->reg & ~0xffff)
+		return -EINVAL;
+
+	reg->size = 1;
+
+	ret = cci_read(ov02c10->regmap, CCI_REG8(reg->reg), &val, NULL);
+	if (ret)
+		return ret;
+
+	reg->val = (__u64)val;
+
+	return 0;
+}
+#endif
+
+static const struct v4l2_subdev_core_ops ov02c10_core_ops = {
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.g_register = ov02c10_get_register,
+#endif
+};
+
 static const struct v4l2_subdev_video_ops ov02c10_video_ops = {
 	.s_stream = v4l2_subdev_s_stream_helper,
 };
@@ -778,6 +807,7 @@ static const struct v4l2_subdev_pad_ops ov02c10_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops ov02c10_subdev_ops = {
+	.core = &ov02c10_core_ops,
 	.video = &ov02c10_video_ops,
 	.pad = &ov02c10_pad_ops,
 };
