@@ -1094,9 +1094,13 @@ properties:
 
       - items:
           - enum:
-              - acer,swift-go14-01
-              - asus,vivobook-s15-x1p4
-              - asus,zenbook-a14-ux3407qa
+              - asus,zenbook-a14-ux3407qa-lcd
+              - asus,zenbook-a14-ux3407qa-oled
+          - const: asus,zenbook-a14-ux3407qa
+          - const: qcom,x1p42100
+
+      - items:
+          - enum:
               - hp,omnibook-x14-fe1
               - lenovo,ideapad-5
               - lenovo,thinkbook-16
