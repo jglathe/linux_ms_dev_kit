@@ -155,7 +155,7 @@
 
 	sound {
 		compatible = "qcom,x1e80100-sndcard";
-		model = "X1E80100-LENOVO-Ideapad-5";
+		model = "X1E80100-LENOVO-Ideapad-3";
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"IN1_HPHL", "HPHL_OUT",
@@ -206,12 +206,12 @@
 		wsa-dai-link {
 			link-name = "WSA Playback";
 
-			codec {
-				sound-dai = <&left_spkr>, <&right_spkr>, <&swr0 0>, <&lpass_wsamacro 0>;
-			};
-
 			cpu {
 				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
+			};
+
+			codec {
+				sound-dai = <&left_spkr>, <&right_spkr>, <&swr0 0>, <&lpass_wsamacro 0>;
 			};
 
 			platform {
@@ -222,12 +222,12 @@
 		va-dai-link {
 			link-name = "VA Capture";
 
-			codec {
-				sound-dai = <&lpass_vamacro 0>;
-			};
-
 			cpu {
 				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
+			};
+
+			codec {
+				sound-dai = <&lpass_vamacro 0>;
 			};
 
 			platform {
@@ -387,62 +387,65 @@
 		regulator-boot-on;
 	};
 
-	wcn7850-pmu {
-		compatible = "qcom,wcn7850-pmu";
+	wcn6855-pmu {
+		compatible = "qcom,wcn6855-pmu";
 
-		vdd-supply = <&vreg_wcn_0p95>;
-		vddio-supply = <&vreg_l15b_1p8>;
 		vddaon-supply = <&vreg_wcn_0p95>;
-		vdddig-supply = <&vreg_wcn_0p95>;
-		vddrfa1p2-supply = <&vreg_wcn_1p9>;
-		vddrfa1p8-supply = <&vreg_wcn_1p9>;
+		vddio-supply = <&vreg_wcn_1p9>;
+		vddpcie1p3-supply = <&vreg_wcn_1p9>;
+		vddpcie1p9-supply = <&vreg_wcn_1p9>;
+		vddpmu-supply = <&vreg_wcn_0p95>;
+		vddpmumx-supply = <&vreg_wcn_0p95>;
+		vddpmucx-supply = <&vreg_wcn_0p95>;
+		vddrfa0p95-supply = <&vreg_wcn_0p95>;
+		vddrfa1p3-supply = <&vreg_wcn_1p9>;
+		vddrfa1p9-supply = <&vreg_wcn_1p9>;
 
 		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
 		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
 
-		pinctrl-0 = <&wcn_wlan_en>;
-		pinctrl-1 = <&wcn_bt_en>;
+		pinctrl-0 = <&wcn_wlan_bt_en>;
 		pinctrl-names = "default";
 
 		regulators {
-			vreg_pmu_rfa_cmn: ldo0 {
-				regulator-name = "vreg_pmu_rfa_cmn";
+			vreg_pmu_rfa_cmn_0p8: ldo0 {
+				regulator-name = "vreg_pmu_rfa_cmn_0p8";
 			};
 
-			vreg_pmu_aon_0p59: ldo1 {
-				regulator-name = "vreg_pmu_aon_0p59";
+			vreg_pmu_aon_0p8: ldo1 {
+				regulator-name = "vreg_pmu_aon_0p8";
 			};
 
 			vreg_pmu_wlcx_0p8: ldo2 {
 				regulator-name = "vreg_pmu_wlcx_0p8";
 			};
 
-			vreg_pmu_wlmx_0p85: ldo3 {
-				regulator-name = "vreg_pmu_wlmx_0p85";
+			vreg_pmu_wlmx_0p8: ldo3 {
+				regulator-name = "vreg_pmu_wlmx_0p8";
 			};
 
-			vreg_pmu_btcmx_0p85: ldo4 {
-				regulator-name = "vreg_pmu_btcmx_0p85";
+			vreg_pmu_btcmx_0p8: ldo4 {
+				regulator-name = "vreg_pmu_btcmx_0p8";
 			};
 
-			vreg_pmu_rfa_0p8: ldo5 {
-				regulator-name = "vreg_pmu_rfa_0p8";
+			vreg_pmu_pcie_1p8: ldo5 {
+				regulator-name = "vreg_pmu_pcie_1p8";
 			};
 
-			vreg_pmu_rfa_1p2: ldo6 {
-				regulator-name = "vreg_pmu_rfa_1p2";
-			};
-
-			vreg_pmu_rfa_1p8: ldo7 {
-				regulator-name = "vreg_pmu_rfa_1p8";
-			};
-
-			vreg_pmu_pcie_0p9: ldo8 {
+			vreg_pmu_pcie_0p9: ldo6 {
 				regulator-name = "vreg_pmu_pcie_0p9";
 			};
 
-			vreg_pmu_pcie_1p8: ldo9 {
-				regulator-name = "vreg_pmu_pcie_1p8";
+			vreg_pmu_rfa_0p8: ldo7 {
+				regulator-name = "vreg_pmu_rfa_0p8";
+			};
+
+			vreg_pmu_rfa_1p2: ldo8 {
+				regulator-name = "vreg_pmu_rfa_1p2";
+			};
+
+			vreg_pmu_rfa_1p7: ldo9 {
+				regulator-name = "vreg_pmu_rfa_1p7";
 			};
 		};
 	};
@@ -764,7 +767,7 @@
 };
 
 &gpu_zap_shader {
-	firmware-name = "qcom/x1p42100/LENOVO/83HL/qcdxkmsucpurwa.mbn";
+	firmware-name = "qcom/x1p42100/LENOVO/83N3/qcdxkmsucpurwa.mbn";
 };
 
 &i2c0 {
@@ -858,10 +861,8 @@
 &i2c9 {
 	clock-frequency = <400000>;
 
-	status = "okay";
-
-	pinctrl-0 = <&qup_i2c9_data_clk>, <&kybd_default>;
-	pinctrl-names = "default";
+//	pinctrl-0 = <&qup_i2c9_data_clk>, <&kybd_default>;
+//	pinctrl-names = "default";
 	status = "okay";
 
 	keyboard@3a {
@@ -870,6 +871,9 @@
 
 		hid-descr-addr = <0x1>;
 		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&kybd_default>;
+		pinctrl-names = "default";
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
@@ -881,39 +885,37 @@
 &i2c19 {
 	clock-frequency = <400000>;
 
+//	pinctrl-0 = <&qup_i2c19_data_clk>;
+//	pinctrl-names = "default";
 	status = "okay";
 
-	pinctrl-0 = <&qup_i2c19_data_clk>, <&tpad_default>;
-	pinctrl-names = "default";
-	status = "okay";
+//	/* ELAN06FA */
+//	touchpad@15 {
+//		compatible = "hid-over-i2c";
+//		reg = <0x15>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
 
-	/* ELAN06FA */
-	touchpad@15 {
-		compatible = "hid-over-i2c";
-		reg = <0x15>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	/* CIRQ1080 or SYNA2BA6 */
-	touchpad@2c {
-		compatible = "hid-over-i2c";
-		reg = <0x2c>;
-
-		hid-descr-addr = <0x20>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
+//	/* CIRQ1080 or SYNA2BA6 */
+//	touchpad@2c {
+//		compatible = "hid-over-i2c";
+//		reg = <0x2c>;
+//
+//		hid-descr-addr = <0x20>;
+//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
 
 	/* FTCS0038 */
 	touchpad@38 {
@@ -923,25 +925,28 @@
 		hid-descr-addr = <0x1>;
 		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
 
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	/* GXTP5100 */
-	touchpad@5d {
-		compatible = "hid-over-i2c";
-		reg = <0x5d>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-0 = <&tpad_default>;
+		pinctrl-names = "default";
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
 
 		wakeup-source;
 	};
+
+//	/* GXTP5100 */
+//	touchpad@5d {
+//		compatible = "hid-over-i2c";
+//		reg = <0x5d>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
 };
 
 &lpass_tlmm {
@@ -1047,15 +1052,15 @@
 		compatible = "pci17cb,1107";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
 
-		vddaon-supply = <&vreg_pmu_aon_0p59>;
-		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
-		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
-		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
-		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
+		vddaon-supply = <&vreg_pmu_aon_0p8>;
 		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
 		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
+		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn_0p8>;
+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p8>;
 	};
 };
 
@@ -1133,15 +1138,15 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83HL/qcadsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83HL/adsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/83N3/qcadsp8380.mbn",
+			"qcom/x1p42100/LENOVO/83N3/adsp_dtbs.elf";
 
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83HL/qccdsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83HL/cdsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/83N3/qccdsp8380.mbn",
+			"qcom/x1p42100/LENOVO/83N3/cdsp_dtbs.elf";
 
 	status = "okay";
 };
@@ -1168,20 +1173,11 @@
 	vdd3-supply = <&vreg_l2b_3p0>;
 };
 
-&smb2360_1 {
-	status = "okay";
-};
-
-&smb2360_1_eusb2_repeater {
-	vdd18-supply = <&vreg_l3d_1p8>;
-	vdd3-supply = <&vreg_l14b_3p0>;
-};
-
 &swr0 {
-	status = "okay";
-
 	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
 	pinctrl-names = "default";
+
+	status = "okay";
 
 	/* WSA8845, Left Speaker */
 	left_spkr: speaker@0,0 {
@@ -1232,9 +1228,8 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
-		<44 4>, 
-		<72 2>, /* Secure EC I2C connection (?) */
-		<238 1>; /* UFS Reset */
+		<44 4>, /* TPM SPI */
+		<72 2>; /* Secure EC I2C connection (?) */
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
@@ -1372,6 +1367,7 @@
 		pins = "gpio3";
 		function = "gpio";
 		bias-pull-up;
+		drive-strength = <2>;
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
@@ -1415,14 +1411,6 @@
 		output-low;
 	};
 
-	wcn_bt_en: wcn-bt-en-state {
-		pins = "gpio116";
-		function = "gpio";
-		drive-strength = <16>;
-		output-low;
-		bias-pull-down;
-	};
-
 	wcn_sw_en: wcn-sw-en-state {
 		pins = "gpio214";
 		function = "gpio";
@@ -1430,10 +1418,10 @@
 		bias-disable;
 	};
 
-	wcn_wlan_en: wcn-wlan-en-state {
-		pins = "gpio117";
+	wcn_wlan_bt_en: wcn-wlan-bt-en-state {
+		pins = "gpio116", "gpio117";
 		function = "gpio";
-		drive-strength = <16>;
+		drive-strength = <2>;
 		bias-disable;
 	};
 
@@ -1449,16 +1437,17 @@
 	status = "okay";
 
 	bluetooth {
-		compatible = "qcom,wcn7850-bt";
+		compatible = "qcom,wcn6855-bt";
 		max-speed = <3200000>;
 
-		vddaon-supply = <&vreg_pmu_aon_0p59>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn_0p8>;
+		vddaon-supply = <&vreg_pmu_aon_0p8>;
 		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
-		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p8>;
+		vddbtcmx-supply = <&vreg_pmu_btcmx_0p8>;
 		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
 	};
 };
 
