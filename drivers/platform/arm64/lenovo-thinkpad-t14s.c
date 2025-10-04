@@ -3,6 +3,8 @@
  * Copyright (c) 2025, Sebastian Reichel
  */
 
+#define DEBUG
+
 #include <linux/bitfield.h>
 #include <linux/bits.h>
 #include <linux/cleanup.h>
@@ -484,6 +486,10 @@ static irqreturn_t t14s_ec_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
+	pm_wakeup_event(ec->dev, 0);
+
+	// TODO: pm_system_cancel_wakeup() for T14S_EC_EVT_LID_CLOSED and T14S_EC_EVT_AC_DISCONNECTED?
+
 	switch (val) {
 	case T14S_EC_EVT_NONE:
 		break;
@@ -599,7 +605,8 @@ static int t14s_ec_probe(struct i2c_client *client)
 	/*
 	 * Disable wakeup support by default, because the driver currently does
 	 * not support masking any events and the laptop should not wake up when
-	 * the LID is closed.
+	 * the LID is closed. Unfortunately writing to the T14S_EC_REG_MODERN_STANDBY
+	 * register is not enough either.
 	 */
 	device_wakeup_disable(dev);
 
