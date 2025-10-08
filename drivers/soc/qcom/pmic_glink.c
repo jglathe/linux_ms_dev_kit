@@ -342,8 +342,18 @@ static int pmic_glink_probe(struct platform_device *pdev)
 	__pmic_glink = pg;
 	mutex_unlock(&__pmic_glink_lock);
 
+	ret = register_rpmsg_driver(&pmic_glink_rpmsg_driver);
+	if (ret) {
+		ret = dev_err_probe(&pdev->dev, ret, "failed to register rpmsg driver\n");
+		goto out_release_pmic_glink;
+	}
+
 	return 0;
 
+out_release_pmic_glink:
+	mutex_lock(&__pmic_glink_lock);
+	__pmic_glink = NULL;
+	mutex_unlock(&__pmic_glink_lock);
 out_release_aux_devices:
 	if (pg->client_mask & BIT(PMIC_GLINK_CLIENT_BATT))
 		pmic_glink_del_aux_device(pg, &pg->ps_aux);
@@ -372,6 +382,8 @@ static void pmic_glink_remove(struct platform_device *pdev)
 	if (pg->client_mask & BIT(PMIC_GLINK_CLIENT_UCSI))
 		pmic_glink_del_aux_device(pg, &pg->ucsi_aux);
 
+	unregister_rpmsg_driver(&pmic_glink_rpmsg_driver);
+
 	guard(mutex)(&__pmic_glink_lock);
 	__pmic_glink = NULL;
 }
@@ -394,31 +406,7 @@ static struct platform_driver pmic_glink_driver = {
 		.of_match_table = pmic_glink_of_match,
 	},
 };
-
-static int pmic_glink_init(void)
-{
-	int ret;
-
-	ret = platform_driver_register(&pmic_glink_driver);
-	if (ret < 0)
-		return ret;
-
-	ret = register_rpmsg_driver(&pmic_glink_rpmsg_driver);
-	if (ret < 0) {
-		platform_driver_unregister(&pmic_glink_driver);
-		return ret;
-	}
-
-	return 0;
-}
-module_init(pmic_glink_init);
-
-static void pmic_glink_exit(void)
-{
-	unregister_rpmsg_driver(&pmic_glink_rpmsg_driver);
-	platform_driver_unregister(&pmic_glink_driver);
-}
-module_exit(pmic_glink_exit);
+module_platform_driver(pmic_glink_driver);
 
 MODULE_DESCRIPTION("Qualcomm PMIC GLINK driver");
 MODULE_LICENSE("GPL");
