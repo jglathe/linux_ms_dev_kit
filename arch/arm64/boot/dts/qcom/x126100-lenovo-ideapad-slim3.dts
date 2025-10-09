@@ -923,8 +923,8 @@
 		reg = <0x38>;
 
 		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-
+//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+//
 //		pinctrl-0 = <&tpad_default>;
 //		pinctrl-names = "default";
 
