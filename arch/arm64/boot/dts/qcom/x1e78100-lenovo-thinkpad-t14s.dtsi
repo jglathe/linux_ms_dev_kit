@@ -1279,9 +1279,12 @@
 &i2c8 {
 	clock-frequency = <400000>;
 
+	pinctrl-0 = <&qup_i2c8_data_clk>, <&ts0_default>;
+	pinctrl-names = "default";
+
 	status = "okay";
 
-	/* ILIT2911 or GTCH1563 */
+	/* GTCH1563 */
 	touchscreen@10 {
 		compatible = "hid-over-i2c";
 		reg = <0x10>;
@@ -1291,12 +1294,19 @@
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l15b_1p8>;
-
-		pinctrl-0 = <&ts0_default>;
-		pinctrl-names = "default";
 	};
 
-	/* TODO: second-sourced touchscreen @ 0x41 */
+	/* ILIT2911 */
+	touchscreen@41 {
+		compatible = "hid-over-i2c";
+		reg = <0x41>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 51 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l15b_1p8>;
+	};
 };
 
 &iris {
