@@ -73,13 +73,6 @@ static const struct onboard_dev_pdata ti_tusb8041_data = {
 	.is_hub = true,
 };
 
-static const struct onboard_dev_pdata bison_intcamera_data = {
-	.reset_us = 1000,
-	.num_supplies = 1,
-	.supply_names = { "vdd" },
-	.is_hub = false,
-};
-
 static const struct onboard_dev_pdata cypress_hx3_data = {
 	.reset_us = 10000,
 	.num_supplies = 2,
