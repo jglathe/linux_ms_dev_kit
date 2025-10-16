@@ -20,6 +20,12 @@ BPFTOOL_VERSION_PATCH = $(shell sed -ne \
 	tools/bpf/bpftool/main.c)
 BPFTOOL_VERSION = $(shell expr $(BPFTOOL_VERSION_MAJOR) + 6).$(BPFTOOL_VERSION_MINOR).$(BPFTOOL_VERSION_PATCH)
 BPFTOOL_GENCONTROL_ARGS = -v$(BPFTOOL_VERSION)+$(DEB_VERSION)
+ifneq ($(DEB_HOST_ARCH),$(DEB_BUILD_ARCH))
+# Use system bpftool when cross-building
+BPFTOOL_PATH = /usr/sbin/bpftool
+else
+BPFTOOL_PATH = $(builddirpa)/tools/bpf/bpftool/bpftool
+endif
 
 debian/scripts/fix-filenames: debian/scripts/fix-filenames.c
 	$(HOSTCC) $^ -o $@
@@ -64,22 +70,10 @@ ifeq ($(do_linux_tools),true)
   ifeq ($(do_tools_bpftool_stub),true)
 	echo '#error "Kernel does not support CONFIG_DEBUG_INFO_BTF"' > $(build_dir)/vmlinux.h
   else
-	$(builddirpa)/tools/bpf/bpftool/bpftool btf dump file $(build_dir)/vmlinux format c > $(build_dir)/vmlinux.h
+	$(BPFTOOL_PATH) btf dump file $(build_dir)/vmlinux format c > $(build_dir)/vmlinux.h
   endif
  endif
 endif
-
-	# Collect the list of kernel source files used for this build. Need to do this early
-	# before modules are stripped. Fail if the resulting file is empty.
-ifeq ($(do_sources_list),true)
-	find $(build_dir) \( -name vmlinux -o -name \*.ko \) -exec dwarfdump -i {} \; | \
-		grep -E 'DW_AT_(call|decl)_file' | sed -n 's|.*\s/|/|p' | sort -u > \
-		$(build_dir)/sources.list
-	test -s $(build_dir)/sources.list
-else
-	true > $(build_dir)/sources.list
-endif
-
 	$(stamp)
 
 define build_dkms_sign =
@@ -172,14 +166,52 @@ ifeq ($(do_linux_tools),true)
  endif
 endif
 
-	# The main image
-	install -m600 -D $(build_dir)/$(kernfile) \
-		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 	install -d $(pkgdir)/boot
 	install -m644 $(build_dir)/.config \
 		$(pkgdir)/boot/config-$(abi_release)-$*
 	install -m600 $(build_dir)/System.map \
 		$(pkgdir)/boot/System.map-$(abi_release)-$*
+
+ifeq ($(do_stubble),true)
+	# Build kernel+stub image
+	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) \
+	        --stub=/usr/lib/stubble/stubble.efi \
+	        --hwids=/usr/share/stubble/hwids \
+	        --sbat="@/usr/share/stubble/sbat" \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/msm8998-lenovo-miix-630.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc7180-acer-aspire1.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8180x-lenovo-flex-5g.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e001de-devkit.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s-oled.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-asus-zenbook-a14.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-crd.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-latitude-7455.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus13.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus15.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p42100-asus-zenbook-a14-lcd.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p42100-asus-zenbook-a14.dtb \
+		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p64100-acer-swift-sf14-11.dtb \
+	        --output=$(build_dir)/$(kernfile).stubble
+
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile).stubble \
+		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
+else
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile) \
+		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
+endif
 
 ifeq ($(do_dtbs),true)
 	$(kmake) O=$(build_dir) $(conc_level) dtbs_install \
@@ -341,9 +373,9 @@ ifeq ($(do_linux_tools),true)
 	# Do this only for the primary (first) flavor
 	# linux-bpf-dev is broken: It provides vmlinux.h which is a flavored header file!
 	if [ $* = $(firstword $(flavours)) ] ; then \
-		install -d -m755 $(bpfdevpkgdir)/usr/include/$(DEB_HOST_MULTIARCH)/linux/ ; \
+		install -d -m755 $(bpfdevpkgdir)/usr/include/$(DEB_HOST_MULTIARCH)/linux/bpf/ ; \
 		install -m644 $(build_dir)/vmlinux.h \
-			 $(bpfdevpkgdir)/usr/include/$(DEB_HOST_MULTIARCH)/linux/ ; \
+			 $(bpfdevpkgdir)/usr/include/$(DEB_HOST_MULTIARCH)/linux/bpf/ ; \
 	fi
   endif
  endif
@@ -455,8 +487,6 @@ endif
 	fi
 	install -m644 debian/canonical-certs.pem $(pkgdir_bldinfo)/usr/lib/linux/$(abi_release)-$*/canonical-certs.pem
 	install -m644 debian/canonical-revoked-certs.pem $(pkgdir_bldinfo)/usr/lib/linux/$(abi_release)-$*/canonical-revoked-certs.pem
-	# List of source files used for this build
-	install -m644 $(build_dir)/sources.list $(pkgdir_bldinfo)/usr/lib/linux/$(abi_release)-$*/sources
 
 	# Get rid of .o and .cmd artifacts in headers
 	find $(hdrdir) -name \*.o -or -name \*.cmd -exec rm -f {} \;

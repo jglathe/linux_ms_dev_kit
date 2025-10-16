@@ -50,6 +50,8 @@ Build-Depends:
  rust-src:native [amd64 arm64 armhf ppc64el riscv64 s390x],
  rustc:native (>= 1.82) [amd64 arm64 armhf ppc64el riscv64 s390x],
  rustfmt:native [amd64 arm64 armhf ppc64el riscv64 s390x],
+ systemd-ukify,
+ stubble,
  uuid-dev <!stage1>,
  zstd <!stage1>,
 Build-Depends-Indep:
