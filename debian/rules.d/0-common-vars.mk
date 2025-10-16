@@ -88,7 +88,7 @@ CROSS_COMPILE ?= $(DEB_HOST_GNU_TYPE)-
 # If a given kernel wants to change this, they can do so via their own
 # $(DEBIAN)/rules.d/hooks.mk and $(DEBIAN)/rules.d/$(arch).mk files
 #
-export gcc?=gcc-14
+export gcc?=gcc
 export rustc?=rustc
 export rustfmt?=rustfmt
 export bindgen?=bindgen
@@ -148,17 +148,13 @@ do_flavour_header_package=true
 # DTBs
 do_dtbs=false
 
+# Stubble
+do_stubble=false
+
 # ZSTD compressed kernel modules
 do_zstd_ko=true
 ifeq ($(DEB_DISTRIBUTION),jammy)
 do_zstd_ko=
-endif
-
-# Generate a list of source files used for the build
-ifeq ($(DEB_SOURCE),linux-unstable)
-	do_sources_list = false
-else
-	do_sources_list = true
 endif
 
 # Support parallel=<n> in DEB_BUILD_OPTIONS (see #209008)

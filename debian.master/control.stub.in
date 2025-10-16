@@ -16,7 +16,6 @@ Build-Depends:
  debhelper-compat (= 10),
  default-jdk-headless:native <!stage1>,
  dkms <!stage1>,
- dwarfdump:native <!stage1>,
  flex <!stage1>,
  gawk <!stage1>,
  java-common <!stage1>,
@@ -52,6 +51,7 @@ Build-Depends:
  rustfmt:native [amd64 arm64 armhf ppc64el riscv64 s390x],
  uuid-dev <!stage1>,
  zstd <!stage1>,
+ bpftool:native <!stage1> <cross>,
 Build-Depends-Indep:
  asciidoc <!stage1>,
  bzip2 <!stage1>,
