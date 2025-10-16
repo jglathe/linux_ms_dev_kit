@@ -521,7 +521,7 @@ CONFIG_ACPI_CONTAINER                           policy<{'arm64': 'y'}>
 CONFIG_ACPI_CPPC_CPUFREQ                        policy<{'arm64': 'm'}>
 CONFIG_ACPI_CPPC_CPUFREQ_FIE                    policy<{'arm64': 'y'}>
 CONFIG_ACPI_CPPC_LIB                            policy<{'arm64': 'y'}>
-CONFIG_ACPI_DEBUG                               policy<{'arm64': 'y'}>
+CONFIG_ACPI_DEBUG                               policy<{'arm64': 'n'}>
 CONFIG_ACPI_DEBUGGER                            policy<{'arm64': 'n'}>
 CONFIG_ACPI_DOCK                                policy<{'arm64': 'y'}>
 CONFIG_ACPI_EC                                  policy<{'arm64': 'n'}>
@@ -790,7 +790,7 @@ CONFIG_APPLE_DART                               policy<{'arm64': 'm'}>
 CONFIG_APPLE_M1_CPU_PMU                         policy<{'arm64': 'y'}>
 CONFIG_APPLE_MAILBOX                            policy<{'arm64': 'm'}>
 CONFIG_APPLE_MFI_FASTCHARGE                     policy<{'arm64': 'm'}>
-CONFIG_APPLE_PMGR_PWRSTATE                      policy<{'arm64': 'n'}>
+CONFIG_APPLE_PMGR_PWRSTATE                      policy<{'arm64': 'y'}>
 CONFIG_APPLE_RTKIT                              policy<{'arm64': 'm'}>
 CONFIG_APPLE_SART                               policy<{'arm64': 'm'}>
 CONFIG_APPLE_WATCHDOG                           policy<{'arm64': 'm'}>
@@ -1188,6 +1188,8 @@ CONFIG_ARM_SP805_WATCHDOG                       policy<{'arm64': 'm'}>
 CONFIG_ARM_SPE_PMU                              policy<{'arm64': 'm'}>
 CONFIG_ARM_SUN8I_A33_MBUS_DEVFREQ               policy<{'arm64': 'm'}>
 CONFIG_ARM_TEGRA124_CPUFREQ                     policy<{'arm64': 'y'}>
+CONFIG_ARM_TEGRA186_CPUFREQ                     policy<{'arm64': 'm'}>
+CONFIG_ARM_TEGRA194_CPUFREQ                     policy<{'arm64': 'm'}>
 CONFIG_ARM_TEGRA20_CPUFREQ                      policy<{'arm64': 'y'}>
 CONFIG_ARM_TEGRA_DEVFREQ                        policy<{'arm64': 'm'}>
 CONFIG_ARM_TIMER_SP804                          policy<{'arm64': 'y'}>
@@ -1215,7 +1217,7 @@ CONFIG_AS_HAS_CFI_NEGATE_RA_STATE               policy<{'arm64': 'y'}>
 CONFIG_AS_HAS_MOPS                              policy<{'arm64': 'y'}>
 CONFIG_AS_HAS_NON_CONST_ULEB128                 policy<{'arm64': 'y'}>
 CONFIG_AS_IS_GNU                                policy<{'arm64': 'y'}>
-CONFIG_AS_VERSION                               policy<{'arm64': '24400'}>
+CONFIG_AS_VERSION                               policy<{'arm64': '24500'}>
 CONFIG_AT76C50X_USB                             policy<{'arm64': 'm'}>
 CONFIG_AT803X_PHY                               policy<{'arm64': 'y'}>
 CONFIG_ATA                                      policy<{'arm64': 'y'}>
@@ -1861,10 +1863,12 @@ CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO                policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_AUTO_VAR_INIT_ZERO_BARE           policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_BRANCH_PROT_PAC_RET               policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_BRANCH_PROT_PAC_RET_BTI           policy<{'arm64': 'y'}>
+CONFIG_CC_HAS_COUNTED_BY                        policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_INT128                            policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_KASAN_GENERIC                     policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_KASAN_SW_TAGS                     policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_MIN_FUNCTION_ALIGNMENT            policy<{'arm64': 'y'}>
+CONFIG_CC_HAS_MULTIDIMENSIONAL_NONSTRING        policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_NO_PROFILE_FN_ATTR                policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_SANE_FUNCTION_ALIGNMENT           policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_UBSAN_BOUNDS_STRICT               policy<{'arm64': 'y'}>
@@ -1878,7 +1882,7 @@ CONFIG_CC_NO_ARRAY_BOUNDS                       policy<{'arm64': 'y'}>
 CONFIG_CC_NO_STRINGOP_OVERFLOW                  policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE              policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_SIZE                     policy<{'arm64': 'n'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc-14 (Ubuntu 14.2.0-19ubuntu2) 14.2.0"'}>
+CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc (Ubuntu 15.2.0-4ubuntu4) 15.2.0"'}>
 CONFIG_CDNS_I3C_MASTER                          policy<{'arm64': 'm'}>
 CONFIG_CDROM                                    policy<{'arm64': 'y'}>
 CONFIG_CDX_BUS                                  policy<{'arm64': 'y'}>
@@ -2090,6 +2094,7 @@ CONFIG_CLK_RK3588                               policy<{'arm64': 'y'}>
 CONFIG_CLK_RZG2L                                policy<{'arm64': 'y'}>
 CONFIG_CLK_RZV2H                                policy<{'arm64': 'y'}>
 CONFIG_CLK_SP810                                policy<{'arm64': 'y'}>
+CONFIG_CLK_TEGRA_BPMP                           policy<{'arm64': 'y'}>
 CONFIG_CLK_TWL                                  policy<{'arm64': 'm'}>
 CONFIG_CLK_TWL6040                              policy<{'arm64': 'm'}>
 CONFIG_CLK_VEXPRESS_OSC                         policy<{'arm64': 'y'}>
@@ -3715,7 +3720,7 @@ CONFIG_E1000E                                   policy<{'arm64': 'm'}>
 CONFIG_ECRYPT_FS_MESSAGING                      policy<{'arm64': 'y'}>
 CONFIG_EC_ACER_ASPIRE1                          policy<{'arm64': 'm'}>
 CONFIG_EC_HUAWEI_GAOKUN                         policy<{'arm64': 'n'}>
-CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'n'}>
+CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_C630                      policy<{'arm64': 'm'}>
 CONFIG_EDAC                                     policy<{'arm64': 'y'}>
 CONFIG_EDAC_ALTERA                              policy<{'arm64': 'y'}>
@@ -4213,7 +4218,7 @@ CONFIG_GARP                                     policy<{'arm64': 'm'}>
 CONFIG_GCC10_NO_ARRAY_BOUNDS                    policy<{'arm64': 'y'}>
 CONFIG_GCC_NO_STRINGOP_OVERFLOW                 policy<{'arm64': 'y'}>
 CONFIG_GCC_SUPPORTS_DYNAMIC_FTRACE_WITH_ARGS    policy<{'arm64': 'y'}>
-CONFIG_GCC_VERSION                              policy<{'arm64': '140200'}>
+CONFIG_GCC_VERSION                              policy<{'arm64': '150200'}>
 CONFIG_GCOV_KERNEL                              policy<{'arm64': 'n'}>
 CONFIG_GDB_SCRIPTS                              policy<{'arm64': 'y'}>
 CONFIG_GEHC_PMC_ADC                             policy<{'arm64': 'm'}>
@@ -4967,6 +4972,7 @@ CONFIG_I2C_STUB                                 policy<{'arm64': 'm'}>
 CONFIG_I2C_SYNQUACER                            policy<{'arm64': 'm'}>
 CONFIG_I2C_TAOS_EVM                             policy<{'arm64': 'm'}>
 CONFIG_I2C_TEGRA                                policy<{'arm64': 'm'}>
+CONFIG_I2C_TEGRA_BPMP                           policy<{'arm64': 'm'}>
 CONFIG_I2C_THUNDERX                             policy<{'arm64': 'm'}>
 CONFIG_I2C_TINY_USB                             policy<{'arm64': 'm'}>
 CONFIG_I2C_VERSATILE                            policy<{'arm64': 'm'}>
@@ -5864,7 +5870,7 @@ CONFIG_LD_CAN_USE_KEEP_IN_OVERLAY               policy<{'arm64': 'y'}>
 CONFIG_LD_IS_BFD                                policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN                           policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN_LEVEL                     policy<{'arm64': '"warn"'}>
-CONFIG_LD_VERSION                               policy<{'arm64': '24400'}>
+CONFIG_LD_VERSION                               policy<{'arm64': '24500'}>
 CONFIG_LEDS_88PM860X                            policy<{'arm64': 'm'}>
 CONFIG_LEDS_AAT1290                             policy<{'arm64': 'm'}>
 CONFIG_LEDS_ADP5520                             policy<{'arm64': 'm'}>
@@ -7099,7 +7105,7 @@ CONFIG_NETFILTER_XT_MATCH_STRING                policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_MATCH_TCPMSS                policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_MATCH_TIME                  policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_MATCH_U32                   policy<{'arm64': 'm'}>
-CONFIG_NETFILTER_XT_NAT                         policy<{'arm64': 'n'}>
+CONFIG_NETFILTER_XT_NAT                         policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_SET                         policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_AUDIT                policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_CHECKSUM             policy<{'arm64': 'm'}>
@@ -7108,18 +7114,18 @@ CONFIG_NETFILTER_XT_TARGET_CONNMARK             policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_CONNSECMARK          policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_CT                   policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_DSCP                 policy<{'arm64': 'm'}>
-CONFIG_NETFILTER_XT_TARGET_HL                   policy<{'arm64': 'n'}>
+CONFIG_NETFILTER_XT_TARGET_HL                   policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_HMARK                policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_IDLETIMER            policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_LED                  policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_LOG                  policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_MARK                 policy<{'arm64': 'm'}>
-CONFIG_NETFILTER_XT_TARGET_MASQUERADE           policy<{'arm64': 'n'}>
-CONFIG_NETFILTER_XT_TARGET_NETMAP               policy<{'arm64': 'n'}>
+CONFIG_NETFILTER_XT_TARGET_MASQUERADE           policy<{'arm64': 'm'}>
+CONFIG_NETFILTER_XT_TARGET_NETMAP               policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_NFLOG                policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_NFQUEUE              policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_RATEEST              policy<{'arm64': 'm'}>
-CONFIG_NETFILTER_XT_TARGET_REDIRECT             policy<{'arm64': 'n'}>
+CONFIG_NETFILTER_XT_TARGET_REDIRECT             policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_SECMARK              policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_TCPMSS               policy<{'arm64': 'm'}>
 CONFIG_NETFILTER_XT_TARGET_TCPOPTSTRIP          policy<{'arm64': 'm'}>
@@ -7870,7 +7876,7 @@ CONFIG_PAGE_SIZE_LESS_THAN_64KB                 policy<{'arm64': 'y'}>
 CONFIG_PAGE_TABLE_CHECK                         policy<{'arm64': 'n'}>
 CONFIG_PAHOLE_HAS_LANG_EXCLUDE                  policy<{'arm64': 'y'}>
 CONFIG_PAHOLE_HAS_SPLIT_BTF                     policy<{'arm64': 'y'}>
-CONFIG_PAHOLE_VERSION                           policy<{'arm64': '129'}>
+CONFIG_PAHOLE_VERSION                           policy<{'arm64': '130'}>
 CONFIG_PALMAS_GPADC                             policy<{'arm64': 'm'}>
 CONFIG_PANEL                                    policy<{'arm64': 'm'}>
 CONFIG_PANEL_CHANGE_MESSAGE                     policy<{'arm64': 'n'}>
@@ -9194,6 +9200,7 @@ CONFIG_RESET_RZV2H_USB2PHY                      policy<{'arm64': 'n'}>
 CONFIG_RESET_SCMI                               policy<{'arm64': 'm'}>
 CONFIG_RESET_SIMPLE                             policy<{'arm64': 'y'}>
 CONFIG_RESET_SUNXI                              policy<{'arm64': 'y'}>
+CONFIG_RESET_TEGRA_BPMP                         policy<{'arm64': 'y'}>
 CONFIG_RESET_TI_SCI                             policy<{'arm64': 'm'}>
 CONFIG_RESET_TI_SYSCON                          policy<{'arm64': 'm'}>
 CONFIG_RESET_TI_TPS380X                         policy<{'arm64': 'm'}>
@@ -9563,12 +9570,9 @@ CONFIG_RTW89_PCI                                policy<{'arm64': 'm'}>
 CONFIG_RT_GROUP_SCHED                           policy<{'arm64': 'n'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190101'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108200'}>
 CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
@@ -10247,6 +10251,8 @@ CONFIG_SERIAL_SIFIVE                            policy<{'arm64': 'm'}>
 CONFIG_SERIAL_SPRD                              policy<{'arm64': 'm'}>
 CONFIG_SERIAL_STM32                             policy<{'arm64': 'm'}>
 CONFIG_SERIAL_TEGRA                             policy<{'arm64': 'm'}>
+CONFIG_SERIAL_TEGRA_TCU                         policy<{'arm64': 'y'}>
+CONFIG_SERIAL_TEGRA_TCU_CONSOLE                 policy<{'arm64': 'y'}>
 CONFIG_SERIAL_TEGRA_UTC                         policy<{'arm64': 'n'}>
 CONFIG_SERIAL_UARTLITE                          policy<{'arm64': 'm'}>
 CONFIG_SERIAL_UARTLITE_NR_UARTS                 policy<{'arm64': '1'}>
@@ -11194,6 +11200,7 @@ CONFIG_SOC_TEGRA_CBB                            policy<{'arm64': 'm'}>
 CONFIG_SOC_TEGRA_FLOWCTRL                       policy<{'arm64': 'y'}>
 CONFIG_SOC_TEGRA_FUSE                           policy<{'arm64': 'y'}>
 CONFIG_SOC_TEGRA_PMC                            policy<{'arm64': 'y'}>
+CONFIG_SOC_TEGRA_POWERGATE_BPMP                 policy<{'arm64': 'y'}>
 CONFIG_SOC_TI                                   policy<{'arm64': 'y'}>
 CONFIG_SOFTIRQ_ON_OWN_STACK                     policy<{'arm64': 'y'}>
 CONFIG_SOFTLOCKUP_DETECTOR                      policy<{'arm64': 'y'}>
@@ -11656,13 +11663,16 @@ CONFIG_TEGRA210_EMC_TABLE                       policy<{'arm64': 'y'}>
 CONFIG_TEGRA241_CMDQV                           policy<{'arm64': 'n'}>
 CONFIG_TEGRA_ACONNECT                           policy<{'arm64': 'm'}>
 CONFIG_TEGRA_AHB                                policy<{'arm64': 'y'}>
+CONFIG_TEGRA_BPMP                               policy<{'arm64': 'y'}>
+CONFIG_TEGRA_BPMP_THERMAL                       policy<{'arm64': 'm'}>
 CONFIG_TEGRA_CLK_DFLL                           policy<{'arm64': 'y'}>
 CONFIG_TEGRA_GMI                                policy<{'arm64': 'm'}>
 CONFIG_TEGRA_HOST1X                             policy<{'arm64': 'm'}>
 CONFIG_TEGRA_HOST1X_CONTEXT_BUS                 policy<{'arm64': 'y'}>
 CONFIG_TEGRA_HOST1X_FIREWALL                    policy<{'arm64': 'y'}>
-CONFIG_TEGRA_HSP_MBOX                           policy<{'arm64': 'n'}>
+CONFIG_TEGRA_HSP_MBOX                           policy<{'arm64': 'y'}>
 CONFIG_TEGRA_IOMMU_SMMU                         policy<{'arm64': 'y'}>
+CONFIG_TEGRA_IVC                                policy<{'arm64': 'y'}>
 CONFIG_TEGRA_MC                                 policy<{'arm64': 'y'}>
 CONFIG_TEGRA_SOCTHERM                           policy<{'arm64': 'n'}>
 CONFIG_TEGRA_TIMER                              policy<{'arm64': 'y'}>
@@ -12813,8 +12823,8 @@ CONFIG_VIDEO_NPCM_VCD_ECE                       policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OG01A1B                            policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OV01A10                            policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OV02A10                            policy<{'arm64': 'm'}>
-CONFIG_VIDEO_OV02C10                            policy<{'arm64': 'n'}>
-CONFIG_VIDEO_OV02E10                            policy<{'arm64': 'n'}>
+CONFIG_VIDEO_OV02C10                            policy<{'arm64': 'm'}>
+CONFIG_VIDEO_OV02E10                            policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OV08D10                            policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OV08X40                            policy<{'arm64': 'm'}>
 CONFIG_VIDEO_OV13858                            policy<{'arm64': 'm'}>
