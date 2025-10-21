@@ -15,9 +15,16 @@
 #include "qdsp6/q6dsp-common.h"
 #include "sdw.h"
 
+struct x1e80100_snd_cfg {
+	const char *driver_name;
+	const unsigned int *channels_map;
+	int channels_num;
+};
+
 struct x1e80100_snd_data {
 	bool stream_prepared[AFE_PORT_MAX];
 	struct snd_soc_card *card;
+	const struct x1e80100_snd_cfg *cfg;
 	struct snd_soc_jack jack;
 	struct snd_soc_jack dp_jack[8];
 	bool jack_setup;
@@ -73,8 +80,16 @@ static int x1e80100_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
-static int x1e80100_snd_hw_map_channels(unsigned int *ch_map, int num)
+static int x1e80100_snd_hw_map_channels(struct x1e80100_snd_data *data,
+					unsigned int *ch_map, int num)
 {
+	if (data->cfg->channels_map) {
+		for (int i = 0; i < data->cfg->channels_num; i++)
+			ch_map[i] = data->cfg->channels_map[i];
+
+		return 0;
+	}
+
 	switch (num) {
 	case 1:
 		ch_map[0] = PCM_CHANNEL_FC;
@@ -113,7 +128,7 @@ static int x1e80100_snd_prepare(struct snd_pcm_substream *substream)
 	switch (cpu_dai->id) {
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_RX_1:
-		ret = x1e80100_snd_hw_map_channels(rx_slot, channels);
+		ret = x1e80100_snd_hw_map_channels(data, rx_slot, channels);
 		if (ret)
 			return ret;
 
@@ -183,15 +198,39 @@ static int x1e80100_platform_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	card->driver_name = of_device_get_match_data(dev);
+	data->cfg = of_device_get_match_data(dev);
+
+	card->driver_name = data->cfg->driver_name;
 	x1e80100_add_be_ops(card);
 
 	return devm_snd_soc_register_card(dev, card);
 }
 
+static const struct x1e80100_snd_cfg x1e80100_cfg = {
+	.driver_name = "x1e80100",
+};
+
+static const struct x1e80100_snd_cfg glymur_cfg = {
+	.driver_name = "glymur",
+};
+
+static const unsigned int right_left_4_channels_map[] = {
+	PCM_CHANNEL_FR,
+	PCM_CHANNEL_RB,
+	PCM_CHANNEL_FL,
+	PCM_CHANNEL_LB,
+};
+
+static const struct x1e80100_snd_cfg dell_xps13_9345_cfg = {
+	.driver_name = "x1e80100",
+	.channels_map = right_left_4_channels_map,
+	.channels_num = ARRAY_SIZE(right_left_4_channels_map),
+};
+
 static const struct of_device_id snd_x1e80100_dt_match[] = {
-	{ .compatible = "qcom,x1e80100-sndcard", .data = "x1e80100" },
-	{ .compatible = "qcom,glymur-sndcard", .data = "glymur" },
+	{ .compatible = "qcom,x1e80100-sndcard", .data = &x1e80100_cfg, },
+	{ .compatible = "dell,xps13-9345-sndcard", .data = &dell_xps13_9345_cfg, },
+	{ .compatible = "qcom,glymur-sndcard", .data = &glymur_cfg, },
 	{}
 };
 MODULE_DEVICE_TABLE(of, snd_x1e80100_dt_match);
