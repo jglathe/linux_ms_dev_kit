@@ -27,6 +27,10 @@ else
 BPFTOOL_PATH = $(builddirpa)/tools/bpf/bpftool/bpftool
 endif
 
+STUBBLE_HWIDS_DIR = /home/jglathe/src/stubble/hwids
+FIND_DTBS = debian/scripts/misc/find-dtbs.py
+KERNEL_SOURCE_DIR = $(CURDIR)  # Not needed here, but kept for consistency if expanding later
+
 debian/scripts/fix-filenames: debian/scripts/fix-filenames.c
 	$(HOSTCC) $^ -o $@
 
@@ -139,6 +143,7 @@ $(foreach _m,$(all_dkms_modules), \
   $(eval $$(stampdir)/stamp-install-%: dkms_$(_m)_pkgdir = $$(CURDIR)/debian/$(dkms_$(_m)_pkg_name)-$$*) \
 )
 $(stampdir)/stamp-install-%: dbgpkgdir_dkms = $(if $(filter true,$(do_dbgsym_package)),$(dbgpkgdir)/usr/lib/debug/lib/modules/$(abi_release)-$*/kernel,"")
+$(stampdir)/stamp-install-%: DTB_OPTIONS = $(shell python3 $(FIND_DTBS) $(build_dir)/arch/arm64/boot/dts $(STUBBLE_HWIDS_DIR) 2>/dev/null | sed 's|.*|--devicetree-auto=&|' | tr '\n' ' ')
 $(stampdir)/stamp-install-%: $(stampdir)/stamp-install-headers $(stampdir)/stamp-build-%
 	@echo Debug: $@ kernel_file $(kernel_file) kernfile $(kernfile) install_file $(install_file) instfile $(instfile)
 	dh_testdir
@@ -174,41 +179,13 @@ endif
 
 ifeq ($(do_stubble),true)
 	# Build kernel+stub image
-	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) \
-	        --stub=/usr/lib/stubble/stubble.efi \
-	        --hwids=/usr/share/stubble/hwids \
-	        --sbat="@/usr/share/stubble/sbat" \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/msm8998-lenovo-miix-630.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc7180-acer-aspire1.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8180x-lenovo-flex-5g.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e001de-devkit.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s-oled.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-asus-zenbook-a14.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-crd.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-latitude-7455.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-hp-omnibook-x14.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus13.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus15.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p42100-asus-zenbook-a14-lcd.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p42100-asus-zenbook-a14.dtb \
-		--devicetree-auto=$(build_dir)/arch/arm64/boot/dts/qcom/x1p64100-acer-swift-sf14-11.dtb \
-	        --output=$(build_dir)/$(kernfile).stubble
+	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) --stub=/usr/lib/stubble/stubble.efi --hwids=$(STUBBLE_HWIDS_DIR) --sbat="@/usr/share/stubble/sbat" $(DTB_OPTIONS) --output=$(build_dir)/$(kernfile).stubble
 
-	# The main image
+	# Install the stub image
 	install -m600 -D $(build_dir)/$(kernfile).stubble \
 		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
 else
-	# The main image
+	# Normal image
 	install -m600 -D $(build_dir)/$(kernfile) \
 		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 endif
