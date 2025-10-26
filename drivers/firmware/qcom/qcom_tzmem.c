@@ -76,6 +76,7 @@ static void qcom_tzmem_cleanup_area(struct qcom_tzmem_area *area)
 #define QCOM_SHM_BRIDGE_NUM_VM_SHIFT 9
 
 static bool qcom_tzmem_using_shm_bridge;
+static u32 qcom_tzmem_vmid = QCOM_SCM_VMID_HLOS;
 
 /* List of machines that are known to not support SHM bridge correctly. */
 static const char *const qcom_tzmem_blacklist[] = {
@@ -93,9 +94,15 @@ static int qcom_tzmem_init(void)
 	const char *const *platform;
 	int ret;
 
-	for (platform = qcom_tzmem_blacklist; *platform; platform++) {
-		if (of_machine_is_compatible(*platform))
-			goto notsupp;
+	device_property_read_u32(qcom_tzmem_dev, "qcom,shm-bridge-vmid",
+				 &qcom_tzmem_vmid);
+
+	/* Skip blocklist if self owner is requested */
+	if (qcom_tzmem_vmid != QCOM_SCM_VMID_SELF_OWNER) {
+		for (platform = qcom_tzmem_blacklist; *platform; platform++) {
+			if (of_machine_is_compatible(*platform))
+				goto notsupp;
+		}
 	}
 
 	ret = qcom_scm_shm_bridge_enable(qcom_tzmem_dev);
@@ -115,7 +122,7 @@ notsupp:
 static int qcom_tzmem_init_area(struct qcom_tzmem_area *area)
 {
 	u64 pfn_and_ns_perm, ipfn_and_s_perm, size_and_flags;
-	u64 ns_vmids = QCOM_SCM_VMID_HLOS;
+	u64 ns_vmids = qcom_tzmem_vmid;
 	int ret;
 
 	if (!qcom_tzmem_using_shm_bridge)
@@ -125,7 +132,7 @@ static int qcom_tzmem_init_area(struct qcom_tzmem_area *area)
 	ipfn_and_s_perm = (u64)area->paddr | QCOM_SCM_PERM_RW;
 	size_and_flags = area->size | (1 << QCOM_SHM_BRIDGE_NUM_VM_SHIFT);
 
-	if (is_hyp_mode_available()) {
+	if (qcom_tzmem_vmid == QCOM_SCM_VMID_SELF_OWNER) {
 		size_and_flags = area->size | QCOM_SHM_BRIDGE_SELF_OWNER |
 				 (QCOM_SCM_PERM_RW << QCOM_SHM_BRIDGE_SELF_OWNER_PERM_SHIFT);
 		ns_vmids = 0;
