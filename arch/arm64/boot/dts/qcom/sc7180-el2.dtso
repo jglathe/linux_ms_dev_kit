@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
+#include <dt-bindings/firmware/qcom,scm.h>
 
 /*
  * sc7180 specific modifications required to boot in EL2.
@@ -10,6 +11,10 @@
 /* We can't and don't need to use zap shader in EL2 as linux can zap the gpu on it's own. */
 &gpu_zap_shader {
 	status = "disabled";
+};
+
+&scm {
+	qcom,shm-bridge-vmid = <QCOM_SCM_VMID_SELF_OWNER>;
 };
 
 /* Venus can be used in EL2 if booted similarly to ChromeOS devices. */
