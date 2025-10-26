@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
+#include <dt-bindings/firmware/qcom,scm.h>
 
 /*
  * sc8280xp specific modifications required to boot in EL2.
@@ -57,6 +58,10 @@
 
 &remoteproc_nsp1 {
 	qcom,broken-reset;
+};
+
+&scm {
+	qcom,shm-bridge-vmid = <QCOM_SCM_VMID_SELF_OWNER>;
 };
 
 &venus {
