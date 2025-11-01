@@ -95,6 +95,14 @@ EXPORT_SYMBOL(rpmsg_release_channel);
  * equals to the src address of their rpmsg channel), the driver's handler
  * is invoked to process it.
  *
+ * Note that the endpoint for simple rpmsg drivers is created before calling
+ * probe() and closed after calling remove(), so special care must be taken
+ * to handle calls to the rx callback before/in parallel of probe() and
+ * after/in parallel of remove(). If more control over the endpoint creation
+ * is required to avoid race conditions, drivers can omit the callback and
+ * explicitly call rpmsg_dev_open_ept() in probe() and rpmsg_destroy_ept() in
+ * remove(), together with locks as needed.
+ *
  * That said, more complicated drivers might need to allocate
  * additional rpmsg addresses, and bind them to different rx callbacks.
  * To accomplish that, those drivers need to call this function.
@@ -463,6 +471,32 @@ static int rpmsg_uevent(const struct device *dev, struct kobj_uevent_env *env)
 					rpdev->id.name);
 }
 
+struct rpmsg_endpoint *rpmsg_dev_open_ept(struct rpmsg_device *rpdev,
+					  rpmsg_rx_cb_t cb, void *priv)
+{
+	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
+	struct rpmsg_channel_info chinfo = {
+		.src = rpdev->src,
+		.dst = RPMSG_ADDR_ANY,
+	};
+	struct rpmsg_endpoint *ept;
+
+	strscpy(chinfo.name, rpdev->id.name, sizeof(chinfo.name));
+
+	ept = rpmsg_create_ept(rpdev, cb, priv, chinfo);
+	if (!ept) {
+		dev_err(&rpdev->dev, "failed to create endpoint\n");
+		return NULL;
+	}
+
+	rpdev->ept = ept;
+	rpdev->src = ept->addr;
+
+	ept->flow_cb = rpdrv->flowcontrol;
+	return ept;
+}
+EXPORT_SYMBOL(rpmsg_dev_open_ept);
+
 /*
  * when an rpmsg driver is probed with a channel, we seamlessly create
  * it an endpoint, binding its rx callback to a unique local rpmsg
@@ -475,7 +509,6 @@ static int rpmsg_dev_probe(struct device *dev)
 {
 	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
 	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
-	struct rpmsg_channel_info chinfo = {};
 	struct rpmsg_endpoint *ept = NULL;
 	int err;
 
@@ -485,21 +518,11 @@ static int rpmsg_dev_probe(struct device *dev)
 		goto out;
 
 	if (rpdrv->callback) {
-		strscpy(chinfo.name, rpdev->id.name, sizeof(chinfo.name));
-		chinfo.src = rpdev->src;
-		chinfo.dst = RPMSG_ADDR_ANY;
-
-		ept = rpmsg_create_ept(rpdev, rpdrv->callback, NULL, chinfo);
+		ept = rpmsg_dev_open_ept(rpdev, rpdrv->callback, NULL);
 		if (!ept) {
-			dev_err(dev, "failed to create endpoint\n");
 			err = -ENOMEM;
 			goto out;
 		}
-
-		rpdev->ept = ept;
-		rpdev->src = ept->addr;
-
-		ept->flow_cb = rpdrv->flowcontrol;
 	}
 
 	err = rpdrv->probe(rpdev);
@@ -508,7 +531,7 @@ static int rpmsg_dev_probe(struct device *dev)
 		goto destroy_ept;
 	}
 
-	if (ept && rpdev->ops->announce_create) {
+	if (rpdev->ept && rpdev->ops->announce_create) {
 		err = rpdev->ops->announce_create(rpdev);
 		if (err) {
 			dev_err(dev, "failed to announce creation\n");
@@ -539,7 +562,7 @@ static void rpmsg_dev_remove(struct device *dev)
 	if (rpdrv->remove)
 		rpdrv->remove(rpdev);
 
-	if (rpdev->ept)
+	if (rpdrv->callback && rpdev->ept)
 		rpmsg_destroy_ept(rpdev->ept);
 }
 
