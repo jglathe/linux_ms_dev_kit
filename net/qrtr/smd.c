@@ -5,6 +5,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/skbuff.h>
 #include <linux/rpmsg.h>
 
@@ -14,17 +15,17 @@ struct qrtr_smd_dev {
 	struct qrtr_endpoint ep;
 	struct rpmsg_endpoint *channel;
 	struct device *dev;
+
+	/* Protect against channel open/close while sending */
+	struct mutex send_lock;
 };
 
 /* from smd to qrtr */
 static int qcom_smd_qrtr_callback(struct rpmsg_device *rpdev,
 				  void *data, int len, void *priv, u32 addr)
 {
-	struct qrtr_smd_dev *qdev = dev_get_drvdata(&rpdev->dev);
+	struct qrtr_smd_dev *qdev = priv;
 	int rc;
-
-	if (!qdev)
-		return -EAGAIN;
 
 	rc = qrtr_endpoint_post(&qdev->ep, data, len);
 	if (rc == -EINVAL) {
@@ -46,7 +47,12 @@ static int qcom_smd_qrtr_send(struct qrtr_endpoint *ep, struct sk_buff *skb)
 	if (rc)
 		goto out;
 
-	rc = rpmsg_send(qdev->channel, skb->data, skb->len);
+	scoped_guard(mutex, &qdev->send_lock) {
+		if (qdev->channel)
+			rc = rpmsg_send(qdev->channel, skb->data, skb->len);
+		else
+			rc = -ENODEV;
+	}
 
 out:
 	if (rc)
@@ -65,13 +71,25 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 	if (!qdev)
 		return -ENOMEM;
 
-	qdev->channel = rpdev->ept;
 	qdev->dev = &rpdev->dev;
 	qdev->ep.xmit = qcom_smd_qrtr_send;
+
+	rc = devm_mutex_init(&rpdev->dev, &qdev->send_lock);
+	if (rc)
+		return rc;
+
+	/* Block sending until we have fully opened the channel */
+	guard(mutex)(&qdev->send_lock);
 
 	rc = qrtr_endpoint_register(&qdev->ep, QRTR_EP_NID_AUTO);
 	if (rc)
 		return rc;
+
+	qdev->channel = rpmsg_dev_open_ept(rpdev, qcom_smd_qrtr_callback, qdev);
+	if (!qdev->channel) {
+		qrtr_endpoint_unregister(&qdev->ep);
+		return -EREMOTEIO;
+	}
 
 	dev_set_drvdata(&rpdev->dev, qdev);
 
@@ -83,10 +101,16 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 static void qcom_smd_qrtr_remove(struct rpmsg_device *rpdev)
 {
 	struct qrtr_smd_dev *qdev = dev_get_drvdata(&rpdev->dev);
+	struct rpmsg_endpoint *ept;
 
+	/* We are about to close the channel, so stop all sending now */
+	scoped_guard(mutex, &qdev->send_lock) {
+		ept = qdev->channel;
+		qdev->channel = NULL;
+	}
+
+	rpmsg_destroy_ept(ept);
 	qrtr_endpoint_unregister(&qdev->ep);
-
-	dev_set_drvdata(&rpdev->dev, NULL);
 }
 
 static const struct rpmsg_device_id qcom_smd_qrtr_smd_match[] = {
@@ -97,7 +121,6 @@ static const struct rpmsg_device_id qcom_smd_qrtr_smd_match[] = {
 static struct rpmsg_driver qcom_smd_qrtr_driver = {
 	.probe = qcom_smd_qrtr_probe,
 	.remove = qcom_smd_qrtr_remove,
-	.callback = qcom_smd_qrtr_callback,
 	.id_table = qcom_smd_qrtr_smd_match,
 	.drv = {
 		.name = "qcom_smd_qrtr",
