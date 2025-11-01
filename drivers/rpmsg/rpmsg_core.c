@@ -533,7 +533,7 @@ static void rpmsg_dev_remove(struct device *dev)
 	struct rpmsg_device *rpdev = to_rpmsg_device(dev);
 	struct rpmsg_driver *rpdrv = to_rpmsg_driver(rpdev->dev.driver);
 
-	if (rpdev->ops->announce_destroy)
+	if (rpdev->ept && rpdev->ops->announce_destroy)
 		rpdev->ops->announce_destroy(rpdev);
 
 	if (rpdrv->remove)
