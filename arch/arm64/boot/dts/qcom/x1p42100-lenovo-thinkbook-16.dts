@@ -10,6 +10,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
@@ -46,6 +47,7 @@
 		qcom,tx-device = <&wcd_tx>;
 
 		reset-gpios = <&tlmm 191 GPIO_ACTIVE_LOW>;
+		mux-controls = <&us_euro_mux_ctrl>;
 
 		vdd-buck-supply = <&vreg_l15b_1p8>;
 		vdd-rxtx-supply = <&vreg_l15b_1p8>;
@@ -254,6 +256,16 @@
 				sound-dai = <&q6apm>;
 			};
 		};
+	};
+
+	/* two muxes together support CTIA and OMTP switching */
+	us_euro_mux_ctrl: mux-controller {
+		compatible = "gpio-mux";
+		pinctrl-0 = <&us_euro_hs_sel>;
+		pinctrl-names = "default";
+		mux-supply = <&vreg_l16b_2p5>;
+		#mux-control-cells = <0>;
+		mux-gpios = <&tlmm 68 GPIO_ACTIVE_HIGH>;
 	};
 
 	usb-1-ss0-sbu-mux {
@@ -605,10 +617,10 @@
 			regulator-always-on;
 		};
 
-		vreg_l16b_2p9: ldo16 {
-			regulator-name = "vreg_l16b_2p9";
-			regulator-min-microvolt = <2912000>;
-			regulator-max-microvolt = <2912000>;
+		vreg_l16b_2p5: ldo16 {
+			regulator-name = "vreg_l16b_2p5";
+			regulator-min-microvolt = <2504000>;
+			regulator-max-microvolt = <2504000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -998,6 +1010,11 @@
 	};
 };
 
+&iris {
+	firmware-name = "qcom/x1p42100/LENOVO/21NH/qcvss8380.mbn";
+	status = "okay";
+};
+
 &lpass_tlmm {
 	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
 		pins = "gpio12";
@@ -1025,7 +1042,6 @@
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1034,7 +1050,6 @@
 };
 
 &mdss_dp1_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1143,9 +1158,9 @@
 		pins = "gpio6";
 		function = "normal";
 		bias-disable;
+		drive-push-pull;
 		input-disable;
 		output-enable;
-		drive-push-pull;
 		power-source = <1>; /* 1.8 V */
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
 	};
@@ -1199,6 +1214,9 @@
 	pinctrl-names = "default", "sleep";
 	vmmc-supply = <&vreg_l9b_2p9>;
 	vqmmc-supply = <&vreg_l6b_1p8>;
+//	bus-width = <4>;
+//	no-sdio;
+//	no-mmc;
 	status = "okay";
 };
 
@@ -1406,6 +1424,13 @@
 			output-high;
 			drive-strength = <16>;
 		};
+	};
+
+	us_euro_hs_sel: us-euro-hs-sel-state {
+		pins = "gpio68";
+		function = "gpio";
+		bias-pull-down;
+		drive-strength = <2>;
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
