@@ -1357,15 +1357,13 @@
 };
 
 &mdss_dp2 {
+	sound-name-prefix = "DisplayPort2";
+
 	status = "okay";
 };
 
 &mdss_dp2_out {
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-};
-
-&mdss_dp2 {
-	sound-name-prefix = "DisplayPort2";
 };
 
 &mdss_dp3 {
