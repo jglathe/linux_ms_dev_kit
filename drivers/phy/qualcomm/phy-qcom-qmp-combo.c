@@ -4113,6 +4113,12 @@ static struct phy *qmp_combo_phy_xlate(struct device *dev, const struct of_phand
 	return ERR_PTR(-EINVAL);
 }
 
+static const char * const qmpphy_mode_str[] = {
+	[QMPPHY_MODE_USB3DP] = "usb3+dp",
+	[QMPPHY_MODE_DP_ONLY] = "dp",
+	[QMPPHY_MODE_USB3_ONLY] = "usb3",
+};
+
 static void qmp_combo_find_lanes_orientation(const struct qmp_combo_lane_mapping *mapping,
 					     unsigned int mapping_count,
 					     u32 *lanes, unsigned int lanes_count,
@@ -4197,7 +4203,8 @@ static int qmp_combo_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *dp_np, *usb_np;
 	struct phy_provider *phy_provider;
-	int ret;
+	int ret, i;
+	bool explicit_mode = false;
 
 	qmp = devm_kzalloc(dev, sizeof(*qmp), GFP_KERNEL);
 	if (!qmp)
@@ -4244,12 +4251,27 @@ static int qmp_combo_probe(struct platform_device *pdev)
 
 	qmp->qmpphy_mode = QMPPHY_MODE_USB3DP;
 
+	/* Replace with DT provided mode */
+	if (of_find_property(dev->of_node, "qcom,combo-initial-mode", NULL)) {
+		for (i = 0; i < ARRAY_SIZE(qmpphy_mode_str); ++i) {
+			ret = of_property_match_string(dev->of_node, "qcom,combo-initial-mode",
+						       qmpphy_mode_str[i]);
+			if (!ret) {
+				qmp->qmpphy_mode = i;
+				explicit_mode = true;
+				break;
+			}
+		}
+	}
+
 	if (of_property_present(dev->of_node, "mode-switch") ||
 	    of_property_present(dev->of_node, "orientation-switch")) {
 		ret = qmp_combo_typec_register(qmp);
 		if (ret)
 			goto err_node_put;
-	} else {
+	} else if (explicit_mode) {
+		dev_dbg(dev, "Static explicit mode %s enabled\n", qmpphy_mode_str[qmp->qmpphy_mode]);
+	}
 		enum typec_orientation dp_orientation = TYPEC_ORIENTATION_NONE;
 		enum typec_orientation usb3_orientation = TYPEC_ORIENTATION_NONE;
 
