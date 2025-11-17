@@ -4271,7 +4271,7 @@ static int qmp_combo_probe(struct platform_device *pdev)
 			goto err_node_put;
 	} else if (explicit_mode) {
 		dev_dbg(dev, "Static explicit mode %s enabled\n", qmpphy_mode_str[qmp->qmpphy_mode]);
-	}
+	} else {
 		enum typec_orientation dp_orientation = TYPEC_ORIENTATION_NONE;
 		enum typec_orientation usb3_orientation = TYPEC_ORIENTATION_NONE;
 
