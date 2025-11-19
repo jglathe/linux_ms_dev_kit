@@ -67,16 +67,41 @@
 		};
 	};
 
+	hdmi-bridge {
+		compatible = "realtek,rtd2171";
+
+		pinctrl-0 = <&hdmi_hpd_default>;
+		pinctrl-names = "default";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hdmi_bridge_dp_in: endpoint {
+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				hdmi_bridge_tmds_out: endpoint {
+					remote-endpoint = <&hdmi_con>;
+				};
+			};
+		};
+	};
 
 	hdmi-connector {
 		compatible = "hdmi-connector";
 		type = "a";
-		pinctrl-0 = <&hdmi_hpd_default>;
-		pinctrl-names = "default";
 
 		port {
 			hdmi_con: endpoint {
-				remote-endpoint = <&usb_1_ss2_qmpphy_out>;
+				remote-endpoint = <&hdmi_bridge_tmds_out>;
 			};
 		};
 	};
@@ -1328,7 +1353,7 @@
 };
 
 &mdss_dp2_out {
-	data-lanes = <0 1 2 3>;
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
 &mdss_dp3 {
@@ -1889,22 +1914,6 @@
 	remote-endpoint = <&retimer_ss0_ss_in>;
 };
 
-&usb_1_ss2_qmpphy {
-	vdda-phy-supply = <&vreg_l2j_1p2>;
-	vdda-pll-supply = <&vreg_l2d_0p9>;
-
-	qcom,combo-initial-mode = "dp";
-
-	/delete-property/ mode-switch;
-	/delete-property/ orientation-switch;
-
-	status = "okay";
-};
-
-&usb_1_ss2_qmpphy_out {
-	remote-endpoint = <&hdmi_con>;
-};
-
 &usb_1_ss1_hsphy {
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
@@ -1935,6 +1944,34 @@
 
 &usb_1_ss1_qmpphy_out {
 	remote-endpoint = <&retimer_ss1_ss_in>;
+};
+
+&usb_1_ss2_qmpphy {
+	vdda-phy-supply = <&vreg_l2j_1p2>;
+	vdda-pll-supply = <&vreg_l2d_0p9>;
+
+	/delete-property/ mode-switch;
+	/delete-property/ orientation-switch;
+
+	status = "okay";
+
+	ports {
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint;
+
+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
+				reg = <0>;
+
+				data-lanes = <3 2 1 0>;
+				remote-endpoint = <&hdmi_bridge_dp_in>;
+			};
+
+			/* No USB3 lanes connected */
+		};
+	};
 };
 
 &usb_2 {
