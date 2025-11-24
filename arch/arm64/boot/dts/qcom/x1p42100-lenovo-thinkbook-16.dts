@@ -1640,6 +1640,21 @@
 	phy-names = "usb2-phy";
 
 	status = "okay";
+
+
+	/delete-property/ ports;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			usb_1_ss2_dwc3_hs: endpoint {
+			};
+		};
+	};
 };
 
 &usb_1_ss2_hsphy {
@@ -1655,7 +1670,7 @@
 	vdda-phy-supply = <&vreg_l2j_1p2>;
 	vdda-pll-supply = <&vreg_l2d_0p9>;
 
-	qcom,combo-initial-mode = "usb3+dp";
+	//qcom,combo-initial-mode = "dp";
 
 	/delete-property/ mode-switch;
 	/delete-property/ orientation-switch;
