@@ -22,6 +22,7 @@
 	chassis-type = "laptop";
 
 	aliases {
+		serial0 = &uart21;
 		serial1 = &uart14;
 	};
 
@@ -157,9 +158,7 @@
 		audio-routing = "WooferLeft IN", "WSA WSA_SPK1 OUT",
 				"TweeterLeft IN", "WSA WSA_SPK2 OUT",
 				"WooferRight IN", "WSA2 WSA_SPK1 OUT",
-				"TweeterRight IN", "WSA2 WSA_SPK2 OUT",
-				"VA DMIC0", "vdd-micb",
-				"VA DMIC1", "vdd-micb";
+				"TweeterRight IN", "WSA2 WSA_SPK2 OUT";
 
 		wsa-dai-link {
 			link-name = "WSA Playback";
@@ -1520,6 +1519,11 @@
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 	};
+};
+
+&uart21 {
+	compatible = "qcom,geni-debug-uart";
+	status = "okay";
 };
 
 &usb_1_ss0_hsphy {
