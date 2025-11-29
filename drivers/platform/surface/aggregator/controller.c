@@ -1155,7 +1155,7 @@ static int ssam_controller_caps_load_from_of(struct device *dev, struct ssam_con
 	 * Every device starting with Surface Pro X through Laptop 7 uses these
 	 * identical values, which makes them good defaults.
 	 */
-	caps->d3_closes_handle = true;
+	caps->d3_closes_handle = false;
 	caps->screen_on_sleep_idle_timeout = 5000;
 	caps->screen_off_sleep_idle_timeout = 30;
 	caps->ssh_buffer_size = 48;
