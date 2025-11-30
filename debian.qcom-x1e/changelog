@@ -1,3 +1,10 @@
+linux-qcom-x1e (6.17.0-jg-4) questing; urgency=medium
+
+  * add qmp timing patch from ValPackett https://lore.kernel.org/all/20250927093915.45124-2-val@packett.cool/
+  * restore known non-explicit configuration on ThinkBook 16 G7 QOY
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 30 Nov 2025 18:58:44 +0100
+
 linux-qcom-x1e (6.17.0-jg-3) questing; urgency=medium
 
   * reactivate explicit qmp-phy config from https://lore.kernel.org/r/20250821-topic-x1e80100-hdmi-v1-2-f14ad9430e88@linaro.org
