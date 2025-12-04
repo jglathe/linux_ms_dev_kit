@@ -1641,6 +1641,20 @@
 	maximum-speed = "high-speed";
 	phys = <&usb_1_ss2_hsphy>;
 	phy-names = "usb2-phy";
+
+	/delete-property/ ports;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			usb_1_ss2_dwc3_hs: endpoint {
+			};
+		};
+	};
 };
 
 &usb_1_ss2_hsphy {
@@ -1676,8 +1690,6 @@
 				data-lanes = <0 1 2 3>;
 				remote-endpoint = <&hdmi_bridge_dp_in>;
 			};
-
-			/* No USB3 lanes connected */
 		};
 	};
 };
