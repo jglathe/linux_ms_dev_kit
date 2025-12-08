@@ -1176,7 +1176,7 @@ static bool detect_link_and_local_sink(struct dc_link *link,
 				/* If we didn't do DAC load detection yet, do it now
 				 * to verify there really is a display connected.
 				 */
-				if (link->type != dc_connection_dac_load &&
+				if (link->type != dc_connection_analog_load &&
 					!link_detect_dac_load_detect(link)) {
 					if (prev_sink)
 						dc_sink_release(prev_sink);
@@ -1185,7 +1185,7 @@ static bool detect_link_and_local_sink(struct dc_link *link,
 				}
 
 				DC_LOG_INFO("%s detected analog display without EDID\n", __func__);
-				link->type = dc_connection_dac_load;
+				link->type = dc_connection_analog_load;
 				sink->edid_caps.analog = true;
 				break;
 			}
@@ -1372,7 +1372,7 @@ static bool detect_link_and_local_sink(struct dc_link *link,
  * @link: DC link to evaluate (must support analog signalling).
  * @type: Updated with the detected connection type:
  *        dc_connection_single (analog via DDC),
- *        dc_connection_dac_load (via load-detect),
+ *        dc_connection_analog_load (via load-detect),
  *        or dc_connection_none.
  *
  * Return: true if detection completed.
@@ -1388,7 +1388,7 @@ static bool link_detect_analog(struct dc_link *link, enum dc_connection_type *ty
 	}
 
 	if (link_detect_dac_load_detect(link)) {
-		*type = dc_connection_dac_load;
+		*type = dc_connection_analog_load;
 		return true;
 	}
 
