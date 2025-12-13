@@ -9,6 +9,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
@@ -64,6 +65,22 @@
 			linux,code = <SW_LID>;
 			wakeup-source;
 			wakeup-event-action = <EV_ACT_DEASSERTED>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_indicator_en>;
+
+		privacy_led: led-camera-indicator {
+			label = "platform:white:camera-indicator";
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_WHITE>;
+			gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
+			default-state = "off";
 		};
 	};
 
@@ -1010,6 +1027,9 @@
 		assigned-clocks = <&camcc CAM_CC_MCLK4_CLK>;
 		assigned-clock-rates = <19200000>;
 
+		leds = <&privacy_led>;
+		led-names = "privacy";
+
 		orientation = <0>; /* front facing */
 		rotation = <0>; /* not rotated */
 
@@ -1642,6 +1662,13 @@
 	ec_int_n_default: ec-int-n-state {
 		pins = "gpio66";
 		function = "gpio";
+		bias-disable;
+	};
+
+	cam_indicator_en: cam-indicator-en-state {
+		pins = "gpio110";
+		function = "gpio";
+		drive-strength = <2>;
 		bias-disable;
 	};
 
