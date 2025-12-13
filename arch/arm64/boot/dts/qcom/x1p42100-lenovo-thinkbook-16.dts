@@ -1106,9 +1106,6 @@
 &mdss_dp3 {
 	/delete-property/ #sound-dai-cells;
 
-	pinctrl-0 = <&edp_hpd_default>;
-	pinctrl-names = "default";
-
 	status = "okay";
 
 	aux-bus {
