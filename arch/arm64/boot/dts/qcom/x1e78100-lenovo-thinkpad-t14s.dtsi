@@ -74,12 +74,13 @@
 		pinctrl-0 = <&cam_indicator_en>;
 		pinctrl-names = "default";
 
-		privacy_led: privacy-led {
+		privacy_led: led-camera-indicator {
+			label = "platform:white:camera-indicator";
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_WHITE>;
 			gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
 			default-state = "off";
-			panic-indicator;
 		};
 	};
 
