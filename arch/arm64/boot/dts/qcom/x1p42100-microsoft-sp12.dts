@@ -1139,7 +1139,7 @@
 	/delete-property/ #sound-dai-cells;
 
 	pinctrl-names = "default";
-	pinctrl-0 = <&edp0_hpd_active>;
+	pinctrl-0 = <&edp0_hpd_default>;
 
 	status = "okay";
 
