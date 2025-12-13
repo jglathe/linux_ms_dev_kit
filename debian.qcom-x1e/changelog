@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.18.1-jg-0) questing; urgency=medium
+
+  * reabse to linaro's qcom-laptops 6.18.y branch
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 14 Dec 2025 12:40:00 +0100
+
 linux-qcom-x1e (6.17.0-8.8) plucky; urgency=medium
 
   * Enable CONFIG_VIDEO_OV02E10=m for camera on Dell Latitude
