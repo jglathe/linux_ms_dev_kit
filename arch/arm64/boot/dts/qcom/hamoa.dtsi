@@ -7243,11 +7243,6 @@
 					bias-pull-up;
 				};
 			};
-
-			edp0_hpd_active: edp0-hpd-active-state {
-				pins = "gpio119";
-				function = "edp0_hot";
-			};
 		};
 
 		stm@10002000 {
