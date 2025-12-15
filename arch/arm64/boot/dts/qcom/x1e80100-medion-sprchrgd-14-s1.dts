@@ -9,8 +9,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
-#include "hamoa.dtsi"
-#include "hamoa-pmics.dtsi"
+#include "x1e80100.dtsi"
+#include "x1e80100-pmics.dtsi"
 
 /*
  * This device tree also works for the TUXEDO Elite 14 Gen1 notebook
