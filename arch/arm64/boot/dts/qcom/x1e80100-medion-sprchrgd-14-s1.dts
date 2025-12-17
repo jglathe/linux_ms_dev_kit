@@ -19,7 +19,7 @@
 
 / {
 	model = "Medion SPRCHRGD 14 S1";
-	compatible = "medion,sprchrgd14s1", "qcom,x1e78100", "qcom,x1e80100";
+	compatible = "medion,sprchrgd14s1", "lenovo,thinkpad-t14s", "qcom,x1e78100", "qcom,x1e80100";
 
 	aliases {
 		serial0 = &uart21;
