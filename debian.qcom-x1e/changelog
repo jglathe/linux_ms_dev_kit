@@ -1,3 +1,10 @@
+linux-qcom-x1e (6.18.2-jg-1) questing; urgency=medium
+
+  * integrate device tree for Medion  SPRCHRGD 14 S1
+  * add HDMI support for Viobook S15
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 20 Dec 2025 11:39:00 +0100
+
 linux-qcom-x1e (6.18.2-jg-0) questing; urgency=medium
 
   * rebase to linux-stable 6.18.2
