@@ -1,3 +1,10 @@
+linux-qcom-x1e (6.17.0-jg-5) questing; urgency=medium
+
+  * integrate device tree for Medion  SPRCHRGD 14 S1
+  * add HDMI support for Viobook S15
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 17 Dec 2025 21:53:24 +0100
+
 linux-qcom-x1e (6.17.0-jg-4) questing; urgency=medium
 
   * add qmp timing patch from ValPackett https://lore.kernel.org/all/20250927093915.45124-2-val@packett.cool/
