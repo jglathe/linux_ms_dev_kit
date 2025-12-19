@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.18.2-jg-0) questing; urgency=medium
+
+  * rebase to linux-stable 6.18.2
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 19 Dec 2025 09:17:49 +0100
+
 linux-qcom-x1e (6.18.1-jg-0) questing; urgency=medium
 
   * reabse to linaro's qcom-laptops 6.18.y branch
