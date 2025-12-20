@@ -21,6 +21,8 @@ properties:
   reg:
     maxItems: 1
 
+  disable-rfkill: true
+
   firmware-name:
     maxItems: 1
     description:
@@ -71,6 +73,9 @@ required:
   - vddpcie1p8-supply
 
 additionalProperties: false
+
+allOf:
+  - $ref: ieee80211.yaml#
 
 examples:
   - |
