@@ -1068,6 +1068,12 @@ properties:
           - const: qcom,x1e80100
 
       - items:
+          - const: microsoft,denali-lcd
+          - const: microsoft,denali
+          - const: qcom,x1p64100
+          - const: qcom,x1e80100
+
+      - items:
           - enum:
               - medion,sprchrgd14s1
               - tuxedo,elite14gen1
