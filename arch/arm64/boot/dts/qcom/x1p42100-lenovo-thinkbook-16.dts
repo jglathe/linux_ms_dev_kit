@@ -83,7 +83,7 @@
 	hdmi-bridge {
 		compatible = "realtek,rtd2171";
 
-		enable-gpios = <&tlmm 119 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 120 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
@@ -1389,10 +1389,10 @@
 	};
 
 	hdmi_bridge_en: hdmi-bridge-en-state {
-		pins = "gpio119";
+		pins = "gpio120";
 		function = "gpio";
 		drive-strength = <16>;
-		bias-disable;
+		bias-pull-down;
 	};	
 
 	hdmi_hpd_default: hdmi-hpd-default-state {
