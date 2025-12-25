@@ -1249,8 +1249,9 @@
 
 &tlmm {
 	gpio-reserved-ranges = <28 4>, /* Unused */
+			       <34 2>, /* Unused */
 			       <44 4>, /* SPI (TPM) */
-			       <238 1>; /* UFS Reset */
+			       <72 2>; /* Secure EC I2C connection (?) */
 
 	edp_reg_en: edp-reg-en-state {
 		pins = "gpio54";
