@@ -1,3 +1,11 @@
+linux-qcom-x1e (6.18.2-jg-2) questing; urgency=medium
+
+  * add LCD panels for CMN N140JCE-EL1 and BOE NV153WUM-N41
+  * split Ideapad Slim5x into OLED and LCD variants, enable backlight for LCD
+  * correct ThinkBook 16 HDMI enable GPIO
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 26 Dec 2025 19:16:49 +0100
+
 linux-qcom-x1e (6.18.2-jg-1) questing; urgency=medium
 
   * integrate device tree for Medion  SPRCHRGD 14 S1
