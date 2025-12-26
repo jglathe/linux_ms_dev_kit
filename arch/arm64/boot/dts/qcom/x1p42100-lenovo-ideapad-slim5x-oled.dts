@@ -20,8 +20,8 @@
 /delete-node/ &pmc8380_6_thermal;
 
 / {
-	model = "Lenovo IdeaPad Slim 5x 14Q8X9";
-	compatible = "lenovo,ideapad-slim5x", "lenovo,thinkpad-t14s", "qcom,x1p42100";
+	model = "Lenovo IdeaPad Slim 5x 14Q8X9 (OLED)";
+	compatible = "lenovo,ideapad-slim5x-oled", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 
 	aliases {
@@ -89,11 +89,12 @@
 
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
-				"qcom,pmic-glink";
+			     "qcom,sm8550-pmic-glink",
+			     "qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
-				<&tlmm 123 GPIO_ACTIVE_HIGH>;
+				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
 
 		/* Display-adjacent port */
 		connector@0 {
@@ -1218,8 +1219,7 @@
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
 		<44 4>, 
-		<72 2>, /* Secure EC I2C connection (?) */
-		<238 1>; /* UFS Reset */
+		<72 2>; /* Secure EC I2C connection (?) */
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
