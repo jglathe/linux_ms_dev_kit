@@ -1179,6 +1179,11 @@
 
 	status = "okay";
 
+	fan-controller@36 {
+		compatible = "lenovo,thinkpad-t14s-fan-controller";
+		reg = <0x36>;
+	};
+
 	eusb5_repeater: redriver@43 {
 		compatible = "nxp,ptn3222";
 		reg = <0x43>;
