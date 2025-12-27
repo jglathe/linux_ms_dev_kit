@@ -2338,6 +2338,16 @@ config SENSORS_SPD5118_DETECT
 
 	  If unsure, say Y.
 
+config SENSORS_T14S_FAN_CTRL
+	tristate "Lenovo T14s Gen6 Snapdragon Fan Controller"
+	depends on I2C
+	help
+	  If you say yes here you get support for the fan controller in the
+	  Lenovo T14s Gen6 Snapdragon laptop.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called lenovo-thinkpad-t14s-fan-ctrl.
+
 config SENSORS_TC74
 	tristate "Microchip TC74"
 	depends on I2C
