@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.18.3-jg-0) questing; urgency=medium
+
+  * rebase to linux-stable 6.18.3
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 06 Jan 2026 22:57:27 +0100
+
 linux-qcom-x1e (6.18.2-jg-2) questing; urgency=medium
 
   * add LCD panels for CMN N140JCE-EL1 and BOE NV153WUM-N41
