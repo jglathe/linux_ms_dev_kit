@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.18.4-jg-0) questing; urgency=medium
+
+  * rebase to linux-stable 6.18.4
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 15 Jan 2026 22:27:29 +0100
+
 linux-qcom-x1e (6.18.3-jg-0) questing; urgency=medium
 
   * rebase to linux-stable 6.18.3
