@@ -134,6 +134,7 @@ $(stampdir)/stamp-install-%: MODHASHALGO=sha512
 $(stampdir)/stamp-install-%: MODSECKEY=$(build_dir)/certs/signing_key.pem
 $(stampdir)/stamp-install-%: MODPUBKEY=$(build_dir)/certs/signing_key.x509
 $(stampdir)/stamp-install-%: dkms_dir=$(call dkms_dir_prefix,$(build_dir))
+$(stampdir)/stamp-install-%: STUBBLEDTBS = $(shell /usr/libexec/stubble/finddtbs.py $(build_dir)/arch/arm64/boot/dts /usr/share/stubble/hwids 2>/dev/null | sed 's|.*|--devicetree-auto=&|' | tr '\n' ' ')
 $(foreach _m,$(all_dkms_modules), \
   $(eval $$(stampdir)/stamp-install-%: enable_$(_m) = $$(filter true,$$(call custom_override,do_$(_m),$$*))) \
   $(eval $$(stampdir)/stamp-install-%: dkms_$(_m)_pkgdir = $$(CURDIR)/debian/$(dkms_$(_m)_pkg_name)-$$*) \
@@ -166,14 +167,29 @@ ifeq ($(do_linux_tools),true)
  endif
 endif
 
-	# The main image
-	install -m600 -D $(build_dir)/$(kernfile) \
-		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 	install -d $(pkgdir)/boot
 	install -m644 $(build_dir)/.config \
 		$(pkgdir)/boot/config-$(abi_release)-$*
 	install -m600 $(build_dir)/System.map \
 		$(pkgdir)/boot/System.map-$(abi_release)-$*
+
+ifeq ($(do_stubble),true)
+	# Build kernel+stub image
+	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) \
+	        --stub=/usr/lib/stubble/stubble.efi \
+	        --hwids=/usr/share/stubble/hwids \
+	        --sbat="@/usr/share/stubble/sbat" \
+		$(STUBBLEDTBS) \
+	        --output=$(build_dir)/$(kernfile).stubble
+
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile).stubble \
+		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
+else
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile) \
+		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
+endif
 
 ifeq ($(do_dtbs),true)
 	$(kmake) O=$(build_dir) $(conc_level) dtbs_install \
