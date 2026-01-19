@@ -1,8 +1,52 @@
-linux-qcom-x1e (6.18.0-9.9) questing; urgency=medium
+linux-qcom-x1e (6.19.0-2.2) questing; urgency=medium
 
-  * Port qcom-x1e config
+  * Rebase onto linux-unstable 6.19.0-1.1
+  * Sync with https://gitlab.com/Linaro/arm64-laptops/linux/-/commits/qcom-laptops-v6.19-rc4
+  * Merge new devices from qcom/for-next
+    - Microsoft Surface Pro 11
+    - Medion SPRCHRGD 14 S1
 
- -- Tobias Heider <tobias.heider@canonical.com>  Mon, 24 Nov 2025 17:15:25 +0100
+ -- Tobias Heider <tobias.heider@canonical.com>  Fri, 16 Jan 2026 15:20:53 +0100
+
+linux-unstable (6.19.0-1.1) resolute; urgency=medium
+
+  * resolute/linux-unstable: 6.19.0-1.1 -proposed tracker (LP: #2138287)
+
+  * Packaging resync (LP: #1786013)
+    - [Packaging] debian.master/dkms-versions -- update from kernel-versions
+      (main/d2025.10.20)
+    - [Packaging] update variants
+
+  * Miscellaneous Ubuntu changes
+    - SAUCE: (lockdown) efi,lockdown: fix kernel lockdown on Secure Boot
+    - [Config] updateconfigs following v6.19-rc4 rebase
+    - SAUCE: aaeon: The modules need to import ASUS_WMI now
+    - Update Changes.md
+    - SAUCE: arm64: dts: qcom: x1-acer-swift-14: Fix includes
+    - [Packaging] Drop failing dkms packages
+
+ -- Timo Aaltonen <timo.aaltonen@canonical.com>  Tue, 13 Jan 2026 15:36:30 +0200
+
+linux-unstable (6.19.0-0.0) resolute; urgency=medium
+
+  * Dummy entry.
+
+ -- Timo Aaltonen <timo.aaltonen@canonical.com>  Wed, 17 Dec 2025 14:08:41 +0200
+
+linux-unstable (6.18.0-6.6) resolute; urgency=medium
+
+  * resolute/linux-unstable: 6.18.0-6.6 -proposed tracker (LP: #2133502)
+
+  * Packaging resync (LP: #1786013)
+    - [Packaging] debian.master/dkms-versions -- update from kernel-versions
+      (main/d2025.10.20)
+
+  * Miscellaneous Ubuntu changes
+    - Update dropped.txt
+    - [Packaging] debian.master/dkms-versions: Drop failing dkms packages
+    - rename dropped.txt to Changes.md
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 01 Dec 2025 14:52:34 +0100
 
 linux-unstable (6.18.0-5.5) resolute; urgency=medium
 
