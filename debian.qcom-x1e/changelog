@@ -1,3 +1,12 @@
+linux-qcom-x1e (6.19.0-3.3) questing; urgency=medium
+
+  [ Jérôme de Bretagne ]
+  * Add Microsoft Surface Pro 11
+  [ Dale Whinham ]
+  * drm/msm/dp: Enable support for eDP v1.4+ link rates table
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Mon, 19 Jan 2026 14:25:31 +0100
+
 linux-qcom-x1e (6.19.0-2.2) questing; urgency=medium
 
   * Rebase onto linux-unstable 6.19.0-1.1
