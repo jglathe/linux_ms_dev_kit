@@ -1,3 +1,10 @@
+linux-qcom-x1e (6.18.7-jg-0) questing; urgency=medium
+
+  * rebase to linux-stable 6.18.7
+  * drm/msm/dpu/x1e80100: change clk_inefficiency_factor to 104
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 29 Jan 2026 20:16:39 +0100
+
 linux-qcom-x1e (6.18.4-jg-0) questing; urgency=medium
 
   * rebase to linux-stable 6.18.4
