@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.0-rc6-jg-0) questing; urgency=medium
+
+  * rebase to linaro-arm64-laptops/qcom-laptops
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 31 Jan 2026 22:15:50 +0100
+
 linux-qcom-x1e (6.18.7-jg-0) questing; urgency=medium
 
   * rebase to linux-stable 6.18.7
