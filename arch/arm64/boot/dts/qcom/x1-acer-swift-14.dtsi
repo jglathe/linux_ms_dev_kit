@@ -13,7 +13,7 @@
 
 / {
    model = "Acer Swift AI";
-   compatible = "acer,swift-14", "qcom,x1e80100";
+   compatible = "acer,swift-ai", "qcom,x1e80100";
 	chassis-type = "laptop";
 
 	aliases {
