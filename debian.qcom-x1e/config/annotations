@@ -5145,7 +5145,8 @@ CONFIG_IIO_TIGHTLOOP_TRIGGER                    policy<{'arm64': 'm'}>
 CONFIG_IIO_TRIGGER                              policy<{'arm64': 'y'}>
 CONFIG_IIO_TRIGGERED_BUFFER                     policy<{'arm64': 'm'}>
 CONFIG_IIO_TRIGGERED_EVENT                      policy<{'arm64': 'm'}>
-CONFIG_IKCONFIG                                 policy<{'arm64': 'n'}>
+CONFIG_IKCONFIG                                 policy<{'arm64': 'y'}>
+CONFIG_IKCONFIG_PROC                            policy<{'arm64': 'y'}>
 CONFIG_IKHEADERS                                policy<{'arm64': 'm'}>
 CONFIG_ILLEGAL_POINTER_VALUE                    policy<{'arm64': '0xdead000000000000'}>
 CONFIG_IMA_APPRAISE_BOOTPARAM                   policy<{'arm64': 'y'}>
