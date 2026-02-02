@@ -1798,7 +1798,7 @@ CONFIG_CAN_C_CAN                                policy<{'arm64': 'm'}>
 CONFIG_CAN_C_CAN_PCI                            policy<{'arm64': 'm'}>
 CONFIG_CAN_C_CAN_PLATFORM                       policy<{'arm64': 'm'}>
 CONFIG_CAN_DEBUG_DEVICES                        policy<{'arm64': 'n'}>
-CONFIG_CAN_DEV                                  policy<{'arm64': 'y'}>
+CONFIG_CAN_DEV                                  policy<{'arm64': 'm'}>
 CONFIG_CAN_DUMMY                                policy<{'arm64': 'm'}>
 CONFIG_CAN_EMS_PCI                              policy<{'arm64': 'm'}>
 CONFIG_CAN_EMS_PCMCIA                           policy<{'arm64': 'n'}>
@@ -1899,7 +1899,7 @@ CONFIG_CC_NO_ARRAY_BOUNDS                       policy<{'arm64': 'y'}>
 CONFIG_CC_NO_STRINGOP_OVERFLOW                  policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE              policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_SIZE                     policy<{'arm64': 'n'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"gcc (Ubuntu 15.2.0-4ubuntu4) 15.2.0"'}>
+CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc (Ubuntu 15.2.0-4ubuntu4) 15.2.0"'}>
 CONFIG_CDNS_I3C_MASTER                          policy<{'arm64': 'm'}>
 CONFIG_CDROM                                    policy<{'arm64': 'y'}>
 CONFIG_CDX_BUS                                  policy<{'arm64': 'y'}>
@@ -3267,6 +3267,7 @@ CONFIG_DRM_MSM_KMS_FBDEV                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
+CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -3807,7 +3808,7 @@ CONFIG_EEPROM_IDT_89HPESX                       policy<{'arm64': 'm'}>
 CONFIG_EEPROM_M24LR                             policy<{'arm64': 'n'}>
 CONFIG_EEPROM_MAX6875                           policy<{'arm64': 'm'}>
 CONFIG_EFI                                      policy<{'arm64': 'y'}>
-CONFIG_EFI_ARMSTUB_DTB_LOADER                   policy<{'arm64': 'y'}>
+CONFIG_EFI_ARMSTUB_DTB_LOADER                   policy<{'arm64': 'n'}>
 CONFIG_EFI_BOOTLOADER_CONTROL                   policy<{'arm64': 'm'}>
 CONFIG_EFI_CAPSULE_LOADER                       policy<{'arm64': 'm'}>
 CONFIG_EFI_COCO_SECRET                          policy<{'arm64': 'y'}>
@@ -5145,7 +5146,8 @@ CONFIG_IIO_TIGHTLOOP_TRIGGER                    policy<{'arm64': 'm'}>
 CONFIG_IIO_TRIGGER                              policy<{'arm64': 'y'}>
 CONFIG_IIO_TRIGGERED_BUFFER                     policy<{'arm64': 'm'}>
 CONFIG_IIO_TRIGGERED_EVENT                      policy<{'arm64': 'm'}>
-CONFIG_IKCONFIG                                 policy<{'arm64': 'n'}>
+CONFIG_IKCONFIG                                 policy<{'arm64': 'y'}>
+CONFIG_IKCONFIG_PROC                            policy<{'arm64': 'y'}>
 CONFIG_IKHEADERS                                policy<{'arm64': 'm'}>
 CONFIG_ILLEGAL_POINTER_VALUE                    policy<{'arm64': '0xdead000000000000'}>
 CONFIG_IMA_APPRAISE_BOOTPARAM                   policy<{'arm64': 'y'}>
