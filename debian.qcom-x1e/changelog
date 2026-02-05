@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.0-rc8-jg-0) questing; urgency=medium
+
+  * rebase onto linaro-arm64-laptops/qcom-laptops-test (based on v6.19-rc8)
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 05 Feb 2026 22:25:48 +0100
+
 linux-qcom-x1e (6.19.0-rc7-jg-0) resolute; urgency=medium
 
   * rebase linaro-arm64-laptops and jg branch onto Ubuntu qcom-x1e (6.19-rc7) branch
