@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.0-rc8-jg-1) resolute; urgency=medium
+
+  * ubdate stubble to latest
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 07 Feb 2026 13:45:07 +0100
+
 linux-qcom-x1e (6.19.0-rc8-jg-0) questing; urgency=medium
 
   * rebase onto linaro-arm64-laptops/qcom-laptops-test (based on v6.19-rc8)
