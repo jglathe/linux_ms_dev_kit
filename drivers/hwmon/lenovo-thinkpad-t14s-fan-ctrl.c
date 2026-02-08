@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (c) 2025 Sebastian Reichel <sre@kernel.org>
+ * Copyright (c) 2025-2026 Sebastian Reichel <sre@kernel.org>
  */
 
 #include <linux/hwmon.h>
@@ -15,6 +15,16 @@ struct t14s_fan_ctrl {
 enum t14s_fan_ctrl_fan {
 	FAN1 = 0x01,
 	FAN2 = 0x02,
+};
+
+enum t14s_fan_ctrl_thermistor {
+	THERMISTOR1 = 0x29, // TZ39
+	THERMISTOR2 = 0x2a, // TZ40
+	THERMISTOR3 = 0x2b, // TZ41
+	THERMISTOR4 = 0x2c, // TZ42
+	THERMISTOR5 = 0x2d, // TZ43
+	THERMISTOR6 = 0x2e, // TZ44
+	THERMISTOR7 = 0x2f, // TZ45 (always 0x00)
 };
 
 static const char * const t14s_fan_labels[] = {
@@ -63,6 +73,18 @@ static int t14s_fan_ctrl_fan_speed(struct t14s_fan_ctrl *t14s_fan_ctrl, enum t14
 	return databuf[2] << 8 | databuf[1]; // RPM
 }
 
+static int t14s_fan_ctrl_thermistor(struct t14s_fan_ctrl *t14s_fan_ctrl, enum t14s_fan_ctrl_thermistor thermistor)
+{
+	s32 ret;
+
+	// sudo i2ctransfer -y 5 w2@0x36 <thermistor> r1
+	ret = i2c_smbus_read_byte_data(t14s_fan_ctrl->i2c, thermistor);
+	if (ret < 0)
+		return ret;
+
+	return ret * 1000; // milli-Celsius
+}
+
 static int
 t14s_fan_do_read_fan(struct t14s_fan_ctrl *t14s_fan_ctrl, u32 attr, int channel, long *val)
 {
@@ -87,6 +109,50 @@ t14s_fan_do_read_fan(struct t14s_fan_ctrl *t14s_fan_ctrl, u32 attr, int channel,
 }
 
 static int
+t14s_fan_do_read_thermistor(struct t14s_fan_ctrl *t14s_fan_ctrl, u32 attr, int channel, long *val)
+{
+	enum t14s_fan_ctrl_thermistor id;
+	int ret;
+
+	switch (channel) {
+	case 1:
+		id = THERMISTOR1;
+		break;
+	case 2:
+		id = THERMISTOR2;
+		break;
+	case 3:
+		id = THERMISTOR3;
+		break;
+	case 4:
+		id = THERMISTOR4;
+		break;
+	case 5:
+		id = THERMISTOR5;
+		break;
+	case 6:
+		id = THERMISTOR6;
+		break;
+	case 7:
+		id = THERMISTOR7;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	switch (attr) {
+	case hwmon_temp_input:
+		ret = t14s_fan_ctrl_thermistor(t14s_fan_ctrl, channel + THERMISTOR1 - 1);
+		if (ret < 0)
+			return ret;
+		*val = ret;
+		return 0;
+	default:
+		return -EOPNOTSUPP;
+	}
+}
+
+static int
 t14s_fan_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 		    u32 attr, int channel, long *val)
 {
@@ -96,6 +162,8 @@ t14s_fan_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 	switch (type) {
 	case hwmon_fan:
 		return t14s_fan_do_read_fan(t14s_fan_ctrl, attr, channel, val);
+	case hwmon_temp:
+		return t14s_fan_do_read_thermistor(t14s_fan_ctrl, attr, channel, val);
 	default:
 		return -EOPNOTSUPP;
 	}
@@ -108,6 +176,10 @@ t14s_fan_hwmon_is_visible(const void *data, enum hwmon_sensor_types type,
 	switch (type) {
 	case hwmon_fan:
 		if (attr == hwmon_fan_input || attr == hwmon_fan_label)
+			return 0444;
+		return 0;
+	case hwmon_temp:
+		if (attr == hwmon_temp_input)
 			return 0444;
 		return 0;
 	default:
@@ -137,6 +209,13 @@ static const struct hwmon_ops t14s_fan_hwmon_ops = {
 static const struct hwmon_channel_info *t14s_fan_hwmon_info[] = {
 	HWMON_CHANNEL_INFO(fan,
 			   HWMON_F_ENABLE | HWMON_F_INPUT | HWMON_F_LABEL),
+	HWMON_CHANNEL_INFO(temp,
+		HWMON_T_INPUT,
+		HWMON_T_INPUT,
+		HWMON_T_INPUT,
+		HWMON_T_INPUT,
+		HWMON_T_INPUT,
+		HWMON_T_INPUT),
 	NULL
 };
 
