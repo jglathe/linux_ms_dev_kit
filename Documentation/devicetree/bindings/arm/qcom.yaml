@@ -1127,27 +1127,31 @@ properties:
           - const: qcom,x1e80100
 
       - items:
-          - const: microsoft,denali-oled
-          - const: microsoft,denali
-          - const: qcom,x1e80100
-
-      - items:
-          - enum:
-              - acer,swift-go14-01
-              - asus,vivobook-s15-x1p4
-              - asus,zenbook-a14-ux3407qa-lcd
-              - asus,zenbook-a14-ux3407qa-oled
-          - const: asus,zenbook-a14-ux3407qa
-          - const: qcom,x1p42100
-
-      - items:
           - enum:
               - acer,swift-sf14-11
           - const: qcom,x1p64100
           - const: qcom,x1e80100
 
       - items:
+          - const: microsoft,denali-oled
+          - const: microsoft,denali
+          - const: qcom,x1e80100
+
+      - items:
           - enum:
+              - asus,zenbook-a14-ux3407qa-lcd
+              - asus,zenbook-a14-ux3407qa-oled
+          - const: asus,zenbook-a14-ux3407qa
+          - const: qcom,x1p42100
+
+      - items:
+          - const: microsoft,denali-x1p4
+          - const: qcom,x1p42100
+
+      - items:
+          - enum:
+              - acer,swift-go14-01
+              - asus,vivobook-s15-x1p4
               - hp,omnibook-x14-fe1
               - lenovo,ideapad-5
               - lenovo,thinkbook-16
