@@ -13,3 +13,22 @@
 	compatible = "microsoft,denali-lcd", "microsoft,denali",
 		     "qcom,x1p64100", "qcom,x1e80100";
 };
+
+&gpu_zap_shader {
+	memory-region = <&gpu_microcode_mem>;
+	firmware-name = "qcom/x1e80100/microsoft/Denali/qcdxkmsuc8380.mbn";
+};
+
+&remoteproc_adsp {
+	firmware-name = "qcom/x1e80100/microsoft/Denali/qcadsp8380.mbn",
+			"qcom/x1e80100/microsoft/Denali/adsp_dtb.mbn";
+
+	status = "okay";
+};
+
+&remoteproc_cdsp {
+	firmware-name = "qcom/x1e80100/microsoft/Denali/qccdsp8380.mbn",
+			"qcom/x1e80100/microsoft/Denali/cdsp_dtb.mbn";
+
+	status = "okay";
+};
