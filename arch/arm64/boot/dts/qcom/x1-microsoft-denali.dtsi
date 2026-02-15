@@ -718,11 +718,6 @@
 
 &gpu {
 	status = "okay";
-
-	zap-shader {
-		memory-region = <&gpu_microcode_mem>;
-		firmware-name = "qcom/x1e80100/microsoft/qcdxkmsuc8380.mbn";
-	};
 };
 
 &i2c0 {
@@ -1031,20 +1026,6 @@
 };
 
 &qupv3_2 {
-	status = "okay";
-};
-
-&remoteproc_adsp {
-	firmware-name = "qcom/x1e80100/microsoft/Denali/qcadsp8380.mbn",
-			"qcom/x1e80100/microsoft/Denali/adsp_dtb.mbn";
-
-	status = "okay";
-};
-
-&remoteproc_cdsp {
-	firmware-name = "qcom/x1e80100/microsoft/Denali/qccdsp8380.mbn",
-			"qcom/x1e80100/microsoft/Denali/cdsp_dtb.mbn";
-
 	status = "okay";
 };
 

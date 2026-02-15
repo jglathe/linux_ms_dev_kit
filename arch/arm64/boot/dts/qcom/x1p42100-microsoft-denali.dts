@@ -15,3 +15,24 @@
 		     "lenovo,thinkpad-t14s",
 		     "qcom,x1p42100";
 };
+
+&gpu_zap_shader {
+	memory-region = <&gpu_microcode_mem>;
+	firmware-name = "qcom/x1p42100/microsoft/Denali/qcdxkmsucpurwa.mbn";
+};
+
+&remoteproc_adsp {
+	firmware-name = "qcom/x1p42100/microsoft/Denali/qcadsp8380.mbn",
+			"qcom/x1p42100/microsoft/Denali/adsp_dtb.mbn";
+
+	status = "okay";
+};
+
+&remoteproc_cdsp {
+	firmware-name = "qcom/x1p42100/microsoft/Denali/qccdsp8380.mbn",
+			"qcom/x1p42100/microsoft/Denali/cdsp_dtb.mbn";
+
+	status = "okay";
+};
+
+
