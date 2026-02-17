@@ -68,6 +68,16 @@
 		};
 	};
 
+	i2c {
+		compatible = "i2c-gpio";
+		sda-gpios = <&tlmm 215 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		scl-gpios = <&tlmm 216 (GPIO_ACTIVE_HIGH|GPIO_OPEN_DRAIN)>;
+		pinctrl-0 = <&i2c_imu_default>;
+		pinctrl-names = "default";
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	leds {
 		compatible = "gpio-leds";
 
@@ -1768,6 +1778,12 @@
 		pins = "gpio92";
 		function = "gpio";
 		bias-disable;
+	};
+
+	i2c_imu_default: i2c-imu-default {
+		pins = "gpio215", "gpio216";
+		function = "gpio";
+		bias-pull-up;
 	};
 
 	pcie4_default: pcie4-default-state {
