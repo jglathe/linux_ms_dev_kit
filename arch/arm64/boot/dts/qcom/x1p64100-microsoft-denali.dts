@@ -11,6 +11,7 @@
 / {
 	model = "Microsoft Surface Pro 11th Edition (LCD)";
 	compatible = "microsoft,denali-lcd", "microsoft,denali",
+		     "lenovo,thinkpad-t14s",
 		     "qcom,x1p64100", "qcom,x1e80100";
 };
 
