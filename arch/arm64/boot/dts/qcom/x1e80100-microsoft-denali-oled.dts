@@ -11,6 +11,7 @@
 / {
 	model = "Microsoft Surface Pro 11th Edition (OLED)";
 	compatible = "microsoft,denali-oled", "microsoft,denali",
+		     "lenovo,thinkpad-t14s",
 		     "qcom,x1e80100";
 };
 
