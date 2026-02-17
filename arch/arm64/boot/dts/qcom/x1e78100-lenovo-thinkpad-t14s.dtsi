@@ -76,6 +76,19 @@
 		pinctrl-names = "default";
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		accelerometer@18 {
+			compatible = "st,lis2dw12";
+			reg = <0x18>;
+			interrupts-extended = <&tlmm 28 IRQ_TYPE_LEVEL_LOW>;
+			mount-matrix = "1", "0", "0",
+				       "0", "-1", "0",
+				       "0", "0", "-1";
+			pinctrl-0 = <&imu_int_n_default>;
+			pinctrl-names = "default";
+			vdd-supply = <&vreg_l10b_1p8>;
+			vddio-supply = <&vreg_l10b_1p8>;
+		};
 	};
 
 	leds {
@@ -1776,6 +1789,12 @@
 
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio92";
+		function = "gpio";
+		bias-disable;
+	};
+
+	imu_int_n_default: imu-int-n-state {
+		pins = "gpio28";
 		function = "gpio";
 		bias-disable;
 	};
