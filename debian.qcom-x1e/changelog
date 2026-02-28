@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.0-jg-2) questing; urgency=medium
+
+  * add sp11-specific fixes from Dale Whinham, transplant them to sp12
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 28 Feb 2026 23:58:41 +0100
+
 linux-qcom-x1e (6.19.0-jg-1) resolute; urgency=medium
 
   * some changes to the Microsoft SP11 (Denali) 
