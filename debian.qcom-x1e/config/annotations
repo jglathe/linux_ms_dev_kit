@@ -1871,6 +1871,7 @@ CONFIG_CB710_DEBUG                              policy<{'arm64': 'n'}>
 CONFIG_CB710_DEBUG_ASSUMPTIONS                  policy<{'arm64': 'y'}>
 CONFIG_CC10001_ADC                              policy<{'arm64': 'm'}>
 CONFIG_CCS811                                   policy<{'arm64': 'm'}>
+CONFIG_CC_CAN_LINK                              policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_ASM_GOTO_OUTPUT                   policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_ASM_GOTO_TIED_OUTPUT              policy<{'arm64': 'y'}>
 CONFIG_CC_HAS_ASM_INLINE                        policy<{'arm64': 'y'}>
@@ -6540,6 +6541,7 @@ CONFIG_MFD_TI_AM335X_TSCADC                     policy<{'arm64': 'm'}>
 CONFIG_MFD_TI_LMU                               policy<{'arm64': 'm'}>
 CONFIG_MFD_TI_LP873X                            policy<{'arm64': 'm'}>
 CONFIG_MFD_TI_LP87565                           policy<{'arm64': 'm'}>
+CONFIG_MFD_TN48M_CPLD                           policy<{'arm64': 'n'}>
 CONFIG_MFD_TPS65086                             policy<{'arm64': 'm'}>
 CONFIG_MFD_TPS65090                             policy<{'arm64': 'y'}>
 CONFIG_MFD_TPS65218                             policy<{'arm64': 'm'}>
@@ -9725,6 +9727,7 @@ CONFIG_RZ_MTU3_CNT                              policy<{'arm64': 'm'}>
 CONFIG_S2IO                                     policy<{'arm64': 'm'}>
 CONFIG_S32G_WDT                                 policy<{'arm64': 'n'}>
 CONFIG_SAMPLES                                  policy<{'arm64': 'y'}>
+CONFIG_SAMPLE_AUXDISPLAY                        policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_CONFIGFS                          policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_FTRACE_DIRECT                     policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_FTRACE_DIRECT_MULTI               policy<{'arm64': 'n'}>
@@ -9746,6 +9749,7 @@ CONFIG_SAMPLE_VFIO_MDEV_MBOCHS                  policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_VFIO_MDEV_MDPY                    policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_VFIO_MDEV_MDPY_FB                 policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_VFIO_MDEV_MTTY                    policy<{'arm64': 'n'}>
+CONFIG_SAMPLE_WATCHDOG                          policy<{'arm64': 'n'}>
 CONFIG_SAR_GCC_2130P                            policy<{'arm64': 'm'}>
 CONFIG_SAR_GPUCC_2130P                          policy<{'arm64': 'm'}>
 CONFIG_SATA_ACARD_AHCI                          policy<{'arm64': 'm'}>
@@ -13258,7 +13262,6 @@ CONFIG_W1_SLAVE_THERM                           policy<{'arm64': 'm'}>
 CONFIG_WAN                                      policy<{'arm64': 'y'}>
 CONFIG_WANT_DEV_COREDUMP                        policy<{'arm64': 'y'}>
 CONFIG_WANXL                                    policy<{'arm64': 'm'}>
-CONFIG_WARN_ALL_UNSEEDED_RANDOM                 policy<{'arm64': 'n'}>
 CONFIG_WATCHDOG                                 policy<{'arm64': 'y'}>
 CONFIG_WATCHDOG_CORE                            policy<{'arm64': 'y'}>
 CONFIG_WATCHDOG_HANDLE_BOOT_ENABLED             policy<{'arm64': 'y'}>
