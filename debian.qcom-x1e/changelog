@@ -1,3 +1,12 @@
+linux-qcom-x1e (6.19.6-jg-0) resolute; urgency=medium
+
+  * rebase to v6.19.6
+  * pwm backlight iterations for sp11 lcd, ath11k quirk for HP Omnibook 5
+  * add all sp11 fixes for aggregator, power management, rfkill
+  * small sp12 iterations
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 07 Mar 2026 10:28:09 +0100
+
 linux-qcom-x1e (6.19.0-jg-2) questing; urgency=medium
 
   * add sp11-specific fixes from Dale Whinham, transplant them to sp12
