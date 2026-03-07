@@ -13,11 +13,23 @@
 	compatible = "microsoft,denali-lcd", "microsoft,denali",
 		     "lenovo,thinkpad-t14s",
 		     "qcom,x1p64100", "qcom,x1e80100";
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pmk8550_pwm 0 5000000>;
+
+		power-supply = <&vreg_edp_3p3>;
+	};
+
 };
 
 &gpu_zap_shader {
 	memory-region = <&gpu_microcode_mem>;
 	firmware-name = "qcom/x1e80100/microsoft/Denali/qcdxkmsuc8380.mbn";
+};
+
+&pmk8550_pwm {
+	status = "okay";
 };
 
 &remoteproc_adsp {
