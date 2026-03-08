@@ -176,8 +176,8 @@ endif
 ifeq ($(do_stubble),true)
 	# Build kernel+stub image
 	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) \
-	        --stub=/usr/lib/stubble/stubble.efi \
-	        --hwids=/usr/share/stubble/hwids \
+	        --stub=/usr/local/lib/stubble/stubble.efi \
+	        --hwids=/usr/local/share/stubble/hwids \
 	        --sbat="@/usr/share/stubble/sbat" \
 		$(STUBBLEDTBS) \
 	        --output=$(build_dir)/$(kernfile).stubble
