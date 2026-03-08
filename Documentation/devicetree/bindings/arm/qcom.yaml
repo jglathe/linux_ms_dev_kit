@@ -1145,10 +1145,6 @@ properties:
           - const: qcom,x1p42100
 
       - items:
-          - const: microsoft,denali-x1p4
-          - const: qcom,x1p42100
-
-      - items:
           - enum:
               - acer,swift-go14-01
               - asus,vivobook-s15-x1p4
