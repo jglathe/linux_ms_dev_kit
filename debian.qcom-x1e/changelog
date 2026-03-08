@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.6-jg-1) resolute; urgency=medium
+
+  * update stubble environment, add sp11_x1p
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 08 Mar 2026 20:32:49 +0100
+
 linux-qcom-x1e (6.19.6-jg-0) resolute; urgency=medium
 
   * rebase to v6.19.6
