@@ -27,9 +27,6 @@ else
 BPFTOOL_PATH = $(builddirpa)/tools/bpf/bpftool/bpftool
 endif
 
-# Pick LLVM version from the build-depends
-LLVM_VERSION     = $(shell sed -n -r '/^Build/,/^$$/s/.*llvm-([0-9]+)-dev.*/\1/p' debian/control)
-
 debian/scripts/fix-filenames: debian/scripts/fix-filenames.c
 	$(HOSTCC) $^ -o $@
 
@@ -137,6 +134,7 @@ $(stampdir)/stamp-install-%: MODHASHALGO=sha512
 $(stampdir)/stamp-install-%: MODSECKEY=$(build_dir)/certs/signing_key.pem
 $(stampdir)/stamp-install-%: MODPUBKEY=$(build_dir)/certs/signing_key.x509
 $(stampdir)/stamp-install-%: dkms_dir=$(call dkms_dir_prefix,$(build_dir))
+$(stampdir)/stamp-install-%: STUBBLEDTBS = $(shell /usr/libexec/stubble/finddtbs.py $(build_dir)/arch/arm64/boot/dts /usr/share/stubble/hwids 2>/dev/null | sed 's|.*|--devicetree-auto=&|' | tr '\n' ' ')
 $(foreach _m,$(all_dkms_modules), \
   $(eval $$(stampdir)/stamp-install-%: enable_$(_m) = $$(filter true,$$(call custom_override,do_$(_m),$$*))) \
   $(eval $$(stampdir)/stamp-install-%: dkms_$(_m)_pkgdir = $$(CURDIR)/debian/$(dkms_$(_m)_pkg_name)-$$*) \
@@ -169,14 +167,29 @@ ifeq ($(do_linux_tools),true)
  endif
 endif
 
-	# The main image
-	install -m600 -D $(build_dir)/$(kernfile) \
-		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 	install -d $(pkgdir)/boot
 	install -m644 $(build_dir)/.config \
 		$(pkgdir)/boot/config-$(abi_release)-$*
 	install -m600 $(build_dir)/System.map \
 		$(pkgdir)/boot/System.map-$(abi_release)-$*
+
+ifeq ($(do_stubble),true)
+	# Build kernel+stub image
+	/usr/bin/ukify build --linux=$(build_dir)/$(kernfile) \
+	        --stub=/usr/local/lib/stubble/stubble.efi \
+	        --hwids=/usr/local/share/stubble/hwids \
+	        --sbat="@/usr/share/stubble/sbat" \
+		$(STUBBLEDTBS) \
+	        --output=$(build_dir)/$(kernfile).stubble
+
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile).stubble \
+		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
+else
+	# The main image
+	install -m600 -D $(build_dir)/$(kernfile) \
+		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
+endif
 
 ifeq ($(do_dtbs),true)
 	$(kmake) O=$(build_dir) $(conc_level) dtbs_install \
@@ -248,8 +261,6 @@ ifeq ($(do_dbgsym_package),true)
 	if [ -d $(build_dir)/scripts/gdb/linux ]; then \
 		install -m644 -D $(build_dir)/vmlinux-gdb.py \
 			$(dbgpkgdir)/usr/share/gdb/auto-load/boot/vmlinux-$(abi_release)-$*/vmlinuz-$(abi_release)-$*-gdb.py; \
-		install -m644 -D $(builddir)/build-$*/scripts/gdb/linux/* \
-			--target-directory=$(dbgpkgdir)/usr/share/gdb/auto-load/boot/vmlinux-$(abi_release)-$*/scripts/gdb/linux; \
 	fi
 	$(kmake) O=$(build_dir) modules_install $(vdso) \
 		INSTALL_MOD_PATH=$(dbgpkgdir)/usr/lib/debug
@@ -628,7 +639,7 @@ ifeq ($(do_tools_cpupower),true)
 endif
 ifeq ($(do_tools_perf),true)
 	cd $(builddirpa)/tools/perf && \
-		LLVM_CONFIG=llvm-config-$(LLVM_VERSION) $(kmake) prefix=/usr HAVE_CPLUS_DEMANGLE_SUPPORT=1 CROSS_COMPILE=$(CROSS_COMPILE) NO_LIBPERL=1 WERROR=0
+		$(kmake) prefix=/usr HAVE_CPLUS_DEMANGLE_SUPPORT=1 CROSS_COMPILE=$(CROSS_COMPILE) NO_LIBPERL=1 WERROR=0
 endif
 ifeq ($(do_tools_bpftool),true)
 	$(kmake) CROSS_COMPILE=$(CROSS_COMPILE) -C $(builddirpa)/tools/bpf/bpftool
