@@ -35,6 +35,12 @@ static int gpio_irq_mux_set_type(struct irq_data *d, unsigned int type)
 	return 0;
 }
 
+static int gpio_irq_mux_set_wake(struct irq_data *d, unsigned int on)
+{
+	struct gpio_irq_mux *mux = irq_data_get_irq_chip_data(d);
+	return irq_set_irq_wake(mux->parent_irq, on);
+}
+
 static int gpio_irq_mux_domain_map(struct irq_domain *d, unsigned int virq,
 				   irq_hw_number_t hwirq)
 {
@@ -103,6 +109,7 @@ static int gpio_irq_mux_probe(struct platform_device *pdev)
 	mux->chip.irq_mask = gpio_irq_mux_mask;
 	mux->chip.irq_unmask = gpio_irq_mux_unmask;
 	mux->chip.irq_set_type = gpio_irq_mux_set_type;
+	mux->chip.irq_set_wake = gpio_irq_mux_set_wake;
 
 	mux->domain = irq_domain_add_linear(np, num_irqs,
 					    &gpio_irq_mux_domain_ops, mux);
