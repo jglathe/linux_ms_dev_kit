@@ -546,6 +546,14 @@ config IMX_INTMUX
 	help
 	  Support for the i.MX INTMUX interrupt multiplexer.
 
+config GPIO_IRQ_MUX
+	bool "GPIO IRQ multiplexer"
+	depends on OF
+	select IRQ_DOMAIN
+	help
+	  Provide a simple interrupt controller that fans out a single
+	  GPIO interrupt to multiple child interrupts.
+
 config IMX_MU_MSI
 	tristate "i.MX MU used as MSI controller"
 	depends on OF && HAS_IOMEM

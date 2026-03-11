@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/interrupt-controller/gpio-irq-mux.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: GPIO IRQ multiplexer
+
+maintainers:
+  - name: Jens Glathe
+
+properties:
+  compatible:
+    const: gpio-irq-mux
+
+  interrupts:
+    maxItems: 1
+
+  interrupt-parent: true
+
+  interrupt-controller: true
+
+  '#interrupt-cells':
+    const: 1
+
+  num-interrupts:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 1
+    description: Number of child interrupts exposed by the mux.
+
+required:
+  - compatible
+  - interrupts
+  - interrupt-parent
+  - interrupt-controller
+  - '#interrupt-cells'
+  - num-interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    irq-mux {
+        compatible = "gpio-irq-mux";
+        interrupt-parent = <&tlmm>;
+        interrupts = <67 IRQ_TYPE_LEVEL_LOW>;
+        interrupt-controller;
+        #interrupt-cells = <1>;
+        num-interrupts = <2>;
+    };

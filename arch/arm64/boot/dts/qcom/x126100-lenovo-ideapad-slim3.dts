@@ -31,6 +31,7 @@
 
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9385-codec";
+		#sound-dai-cells = <1>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_default>;
@@ -51,8 +52,6 @@
 		vdd-rxtx-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l15b_1p8>;
 		vdd-mic-bias-supply = <&vreg_bob1>;
-
-		#sound-dai-cells = <1>;
 	};
 
 	gpio-keys {
@@ -68,6 +67,15 @@
 			wakeup-source;
 			wakeup-event-action = <EV_ACT_DEASSERTED>;
 		};
+	};
+
+	gpio67_irqmux: irq-mux {
+		compatible = "gpio-irq-mux";
+		interrupt-parent = <&tlmm>;
+		interrupts = <67 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		num-interrupts = <2>;
 	};
 
 	pmic-glink {
@@ -163,8 +171,6 @@
 				"AMIC2", "MIC BIAS2",
 				"VA DMIC0", "MIC BIAS3",
 				"VA DMIC1", "MIC BIAS3",
-				"VA DMIC2", "VA MIC BIAS1",
-				"VA DMIC3", "VA MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
 
 		wcd-playback-dai-link {
@@ -269,7 +275,6 @@
 			};
 		};
 	};
-
 
 	vreg_edp_3p3: regulator-edp-3p3 {
 		compatible = "regulator-fixed";
@@ -857,8 +862,8 @@
 &i2c9 {
 	clock-frequency = <400000>;
 
-//	pinctrl-0 = <&qup_i2c9_data_clk>, <&kybd_default>;
-//	pinctrl-names = "default";
+	pinctrl-0 = <&qup_i2c9_data_clk>, <&kybd_default>;
+	pinctrl-names = "default";
 	status = "okay";
 
 	keyboard@3a {
@@ -866,7 +871,7 @@
 		reg = <0x3a>;
 
 		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+		interrupts-extended = <&gpio67_irqmux 0>;
 
 		pinctrl-0 = <&kybd_default>;
 		pinctrl-names = "default";
@@ -881,48 +886,17 @@
 &i2c19 {
 	clock-frequency = <400000>;
 
-//	pinctrl-0 = <&qup_i2c19_data_clk>;
-//	pinctrl-names = "default";
+	pinctrl-0 = <&qup_i2c19_data_clk>;
+	pinctrl-names = "default";
 	status = "okay";
 
-//	/* ELAN06FA */
-//	touchpad@15 {
-//		compatible = "hid-over-i2c";
-//		reg = <0x15>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
-
-//	/* CIRQ1080 or SYNA2BA6 */
-//	touchpad@2c {
-//		compatible = "hid-over-i2c";
-//		reg = <0x2c>;
-//
-//		hid-descr-addr = <0x20>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
-
-	/* FTCS0038 */
-	touchpad@38 {
+	/* ELAN06FA */
+	touchpad@15 {
 		compatible = "hid-over-i2c";
-		reg = <0x38>;
+		reg = <0x15>;
 
 		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		pinctrl-0 = <&tpad_default>;
-//		pinctrl-names = "default";
+		interrupts-extended = <&gpio67_irqmux 1>;
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
@@ -930,19 +904,47 @@
 		wakeup-source;
 	};
 
-//	/* GXTP5100 */
-//	touchpad@5d {
-//		compatible = "hid-over-i2c";
-//		reg = <0x5d>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	/* CIRQ1080 or SYNA2BA6 */
+	touchpad@2c {
+		compatible = "hid-over-i2c";
+		reg = <0x2c>;
+
+		hid-descr-addr = <0x20>;
+		interrupts-extended = <&gpio67_irqmux 1>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
+
+	/* FTCS0038 */
+	touchpad@38 {
+		compatible = "hid-over-i2c";
+		reg = <0x38>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&gpio67_irqmux 1>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
+
+	/* GXTP5100 */
+	touchpad@5d {
+		compatible = "hid-over-i2c";
+		reg = <0x5d>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&gpio67_irqmux 1>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
 };
 
 &lpass_tlmm {
@@ -972,7 +974,6 @@
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -981,7 +982,6 @@
 };
 
 &mdss_dp1_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1144,19 +1144,6 @@
 	firmware-name = "qcom/x1p42100/LENOVO/83N3/qccdsp8380.mbn",
 			"qcom/x1p42100/LENOVO/83N3/cdsp_dtbs.elf";
 
-	status = "okay";
-};
-
-&sdhc_2 {
-	cd-gpios = <&tlmm 71 GPIO_ACTIVE_LOW>;
-	pinctrl-0 = <&sdc2_default &sdc2_card_det_n>;
-	pinctrl-1 = <&sdc2_sleep &sdc2_card_det_n>;
-	pinctrl-names = "default", "sleep";
-	vmmc-supply = <&vreg_l9b_2p9>;
-	vqmmc-supply = <&vreg_l6b_1p8>;
-//	bus-width = <4>;
-//	no-sdio;
-//	no-mmc;
 	status = "okay";
 };
 
@@ -1359,13 +1346,6 @@
 		bias-pull-up;
 	};
 
-//	tpad_default: tpad-default-state {
-//		pins = "gpio67";
-//		function = "gpio";
-//		bias-pull-up;
-//		drive-strength = <2>;
-//	};
-
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
 		oe-n-pins {
 			pins = "gpio168";
@@ -1377,7 +1357,7 @@
 		sel-pins {
 			pins = "gpio167";
 			function = "gpio";
-			bias-pul-up;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
@@ -1530,17 +1510,6 @@
 
 	status = "okay";
 };
-
-//&usb_1_ss2_qmpphy {
-//	vdda-phy-supply = <&vreg_l2j_1p2>;
-//	vdda-pll-supply = <&vreg_l2d_0p9>;
-//
-//	status = "okay";
-//};
-
-//&usb_1_ss2_qmpphy_out {
-//	remote-endpoint = <&dp_connector_in>;
-//};
 
 &usb_2 {
 	status = "okay";
