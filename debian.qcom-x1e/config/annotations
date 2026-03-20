@@ -5062,6 +5062,7 @@ CONFIG_I2C_XILINX                               policy<{'arm64': 'm'}>
 CONFIG_I2C_XLP9XX                               policy<{'arm64': 'm'}>
 CONFIG_I2C_ZHAOXIN                              policy<{'arm64': 'm'}>
 CONFIG_I3C                                      policy<{'arm64': 'm'}>
+CONFIG_I3C_OR_I2C                               policy<{'arm64': 'm'}>
 CONFIG_I40E                                     policy<{'arm64': 'm'}>
 CONFIG_I40EVF                                   policy<{'arm64': 'm'}>
 CONFIG_I40E_DCB                                 policy<{'arm64': 'y'}>
@@ -10010,7 +10011,7 @@ CONFIG_SECURITY_APPARMOR_HASH                   policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_HASH_DEFAULT           policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_INTROSPECT_POLICY      policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_PARANOID_LOAD          policy<{'arm64': 'y'}>
-CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS	policy<{'arm64': 'y'}>
+CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS        policy<{'arm64': 'y'}>
 CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'arm64': 'y'}>
 CONFIG_SECURITY_INFINIBAND                      policy<{'arm64': 'y'}>
 CONFIG_SECURITY_IPE                             policy<{'arm64': 'n'}>
