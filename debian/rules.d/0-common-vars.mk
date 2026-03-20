@@ -149,6 +149,9 @@ do_flavour_header_package=true
 # DTBs
 do_dtbs=false
 
+# Stubble
+do_stubble=false
+
 # ZSTD compressed kernel modules
 do_zstd_ko=true
 
