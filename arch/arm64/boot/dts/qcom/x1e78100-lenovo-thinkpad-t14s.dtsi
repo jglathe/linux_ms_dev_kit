@@ -1677,10 +1677,10 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <34 2>, /* Unused */
-			       <44 4>, /* SPI (TPM) */
-			       <72 2>, /* Secure EC I2C connection (?) */
-			       <238 1>; /* UFS Reset */
+	gpio-reserved-ranges = <34 2>, /* GPIO34 = unused, GPIO35 = TPM interrupt */
+			       <44 4>, /* SPI11 (Nuvoton NPCT760 TPM) */
+			       <72 2>, /* I2C18 (Secure EC I2C connection) */
+			       <238 1>; /* UFS Reset (unused) */
 
 	cam_rgb_default: cam-rgb-default-state {
 		mclk-pins {
