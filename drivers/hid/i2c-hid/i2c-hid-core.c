@@ -38,6 +38,7 @@
 #include <linux/mutex.h>
 #include <linux/kthread.h>
 #include <linux/gpio/driver.h>
+#include <linux/gpio/consumer.h>
 #include <linux/unaligned.h>
 
 #include <drm/drm_panel.h>
@@ -144,8 +145,9 @@ struct i2c_hid {
 	bool			panel_follower_work_finished;
 
 	struct task_struct *polling_thread;
+	struct gpio_chip *gpio_chip;
+	unsigned int gpio_hwirq;
 	unsigned long irq_trigger_type;
-	struct irq_desc *irq_desc;
 };
 
 static const struct i2c_hid_quirks {
@@ -897,37 +899,21 @@ static const struct hid_ll_driver i2c_hid_ll_driver = {
 	.raw_request = i2c_hid_raw_request,
 };
 
-static int get_gpio_pin_state(struct irq_desc *irq_desc)
-{
-	struct gpio_chip *gc = irq_data_get_irq_chip_data(&irq_desc->irq_data);
-	int value;
-
-	/*
-	 * This part of code is borrowed from gpiod_get_raw_value_commit in
-	 * drivers/gpio/gpiolib.c. Ideally, gpiod_get_value_cansleep can be re-used
-	 * instead but there is no API of converting (struct irq_desc *) to
-	 * (struct gpio_desc*).
-	 */
-	value = gc->get ? gc->get(gc, irq_desc->irq_data.hwirq) : -EIO;
-	value = value < 0 ? value : !!value;
-	return value;
-}
-
 static bool interrupt_line_active(struct i2c_hid *ihid)
 {
-	int status = get_gpio_pin_state(ihid->irq_desc);
+	int status = ihid->gpio_chip->get(ihid->gpio_chip, ihid->gpio_hwirq);
 	struct i2c_client *client = ihid->client;
 
 	if (status < 0) {
 		dev_dbg_ratelimited(&client->dev,
-				    "Failed to get GPIO Interrupt line status for %s",
+				    "Failed to read GPIO interrupt line for %s",
 				    client->name);
 		return false;
 	}
 	/*
 	 * According to Windows Precsiontion Touchpad's specs
 	 * https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-precision-touchpad-device-bus-connectivity,
-	 * GPIO Interrupt Assertion Leve could be either ActiveLow or
+	 * GPIO Interrupt Assertion Level could be either ActiveLow or
 	 * ActiveHigh.
 	 */
 	if (ihid->irq_trigger_type & IRQF_TRIGGER_LOW)
@@ -942,7 +928,7 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 	unsigned int polling_interval_idle;
 
 	while (!kthread_should_stop()) {
-		while (interrupt_line_active(i2c_hid) &&
+		while (interrupt_line_active(ihid) &&
 		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
 		       !kthread_should_stop()) {
 			i2c_hid_get_input(ihid);
@@ -965,24 +951,38 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 static int i2c_hid_init_polling(struct i2c_hid *ihid)
 {
 	struct i2c_client *client = ihid->client;
+	struct irq_data *irq_data;
 
 	ihid->irq_trigger_type = irq_get_trigger_type(client->irq);
 	if (!ihid->irq_trigger_type) {
-		dev_dbg(&client->dev,
-			"Failed to get GPIO Interrupt Assertion Level, could not enable polling mode for %s",
-			 client->name);
+		dev_dbg(&client->dev, "Failed to get IRQ trigger type for %s",
+			client->name);
 		return -EINVAL;
 	}
 
+	irq_data = irq_get_irq_data(client->irq);
+	if (!irq_data) {
+		dev_err(&client->dev, "Failed to get irq_data for %s", client->name);
+		return -EINVAL;
+	}
+
+	ihid->gpio_chip = irq_data_get_irq_chip_data(irq_data);
+	if (!ihid->gpio_chip) {
+		dev_err(&client->dev, "Failed to get gpio_chip for IRQ %d on %s",
+			client->irq, client->name);
+		return -EINVAL;
+	}
+
+	ihid->gpio_hwirq = irq_data->hwirq;
+
 	ihid->polling_thread = kthread_create(i2c_hid_polling_thread, ihid,
-					      "I2C HID polling thread");
+					      "i2c-hid-polling-%s", client->name);
 
 	if (IS_ERR(ihid->polling_thread)) {
 		dev_err(&client->dev, "Failed to create I2C HID polling thread");
 		return PTR_ERR(ihid->polling_thread);
 	}
 
-	ihid->irq_desc = irq_to_desc(client->irq);
 	wake_up_process(ihid->polling_thread);
 	return 0;
 }
