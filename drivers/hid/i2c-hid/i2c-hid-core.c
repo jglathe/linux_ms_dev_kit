@@ -532,15 +532,24 @@ static int i2c_hid_finish_hwreset(struct i2c_hid *ihid)
 
 	i2c_hid_dbg(ihid, "%s: waiting...\n", __func__);
 
-	if (ihid->quirks & I2C_HID_QUIRK_NO_IRQ_AFTER_RESET) {
+	/*
+	 * In polling mode we never get the reset-complete packet via IRQ
+	 * because we never requested the IRQ. Treat it exactly like the
+	 * NO_IRQ_AFTER_RESET quirk + extra delay for Goodix.
+	 */
+	if (ihid->use_polling) {
+		msleep(300);
+		clear_bit(I2C_HID_RESET_PENDING, &ihid->flags);
+	} else if (ihid->quirks & I2C_HID_QUIRK_NO_IRQ_AFTER_RESET) {
 		msleep(100);
 		clear_bit(I2C_HID_RESET_PENDING, &ihid->flags);
 	} else if (!wait_event_timeout(ihid->wait,
-				       !test_bit(I2C_HID_RESET_PENDING, &ihid->flags),
-				       msecs_to_jiffies(1000))) {
+		   !test_bit(I2C_HID_RESET_PENDING, &ihid->flags),
+		   msecs_to_jiffies(1000))) {
 		dev_warn(&ihid->client->dev, "device did not ack reset within 1000 ms\n");
 		clear_bit(I2C_HID_RESET_PENDING, &ihid->flags);
 	}
+
 	i2c_hid_dbg(ihid, "%s: finished.\n", __func__);
 
 	/* At least some SIS devices need this after reset */
@@ -1256,13 +1265,19 @@ static int i2c_hid_core_register_hid(struct i2c_hid *ihid)
 	struct hid_device *hid = ihid->hid;
 	int ret;
 
-	enable_irq(client->irq);
+	/* Only enable IRQ for real interrupt devices.
+	 * Polling devices (touchpad) never requested it. */
+	if (!ihid->use_polling)
+		enable_irq(client->irq);
 
 	ret = hid_add_device(hid);
 	if (ret) {
 		if (ret != -ENODEV)
 			hid_err(client, "can't add hid device: %d\n", ret);
-		disable_irq(client->irq);
+
+		if (!ihid->use_polling)
+			disable_irq(client->irq);
+
 		return ret;
 	}
 
