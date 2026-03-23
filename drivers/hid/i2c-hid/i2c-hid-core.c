@@ -923,6 +923,14 @@ static bool interrupt_line_active(struct i2c_hid *ihid)
 				    client->name);
 		return false;
 	}
+
+	/*
+	 * Debug: show what we actually read (will appear in dmesg when you touch)
+	 */
+	dev_dbg_ratelimited(&client->dev, "GPIO sense: raw=%d, active=%d (trigger=0x%lx)\n",
+			    status, (ihid->irq_trigger_type & IRQF_TRIGGER_LOW) ? !status : status,
+			    ihid->irq_trigger_type);
+
 	/*
 	 * According to Windows Precsiontion Touchpad's specs
 	 * https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/windows-precision-touchpad-device-bus-connectivity,
@@ -1479,6 +1487,12 @@ int i2c_hid_core_probe(struct i2c_client *client, struct i2chid_ops *ops,
 		ret = i2c_hid_core_power_up(ihid);
 		if (ret < 0)
 			goto err_destroy_device;
+
+		/* MUST happen BEFORE __i2c_hid_core_probe() so use_polling
+		 * is known during the reset in parse() */
+		ret = i2c_hid_setup_interrupt(ihid);
+		if (ret < 0)
+			goto err_power_down;
 
 		ret = __i2c_hid_core_probe(ihid);
 		if (ret < 0)
