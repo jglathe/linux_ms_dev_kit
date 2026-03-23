@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.0.0-17.17) questing; urgency=medium
+
+  * x1e80100-lenovo-yoga-slim7x: fix RGB cam supply voltage
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Fri, 20 Mar 2026 23:49:55 +0100
+
 linux-qcom-x1e (7.0.0-16.16) questing; urgency=medium
 
   * Rebase onto Ubuntu-7.0.0-10.10
