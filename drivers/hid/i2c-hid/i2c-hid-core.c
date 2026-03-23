@@ -807,6 +807,16 @@ static int i2c_hid_parse(struct hid_device *hid)
 	} while (tries-- > 0 && ret);
 	mutex_unlock(&ihid->reset_lock);
 
+	/* Goodix touchpads (and other devices on shared IRQ lines) often stay
+	 * stuck in reset when we are in polling mode. This tiny delay after the
+	 * reset sequence makes them come alive reliably. Keyboard (IRQ mode) is
+	 * completely unaffected. */
+	if (ihid->use_polling && ret == 0) {
+		dev_dbg(&ihid->client->dev,
+			"polling mode: adding 30 ms stabilization delay after reset\n");
+		msleep(30);
+	}
+
 	if (ret)
 		return ret;
 
@@ -1046,12 +1056,11 @@ static int i2c_hid_init_irq(struct i2c_client *client)
 	return 0;
 }
 
-/*
- * Setup interrupt or polling according to the rules:
- *   - polling-gpios present → force polling
- *   - IRQ provided → try normal IRQ first
- *   - IRQ fails + polling-gpios present → fallback to polling
- *   - nothing provided → error
+/* 
+ *   irq provided          → try to claim it (exclusive)
+ *   claim fails           → fall back to polling (sense the IRQ gpio, never claim it)
+ *   polling-gpios present → ALWAYS poll (never even try IRQ)
+ *   nothing at all        → error, driver refuses to load
  */
 static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 {
@@ -1061,26 +1070,33 @@ static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 
 	ihid->use_polling = false;
 
-	/* polling-gpios forces polling mode (shared line case) */
+	/* 1. Explicit "this line is shared, poll only" (touchpad) */
 	if (device_property_present(dev, "polling-gpios")) {
-		dev_info(dev, "polling-gpios present, using polling mode\n");
+		dev_info(dev, "polling-gpios present → forcing polling mode (shared IRQ line)\n");
 		ihid->use_polling = true;
-		return i2c_hid_init_polling(ihid);
+		goto polling;
 	}
 
+	/* 2. Normal exclusive IRQ path (keyboard) */
 	if (client->irq <= 0) {
-		dev_err(dev, "no IRQ and no polling-gpios property\n");
+		dev_err(dev, "no IRQ and no polling-gpios – cannot continue\n");
 		return -EINVAL;
 	}
 
-	/* normal IRQ path */
 	ret = i2c_hid_init_irq(client);
-	if (ret == 0)
+	if (ret == 0) {
+		dev_info(dev, "using exclusive IRQ mode\n");
 		return 0;
+	}
 
-	dev_warn(dev, "IRQ request failed (%d), falling back to polling if polling-gpios present\n", ret);
+	dev_warn(dev, "IRQ request failed (%d) – falling back to GPIO polling on the IRQ line\n", ret);
+
+polling:
 	ihid->use_polling = true;
-	return i2c_hid_init_polling(ihid);
+	ret = i2c_hid_init_polling(ihid);
+	if (ret == 0)
+		msleep(10);                 /* let polling thread settle before reset sequence */
+	return ret;
 }
 
 static int i2c_hid_fetch_hid_descriptor(struct i2c_hid *ihid)
@@ -1498,10 +1514,6 @@ int i2c_hid_core_probe(struct i2c_client *client, struct i2chid_ops *ops,
 		if (ret < 0)
 			goto err_power_down;
 	}
-
-	ret = i2c_hid_setup_interrupt(ihid);
-	if (ret < 0)
-		goto err_power_down;
 
 	/*
 	 * If we're a panel follower, we'll register when the panel turns on;
