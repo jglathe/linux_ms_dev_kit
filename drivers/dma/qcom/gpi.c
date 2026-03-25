@@ -516,6 +516,7 @@ struct gpii {
 	enum gpi_cmd gpi_cmd;
 	u32 cntxt_type_irq_msk;
 	bool ieob_set;
+	bool hw_ready;
 };
 
 #define MAX_TRE 3
@@ -695,6 +696,8 @@ static int gpi_send_cmd(struct gpii *gpii, struct gchan *gchan,
 	timeout = wait_for_completion_timeout(&gpii->cmd_completion,
 					      msecs_to_jiffies(CMD_TIMEOUT_MS));
 	if (!timeout) {
+		if (!gpii->hw_ready)
+			return -EPROBE_DEFER;
 		dev_err(gpii->gpi_dev->dev, "cmd: %s completion timeout:%u\n",
 			TO_GPI_CMD_STR(gpi_cmd), chid);
 		return -EIO;
@@ -702,15 +705,20 @@ static int gpi_send_cmd(struct gpii *gpii, struct gchan *gchan,
 
 	/* confirm new ch state is correct , if the cmd is a state change cmd */
 	if (gpi_cmd_info[gpi_cmd].state == STATE_IGNORE)
-		return 0;
+		goto success;
 
 	if (IS_CHAN_CMD(gpi_cmd) && gchan->ch_state == gpi_cmd_info[gpi_cmd].state)
-		return 0;
+		goto success;
 
 	if (!IS_CHAN_CMD(gpi_cmd) && gpii->ev_state == gpi_cmd_info[gpi_cmd].state)
-		return 0;
+		goto success;
 
 	return -EIO;
+
+success:
+	if (!gpii->hw_ready)
+		gpii->hw_ready = true;
+	return 0; 
 }
 
 /* program transfer ring DB register */
@@ -1220,6 +1228,8 @@ static int gpi_start_chan(struct gchan *gchan)
 
 	ret = gpi_send_cmd(gpii, gchan, GPI_CH_CMD_START);
 	if (ret) {
+		if (ret == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
 		dev_err(gpii->gpi_dev->dev, "Error with cmd:%s ret:%d\n",
 			TO_GPI_CMD_STR(GPI_CH_CMD_START), ret);
 		return ret;
@@ -1261,6 +1271,8 @@ static int gpi_alloc_chan(struct gchan *chan, bool send_alloc_cmd)
 	if (send_alloc_cmd) {
 		ret = gpi_send_cmd(gpii, chan, GPI_CH_CMD_ALLOCATE);
 		if (ret) {
+			if (ret == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
 			dev_err(gpii->gpi_dev->dev, "Error with cmd:%s ret:%d\n",
 				TO_GPI_CMD_STR(GPI_CH_CMD_ALLOCATE), ret);
 			return ret;
