@@ -936,7 +936,6 @@
 	vdda-phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
-	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -974,7 +973,6 @@
 	vdda-phy-supply = <&vreg_l4b>;
 	vdda-pll-supply = <&vreg_l3b>;
 
-	mode-switch;
 	orientation-switch;
 
 	status = "okay";
