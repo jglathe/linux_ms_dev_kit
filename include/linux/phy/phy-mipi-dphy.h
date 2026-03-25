@@ -299,6 +299,13 @@ struct phy_configure_opts_mipi_dphy {
 	 * Physical lane number used as the clock lane.
 	 */
 	unsigned char		clock_lane_position;
+
+	/**
+	 * @clock_lane_polarity:
+	 *
+	 * Clock lane polarity. True means inverted.
+	 */
+	bool			clock_lane_polarity;
 };
 
 int phy_mipi_dphy_get_default_config(unsigned long pixel_clock,
