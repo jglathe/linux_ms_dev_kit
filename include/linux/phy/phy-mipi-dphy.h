@@ -284,6 +284,14 @@ struct phy_configure_opts_mipi_dphy {
 	 * Indexed by logical lane number.
 	 */
 	unsigned char		lane_positions[PHY_MIPI_DPHY_MAX_DATA_LANES];
+
+	/**
+	 * @lane_polarities:
+	 *
+	 * Array representing data-lane polarities. True means inverted.
+	 * Indexed by logical lane number.
+	 */
+	bool			lane_polarities[PHY_MIPI_DPHY_MAX_DATA_LANES];
 };
 
 int phy_mipi_dphy_get_default_config(unsigned long pixel_clock,
