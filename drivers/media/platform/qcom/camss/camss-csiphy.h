@@ -12,7 +12,7 @@
 
 #include <linux/clk.h>
 #include <linux/interrupt.h>
-#include <linux/phy.h>
+#include <linux/phy/phy.h>
 #include <media/media-entity.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-mediabus.h>

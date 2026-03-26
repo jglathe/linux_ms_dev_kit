@@ -7,6 +7,7 @@
  * Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
  * Copyright (C) 2016-2018 Linaro Ltd.
  */
+#include <dt-bindings/phy/phy.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -302,7 +303,7 @@ static int csiphy_stream_on_legacy(struct csiphy_device *csiphy)
 }
 
 /*
- * eam_off - Disable streaming on CSIPHY module
+ * csiphy_stream_off - Disable streaming on CSIPHY module
  * @csiphy: CSIPHY device
  *
  * Helper function to disable streaming on CSIPHY module
@@ -325,11 +326,13 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
 {
 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
-	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
+	struct csiphy_lanes_cfg *lncfg = &csiphy->cfg.csi2->lane_cfg;
 	struct phy_configure_opts_mipi_dphy *dphy_cfg;
 	union phy_configure_opts dphy_opts = { 0 };
 	struct device *dev = csiphy->camss->dev;
+	u8 num_lanes = lncfg->num_data;
 	s64 link_freq;
+	int i;
 	int ret;
 
 	dphy_cfg = &dphy_opts.mipi_dphy;
@@ -343,6 +346,16 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
 	}
 
 	phy_mipi_dphy_get_default_config_for_hsclk(link_freq, num_lanes, dphy_cfg);
+
+	/* Set clock lane id and polarity */
+	dphy_cfg->clock_lane_position = lncfg->clk.pos;
+	dphy_cfg->clock_lane_polarity = lncfg->clk.pol;
+
+	/* Set data lane_mask and lane_polarities */
+	for (i = 0; i < num_lanes; i++) {
+		dphy_cfg->lane_positions[i] = lncfg->data[i].pos;
+		dphy_cfg->lane_polarities[i] = lncfg->data[i].pol;
+	}
 
 	phy_set_mode(csiphy->phy, PHY_MODE_MIPI_DPHY);
 
@@ -635,16 +648,12 @@ static int csiphy_init_formats(struct v4l2_subdev *sd,
 	return csiphy_set_format(sd, fh ? fh->state : NULL, &format);
 }
 
-static bool __printf(2, 3)
-csiphy_match_clock_name(const char *clock_name, const char *format, ...)
+static bool csiphy_match_clock_name(const char *clock_name, const char *format,
+				    int index)
 {
 	char name[16]; /* csiphyXXX_timer\0 */
-	va_list args;
 
-	va_start(args, format);
-	vsnprintf(name, sizeof(name), format, args);
-	va_end(args);
-
+	snprintf(name, sizeof(name), format, index);
 	return !strcmp(clock_name, name);
 }
 
@@ -799,26 +808,43 @@ int msm_csiphy_subdev_init(struct camss *camss,
 			   const struct camss_subdev_resources *res, u8 id)
 {
 	struct device *dev = camss->dev;
+	struct of_phandle_args args;
+	int idx;
 	int ret;
+
+	snprintf(csiphy->name, ARRAY_SIZE(csiphy->name), "csiphy%d", id);
+
+	idx = of_property_match_string(dev->of_node, "phy-names", csiphy->name);
+	if (idx < 0) {
+		dev_err(dev, "%s not found\n", csiphy->name);
+		return idx;
+	}
+
+	ret = of_parse_phandle_with_args(dev->of_node, "phys", "#phy-cells", idx, &args);
+	if (ret < 0) {
+		dev_err(dev, "unable to parse phys args %s\n", csiphy->name);
+		return ret;
+	}
+
+	if (!of_device_is_available(args.np))
+		goto put_np;
+
+	csiphy->phy = devm_phy_get(dev, csiphy->name);
+	if (IS_ERR(csiphy->phy)) {
+		ret = PTR_ERR(csiphy->phy);
+		goto put_np;
+	}
 
 	csiphy->camss = camss;
 	csiphy->id = id;
-	csiphy->cfg.combo_mode = 0;
 	csiphy->res = &res->csiphy;
-
-	snprintf(csiphy->name, ARRAY_SIZE(csiphy->name), "csiphy%d",
-		 csiphy->id);
-
-	csiphy->phy = devm_phy_get(dev, csiphy->name);
-
-	if (IS_ERR(csiphy->phy)) {
-		dev_err(dev, "failed to get phy %s %d\n", csiphy->name, ret);
-		return PTR_ERR(csiphy->phy);
-	}
 
 	ret = phy_init(csiphy->phy);
 	if (ret)
 		dev_err(dev, "phy %s init fail %d\n", csiphy->name, ret);
+
+put_np:
+	of_node_put(args.np);
 
 	return ret;
 }
@@ -954,6 +980,8 @@ int msm_csiphy_register_entity(struct csiphy_device *csiphy,
  */
 void msm_csiphy_unregister_entity(struct csiphy_device *csiphy)
 {
+	if (!IS_ERR(csiphy->phy))
+		phy_exit(csiphy->phy);
 	v4l2_device_unregister_subdev(&csiphy->subdev);
 	media_entity_cleanup(&csiphy->subdev.entity);
 }
