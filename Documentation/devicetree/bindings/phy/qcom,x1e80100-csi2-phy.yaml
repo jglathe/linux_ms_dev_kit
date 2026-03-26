@@ -23,16 +23,17 @@ properties:
 
   "#phy-cells":
     const: 1
+    description:
+      The single cell specifies the PHY operating mode.
+      See include/dt-bindings/phy/phy-qcom-mipi-csi2.h for valid values.
 
   clocks:
-    maxItems: 4
+    maxItems: 2
 
   clock-names:
     items:
-      - const: csiphy
-      - const: csiphy_timer
-      - const: camnoc_axi
-      - const: cpas_ahb
+      - const: core
+      - const: timer
 
   interrupts:
     maxItems: 1
@@ -42,18 +43,16 @@ properties:
 
   power-domains:
     items:
-      - description: TITAN TOP GDSC
       - description: MXC or MXA voltage rail
       - description: MMCX voltage rail
 
   power-domain-names:
     items:
-      - const: top
       - const: mx
       - const: mmcx
 
-  vdda-0p8-supply:
-    description: Phandle to a 0.8V regulator supply to a PHY.
+  vdda-0p9-supply:
+    description: Phandle to a 0.9V regulator supply to a PHY.
 
   vdda-1p2-supply:
     description: Phandle to 1.2V regulator supply to a PHY.
@@ -68,7 +67,7 @@ required:
   - operating-points-v2
   - power-domains
   - power-domain-names
-  - vdda-0p8-supply
+  - vdda-0p9-supply
   - vdda-1p2-supply
 
 additionalProperties: false
@@ -78,35 +77,29 @@ examples:
     #include <dt-bindings/interrupt-controller/arm-gic.h>
     #include <dt-bindings/clock/qcom,x1e80100-camcc.h>
     #include <dt-bindings/clock/qcom,x1e80100-gcc.h>
-    #include <dt-bindings/phy/phy.h>
+    #include <dt-bindings/phy/phy-qcom-mipi-csi2.h>
     #include <dt-bindings/power/qcom,rpmhpd.h>
 
-    csiphy@ace4000 {
+    csiphy4: csiphy@ace4000 {
         compatible = "qcom,x1e80100-csi2-phy";
         reg = <0x0ace4000 0x2000>;
         #phy-cells = <1>;
 
         clocks = <&camcc CAM_CC_CSIPHY0_CLK>,
-                 <&camcc CAM_CC_CSI0PHYTIMER_CLK>,
-                 <&camcc CAM_CC_CAMNOC_AXI_RT_CLK>,
-                 <&camcc CAM_CC_CPAS_AHB_CLK>;
-        clock-names = "csiphy",
-                      "csiphy_timer",
-                      "camnoc_axi",
-                      "cpas_ahb";
+                 <&camcc CAM_CC_CSI0PHYTIMER_CLK>;
+        clock-names = "core",
+                      "timer";
 
         operating-points-v2 = <&csiphy_opp_table>;
 
         interrupts = <GIC_SPI 477 IRQ_TYPE_EDGE_RISING>;
 
-        power-domains = <&camcc CAM_CC_TITAN_TOP_GDSC>,
-                        <&rpmhpd RPMHPD_MX>,
+        power-domains = <&rpmhpd RPMHPD_MX>,
                         <&rpmhpd RPMHPD_MMCX>;
-        power-domain-names = "top",
-                             "mx",
+        power-domain-names = "mx",
                              "mmcx";
 
-        vdda-0p8-supply = <&vreg_l2c_0p8>;
+        vdda-0p9-supply = <&vreg_l2c_0p8>;
         vdda-1p2-supply = <&vreg_l1c_1p2>;
     };
 
@@ -130,4 +123,8 @@ examples:
             required-opps = <&rpmhpd_opp_low_svs>,
                             <&rpmhpd_opp_low_svs>;
         };
+    };
+
+    isp@acb7000 {
+        phys = <&csiphy4 PHY_QCOM_CSI2_MODE_DPHY>;
     };
