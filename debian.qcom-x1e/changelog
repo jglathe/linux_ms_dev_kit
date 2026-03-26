@@ -1,3 +1,15 @@
+linux-qcom-x1e (7.0.0-22.22) questing; urgency=medium
+
+  * x1e80100-lenovo-yoga-slim7x: fix RGB cam supply voltage fix
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Tue, 24 Mar 2026 22:39:22 +0100
+
+linux-qcom-x1e (7.0.0-20.20) questing; urgency=medium
+
+  * Revert gpi-dma commit in sc8280x
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Mon, 23 Mar 2026 19:44:55 +0100
+
 linux-qcom-x1e (7.0.0-17.17) questing; urgency=medium
 
   * x1e80100-lenovo-yoga-slim7x: fix RGB cam supply voltage
