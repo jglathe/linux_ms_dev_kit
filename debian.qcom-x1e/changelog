@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.6-jg-3) resolute; urgency=medium
+
+  * dmaengine: qcom: gpi: return -EPROBE_DEFER on early timeout
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 26 Mar 2026 07:16:57 +0100
+
 linux-qcom-x1e (6.19.6-jg-1) resolute; urgency=medium
 
   * update stubble environment, add sp11_x1p
