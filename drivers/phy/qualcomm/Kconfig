@@ -37,7 +37,9 @@ config PHY_QCOM_MIPI_CSI2
 	select GENERIC_PHY_MIPI_DPHY
 	help
 	  Enable this to support the MIPI CSI2 PHY driver found in various
-	  Qualcomm chipsets.
+	  Qualcomm chipsets. This PHY is used to connect MIPI CSI2
+	  camera sensors to the CSI Decoder in the Qualcomm Camera Subsystem
+	  CAMSS.
 
 config PHY_QCOM_IPQ4019_USB
 	tristate "Qualcomm IPQ4019 USB PHY driver"

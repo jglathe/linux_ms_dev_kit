@@ -23,7 +23,6 @@ struct mipi_csi2phy_lanes_cfg {
 };
 
 struct mipi_csi2phy_stream_cfg {
-	u8 combo_mode;
 	s64 link_freq;
 	u8 num_data_lanes;
 	struct mipi_csi2phy_lanes_cfg lane_cfg;
@@ -38,33 +37,19 @@ struct mipi_csi2phy_hw_ops {
 			    struct mipi_csi2phy_stream_cfg *cfg);
 	void (*lanes_disable)(struct mipi_csi2phy_device *csi2phy_dev,
 			      struct mipi_csi2phy_stream_cfg *cfg);
-	irqreturn_t (*isr)(int irq, void *dev);
-	int (*init)(struct mipi_csi2phy_device *csi2phy_dev);
 };
 
 struct mipi_csi2phy_lane_regs {
 	const s32 reg_addr;
 	const s32 reg_data;
 	const u32 delay_us;
-	const u32 mipi_csi2phy_param_type;
+	const u32 param_type;
 };
 
 struct mipi_csi2phy_device_regs {
 	const struct mipi_csi2phy_lane_regs *init_seq;
 	const int lane_array_size;
-	const u32 offset;
-	enum  {
-		GEN1 = 0,
-		GEN1_660,
-		GEN1_670,
-		GEN2,
-	} generation;
-};
-
-#define MAX_CSI2PHY_CLKS 8
-struct mipi_csi2phy_clk_freq {
-	u32 num_freq;
-	u32 freq[MAX_CSI2PHY_CLKS];
+	const u32 common_regs_offset;
 };
 
 struct mipi_csi2phy_soc_cfg {
@@ -77,18 +62,27 @@ struct mipi_csi2phy_soc_cfg {
 	const char ** const clk_names;
 	const unsigned int num_clk;
 
-	const struct mipi_csi2phy_clk_freq clk_freq[];
+	const char * const opp_clk;
+	const char * const timer_clk;
+
+	const char ** const genpd_names;
+	const unsigned int num_genpd_names;
 };
 
 struct mipi_csi2phy_device {
 	struct device *dev;
+	u8 phy_mode;
 
 	struct phy *phy;
 	void __iomem *base;
 
 	struct clk_bulk_data *clks;
-	struct regulator_bulk_data *supplies;
+	struct clk *timer_clk;
 	u32 timer_clk_rate;
+
+	struct regulator_bulk_data *supplies;
+	struct device **pds;
+	unsigned int num_pds;
 
 	const struct mipi_csi2phy_soc_cfg *soc_cfg;
 	struct mipi_csi2phy_stream_cfg stream_cfg;
