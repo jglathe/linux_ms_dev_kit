@@ -409,6 +409,10 @@ dtb-$(CONFIG_ARCH_QCOM)	+= talos-evk-camera-imx577.dtb
 talos-evk-lvds-auo,g133han01-dtbs	:= \
 	talos-evk.dtb talos-evk-lvds-auo,g133han01.dtbo
 dtb-$(CONFIG_ARCH_QCOM)	+= talos-evk-lvds-auo,g133han01.dtb
+
+dtb-$(CONFIG_ARCH_QCOM)	+= x1-el2.dtbo
+DTC_FLAGS_x1-el2 := -Wno-avoid_default_addr_size
+
 x126100-lenovo-ideapad-slim3-el2-dtbs := x126100-lenovo-ideapad-slim3.dtb x1-el2.dtbo
 dtb-$(CONFIG_ARCH_QCOM)	+= x126100-lenovo-ideapad-slim3.dtb x126100-lenovo-ideapad-slim3-el2.dtb
 x1e001de-devkit-el2-dtbs	:= x1e001de-devkit.dtb x1-el2.dtbo
