@@ -696,8 +696,12 @@ static int gpi_send_cmd(struct gpii *gpii, struct gchan *gchan,
 	timeout = wait_for_completion_timeout(&gpii->cmd_completion,
 					      msecs_to_jiffies(CMD_TIMEOUT_MS));
 	if (!timeout) {
-		if (!gpii->hw_ready)
+		if (!gpii->hw_ready) {
+			dev_warn_once(gpii->gpi_dev->dev,
+				      "cmd: %s completion timeout:%u (hardware not ready yet)\n",
+				      TO_GPI_CMD_STR(gpi_cmd), chid);
 			return -EPROBE_DEFER;
+		}
 		dev_err(gpii->gpi_dev->dev, "cmd: %s completion timeout:%u\n",
 			TO_GPI_CMD_STR(gpi_cmd), chid);
 		return -EIO;
@@ -716,7 +720,7 @@ static int gpi_send_cmd(struct gpii *gpii, struct gchan *gchan,
 	return -EIO;
 
 success:
-	if (!gpii->hw_ready)
+	if ((!gpii->hw_ready) && (gpi_cmd == GPI_CH_CMD_START))
 		gpii->hw_ready = true;
 	return 0; 
 }
