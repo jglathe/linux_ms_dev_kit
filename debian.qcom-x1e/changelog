@@ -1,8 +1,9 @@
-linux-qcom-x1e (6.19.6-jg-3) resolute; urgency=medium
+linux-qcom-x1e (6.19.6-jg-4) resolute; urgency=medium
 
-  * dmaengine: qcom: gpi: return -EPROBE_DEFER on early timeout
+  * drm/panel-edp: add panel CMN 0x1476 N140JCE-EL1
+  * arm64: dts: qcom: x1-el2: add 40-bit dma-ranges/ranges for EL2
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 26 Mar 2026 07:16:57 +0100
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 30 Mar 2026 23:02:46 +0200
 
 linux-qcom-x1e (6.19.6-jg-1) resolute; urgency=medium
 
