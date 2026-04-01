@@ -33,6 +33,18 @@ config EC_ACER_ASPIRE1
 	  laptop where this information is not properly exposed via the
 	  standard ACPI devices.
 
+config EC_DELL_XPS
+	tristate "Dell XPS 9345 Embedded Controller driver"
+	depends on ARCH_QCOM || COMPILE_TEST
+	depends on I2C
+	depends on IIO
+	help
+	  Driver for the Embedded Controller in the Qualcomm Snapdragon-based
+	  Dell XPS 13 9345, which handles thermal management and fan speed
+	  control.
+
+	  Say M or Y here to include this support.
+
 config EC_HUAWEI_GAOKUN
 	tristate "Huawei Matebook E Go Embedded Controller driver"
 	depends on ARCH_QCOM || COMPILE_TEST
