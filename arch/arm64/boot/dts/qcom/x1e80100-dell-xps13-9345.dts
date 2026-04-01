@@ -7,6 +7,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/iio/qcom,spmi-adc7-pm8350.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
@@ -898,8 +899,29 @@
 
 &i2c5 {
 	clock-frequency = <100000>;
-	status = "disabled";
-	/* EC @0x3b */
+	status = "okay";
+
+	embedded-controller@3b {
+		compatible = "dell,xps13-9345-ec";
+		reg = <0x3b>;
+
+		interrupts-extended = <&tlmm 66 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&ec_int_n_default>;
+		pinctrl-names = "default";
+
+		io-channels = <&pmk8550_vadc PM8350_ADC7_GPIO3_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_GPIO4_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM1_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM2_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM3_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM4_100K_PU(1)>,
+			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM5_100K_PU(1)>;
+
+		io-channel-names = "sys_therm0", "sys_therm1", "sys_therm2",
+				   "sys_therm3", "sys_therm4", "sys_therm5",
+				   "sys_therm6";
+	};
 };
 
 &i2c7 {
@@ -1188,6 +1210,64 @@
 	};
 };
 
+&pmk8550_vadc {
+	/* sys_therm0, around DRAM */
+	channel@14c {
+		reg = <PM8350_ADC7_GPIO3_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm0";
+	};
+
+	/* sys_therm1, around left Type-C charging controller */
+	channel@14d {
+		reg = <PM8350_ADC7_GPIO4_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm1";
+	};
+
+	/* sys_therm2, around upper-left side of motherboard */
+	channel@144 {
+		reg = <PM8350_ADC7_AMUX_THM1_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm2";
+	};
+
+	/* sys_therm3, around right Type-C charging controller */
+	channel@145 {
+		reg = <PM8350_ADC7_AMUX_THM2_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm3";
+	};
+
+	/* sys_therm4, around SSD connector */
+	channel@146 {
+		reg = <PM8350_ADC7_AMUX_THM3_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm4";
+	};
+
+	/* sys_therm5, around battery charging circuit */
+	channel@147 {
+		reg = <PM8350_ADC7_AMUX_THM4_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm5";
+	};
+
+	/* sys_therm6, around keyboard */
+	channel@148 {
+		reg = <PM8350_ADC7_AMUX_THM5_100K_PU(1)>;
+		qcom,hw-settle-time = <200>;
+		qcom,ratiometric;
+		label = "sys_therm6";
+	};
+};
+
 &qupv3_0 {
 	status = "okay";
 };
@@ -1296,6 +1376,7 @@
 
 &tlmm {
 	gpio-reserved-ranges = <44 4>,  /* SPI11 (TPM) */
+			       <65 1>,  /* EC Reset */
 			       <76 4>,  /* SPI19 (TZ Protected) */
 			       <238 1>; /* UFS Reset */
 
@@ -1327,6 +1408,12 @@
 		pins = "gpio91";
 		function = "gpio";
 		drive-strength = <2>;
+		bias-disable;
+	};
+
+	ec_int_n_default: ec-int-n-state {
+		pins = "gpio66";
+		function = "gpio";
 		bias-disable;
 	};
 
