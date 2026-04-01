@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/embedded-controller/dell,xps13-9345-ec.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Dell XPS 13 9345 Embedded Controller
+
+maintainers:
+  - Aleksandrs Vinarskis <alex@vinarskis.com>
+
+description:
+  The Dell XPS 13 9345 has an Embedded Controller (EC) which handles thermal and power
+  management. It is communicating with SoC over multiple i2c busses. Particular driver
+  is for EC subsystem that handles fan speed control, thermal shutdown, peripherals
+  supply including trackpad, touch-row, display.
+
+properties:
+  compatible:
+    const: dell,xps13-9345-ec
+
+  reg:
+    const: 0x3b
+
+  interrupts:
+    maxItems: 1
+
+  io-channels:
+    description:
+      ADC channels connected to the 7 onboard thermistors on PMK8550.
+      EC requires frequent thermal readings of these channels to perform
+      automated fan speed control.
+    items:
+      - description: ADC channel for sys_therm0
+      - description: ADC channel for sys_therm1
+      - description: ADC channel for sys_therm2
+      - description: ADC channel for sys_therm3
+      - description: ADC channel for sys_therm4
+      - description: ADC channel for sys_therm5
+      - description: ADC channel for sys_therm6
+
+  io-channel-names:
+    items:
+      - const: sys_therm0
+      - const: sys_therm1
+      - const: sys_therm2
+      - const: sys_therm3
+      - const: sys_therm4
+      - const: sys_therm5
+      - const: sys_therm6
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - io-channels
+  - io-channel-names
+
+additionalProperties: false
+
+examples:
+  - |+
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/iio/qcom,spmi-adc7-pm8350.h>
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        embedded-controller@3b {
+            compatible = "dell,xps13-9345-ec";
+            reg = <0x3b>;
+            interrupts-extended = <&tlmm 66 IRQ_TYPE_LEVEL_LOW>;
+
+            io-channels = <&pmk8550_vadc PM8350_ADC7_GPIO3_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_GPIO4_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_AMUX_THM1_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_AMUX_THM2_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_AMUX_THM3_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_AMUX_THM4_100K_PU(1)>,
+                          <&pmk8550_vadc PM8350_ADC7_AMUX_THM5_100K_PU(1)>;
+            io-channel-names = "sys_therm0", "sys_therm1", "sys_therm2",
+                               "sys_therm3", "sys_therm4", "sys_therm5",
+                               "sys_therm6";
+        };
+    };
+...
