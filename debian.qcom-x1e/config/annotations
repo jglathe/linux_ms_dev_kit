@@ -3769,6 +3769,7 @@ CONFIG_E1000                                    policy<{'arm64': 'm'}>
 CONFIG_E1000E                                   policy<{'arm64': 'm'}>
 CONFIG_ECRYPT_FS_MESSAGING                      policy<{'arm64': 'y'}>
 CONFIG_EC_ACER_ASPIRE1                          policy<{'arm64': 'm'}>
+CONFIG_EC_DELL_XPS                              policy<{'arm64': 'm'}>
 CONFIG_EC_HUAWEI_GAOKUN                         policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_C630                      policy<{'arm64': 'm'}>
@@ -9698,10 +9699,11 @@ CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SLICE_AS_FLATTENED             policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190107'}>
+CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108501'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_EVENTS                            policy<{'arm64': 'y'}>
