@@ -75,8 +75,8 @@
 #define I2C_HID_PWR_SLEEP	0x01
 
 /* polling intervals (still used by the polling thread) */
-#define I2C_HID_POLLING_INTERVAL_ACTIVE_US 4000
-#define I2C_HID_POLLING_INTERVAL_IDLE_MS 10
+#define I2C_HID_POLLING_INTERVAL_ACTIVE_US 2000
+#define I2C_HID_POLLING_INTERVAL_IDLE_MS 5
 
 static unsigned int polling_interval_active_us __read_mostly = I2C_HID_POLLING_INTERVAL_ACTIVE_US;
 module_param(polling_interval_active_us, uint, 0644);
@@ -535,10 +535,10 @@ static int i2c_hid_finish_hwreset(struct i2c_hid *ihid)
 	/*
 	 * In polling mode we never get the reset-complete packet via IRQ
 	 * because we never requested the IRQ. Treat it exactly like the
-	 * NO_IRQ_AFTER_RESET quirk + extra delay for Goodix.
+	 * NO_IRQ_AFTER_RESET quirk.
 	 */
 	if (ihid->use_polling) {
-		msleep(300);
+		msleep(100);
 		clear_bit(I2C_HID_RESET_PENDING, &ihid->flags);
 	} else if (ihid->quirks & I2C_HID_QUIRK_NO_IRQ_AFTER_RESET) {
 		msleep(100);
@@ -806,16 +806,6 @@ static int i2c_hid_parse(struct hid_device *hid)
 			msleep(1000);
 	} while (tries-- > 0 && ret);
 	mutex_unlock(&ihid->reset_lock);
-
-	/* Goodix touchpads (and other devices on shared IRQ lines) often stay
-	 * stuck in reset when we are in polling mode. This tiny delay after the
-	 * reset sequence makes them come alive reliably. Keyboard (IRQ mode) is
-	 * completely unaffected. */
-	if (ihid->use_polling && ret == 0) {
-		dev_dbg(&ihid->client->dev,
-			"polling mode: adding 30 ms stabilization delay after reset\n");
-		msleep(30);
-	}
 
 	if (ret)
 		return ret;

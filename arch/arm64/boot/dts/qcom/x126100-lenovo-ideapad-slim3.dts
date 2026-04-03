@@ -901,9 +901,7 @@
 
 		hid-descr-addr = <0x1>;
 		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-
-		pinctrl-0 = <&kybd_default>;
-		pinctrl-names = "default";
+		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
@@ -968,7 +966,9 @@
 
 		hid-descr-addr = <0x1>;
 		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&kybd_default>;
+		pinctrl-names = "default";
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
@@ -1453,22 +1453,6 @@
 			drive-strength = <2>;
 		};
 
-	};
-
-	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
-		oe-n-pins {
-			pins = "gpio179";
-			function = "gpio";
-			bias-pull-up;
-			drive-strength = <2>;
-		};
-
-		sel-pins {
-			pins = "gpio178";
-			function = "gpio";
-			bias-pull-up;
-			drive-strength = <2>;
-		};
 	};
 
 	wcd_default: wcd-reset-n-active-state {
