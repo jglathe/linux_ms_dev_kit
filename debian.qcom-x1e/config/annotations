@@ -8912,7 +8912,9 @@ CONFIG_QCOM_SMSM                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SOCINFO                             policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPM                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_SPMI_ADC5                           policy<{'arm64': 'm'}>
+CONFIG_QCOM_SPMI_ADC5_GEN3                      policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_ADC_TM5                        policy<{'arm64': 'm'}>
+CONFIG_QCOM_SPMI_ADC_TM5_GEN3                   policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_IADC                           policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_RRADC                          policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_TEMP_ALARM                     policy<{'arm64': 'm'}>
@@ -9699,11 +9701,10 @@ CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SLICE_AS_FLATTENED             policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190107'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108501'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_EVENTS                            policy<{'arm64': 'y'}>
