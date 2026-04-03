@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.6-jg-6) resolute; urgency=medium
+
+  * Add support for QCOM SPMI PMIC5 Gen3 ADC [Jishnu Prakash <jishnu.prakash@oss.qualcomm.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 03 Apr 2026 20:05:20 +0200
+
 linux-qcom-x1e (6.19.6-jg-5) resolute; urgency=medium
 
   * arm64: dts: qcom: x1e80100-dell-xps13-9345: introduce EC [Aleksandrs Vinarskis <alex@vinarskis.com>]
