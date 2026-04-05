@@ -212,20 +212,21 @@
 		regulator-boot-on;
 	};
 
-	vreg_nvme2: regulator-nvme2 {
+	vreg_pcie3_nvme: regulator-pcie3-nvme {
 		compatible = "regulator-fixed";
 
-		regulator-name = "VREG_NVME_3P3_2";
+		regulator-name = "VREG_PCIE3_NVME_3P3";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 
-		gpio = <&pmc8380_3_gpios 7 GPIO_ACTIVE_HIGH>;
+		gpio = <&pmc8380_3_gpios 5 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&nvme2_reg_en>;
+		pinctrl-0 = <&pcie3_nvme_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
+		startup-delay-us = <10000>;
 	};
 
 	vreg_wcn_0p95: regulator-wcn-0p95 {
@@ -895,19 +896,19 @@
 	pinctrl-names = "default";
 	status = "okay";
 
-	keyboard@3a {
-		compatible = "hid-over-i2c";
-		reg = <0x3a>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
+//	keyboard@3a {
+//		compatible = "hid-over-i2c";
+//		reg = <0x3a>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+//		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
 };
 
 &i2c19 {
@@ -965,6 +966,7 @@
 		reg = <0x5d>;
 
 		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&gpio67_irqmux 1>;
 		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
 
 		pinctrl-0 = <&kybd_default>;
@@ -1068,6 +1070,8 @@
 &pcie3 {
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+
+	vddpe-3v3-supply = <&vreg_pcie3_nvme>;
 
 	pinctrl-0 = <&pcie3_default>;
 	pinctrl-names = "default";
@@ -1177,12 +1181,15 @@
 		input-disable;
 		output-enable;
 	};
-	nvme2_reg_en: nvme2-reg-en-state {
-		pins = "gpio7";
+	pcie3_nvme_reg_en: pcie3-nvme-reg-en-state {
+		pins = "gpio5";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <0>;
 		input-disable;
 		output-enable;
+		drive-push-pull;
+		bias-disable;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
 	};
 };
 
@@ -1332,11 +1339,11 @@
 	};
 
 	kybd_default: kybd-default-state {
-	    pins = "gpio67";
-	    function = "gpio";
-	    bias-pull-up;
-	    drive-strength = <2>;
-	    input-enable;
+		pins = "gpio67";
+		function = "gpio";
+		bias-pull-up;
+		drive-strength = <2>;
+		input-enable;
 	};
 
 	nvme_reg_en: nvme-reg-en-state {
