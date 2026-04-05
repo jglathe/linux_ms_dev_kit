@@ -135,6 +135,7 @@ struct i2c_hid {
 
 	struct i2chid_ops	*ops;
 	bool			use_polling;
+	bool			blind_polling;
 	struct drm_panel_follower panel_follower;
 	struct work_struct	panel_follower_work;
 	bool			is_panel_follower;
@@ -949,6 +950,18 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 	unsigned int polling_interval_idle;
 
 	while (!kthread_should_stop()) {
+		if (ihid->blind_polling) {
+			/* Independent blind polling – no GPIO sense, just read the device */
+			mutex_lock(&ihid->buffer_lock);
+			i2c_hid_get_input(ihid);
+			mutex_unlock(&ihid->buffer_lock);
+
+			usleep_range(polling_interval_active_us,
+				     polling_interval_active_us + 100);
+			continue;
+		}
+
+		/* original GPIO-sense polling (unchanged) */
 		while (interrupt_line_active(ihid) &&
 		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
 		       !kthread_should_stop()) {
@@ -960,11 +973,6 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 				     polling_interval_active_us + 100);
 		}
 
-		/*
-		 * re-calculate polling_interval_idle
-		 * so the module parameters polling_interval_idle_ms can be
-		 * changed dynamically through sysfs
-		 */
 		polling_interval_idle = polling_interval_idle_ms * 1000;
 		usleep_range(polling_interval_idle,
 			     polling_interval_idle + 1000);
@@ -977,6 +985,18 @@ static int i2c_hid_init_polling(struct i2c_hid *ihid)
 {
 	struct i2c_client *client = ihid->client;
 	struct irq_data *irq_data;
+
+	if (ihid->blind_polling) {
+		/* Blind polling: no GPIO/IRQ data needed */
+		ihid->polling_thread = kthread_create(i2c_hid_polling_thread, ihid,
+						      "i2c-hid-polling-%s", client->name);
+		if (IS_ERR(ihid->polling_thread)) {
+			dev_err(&client->dev, "Failed to create blind polling thread");
+			return PTR_ERR(ihid->polling_thread);
+		}
+		wake_up_process(ihid->polling_thread);
+		return 0;
+	}
 
 	ihid->irq_trigger_type = irq_get_trigger_type(client->irq);
 	if (!ihid->irq_trigger_type) {
@@ -1047,10 +1067,10 @@ static int i2c_hid_init_irq(struct i2c_client *client)
 }
 
 /* 
- *   irq provided          → try to claim it (exclusive)
- *   claim fails           → fall back to polling (sense the IRQ gpio, never claim it)
- *   polling-gpios present → ALWAYS poll (never even try IRQ)
- *   nothing at all        → error, driver refuses to load
+ *   polling-gpios present          → GPIO-sense polling (shared IRQ case)
+ *   no IRQ provided in DT          → blind polling (independent kthread, no GPIO)
+ *   IRQ provided                   → try exclusive IRQ; on failure fall back to GPIO polling
+ *   nothing at all                 → now works (blind polling)
  */
 static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 {
@@ -1059,33 +1079,37 @@ static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 	int ret;
 
 	ihid->use_polling = false;
+	ihid->blind_polling = false;
 
-	/* 1. Explicit "this line is shared, poll only" (touchpad) */
+	/* 1. Explicit shared-line case */
 	if (device_property_present(dev, "polling-gpios")) {
-		dev_info(dev, "polling-gpios present → forcing polling mode (shared IRQ line)\n");
+		dev_info(dev, "polling-gpios present → forcing GPIO-sense polling mode\n");
 		ihid->use_polling = true;
 		goto polling;
 	}
 
-	/* 2. Normal exclusive IRQ path (keyboard) */
+	/* 2. No IRQ at all → enable blind/independent polling (your requested case) */
 	if (client->irq <= 0) {
-		dev_err(dev, "no IRQ and no polling-gpios – cannot continue\n");
-		return -EINVAL;
+		dev_info(dev, "no IRQ and no polling-gpios provided – enabling blind polling mode\n");
+		ihid->use_polling = true;
+		ihid->blind_polling = true;
+		goto polling;
 	}
 
+	/* 3. Normal exclusive IRQ path */
 	ret = i2c_hid_init_irq(client);
 	if (ret == 0) {
 		dev_info(dev, "using exclusive IRQ mode\n");
 		return 0;
 	}
 
-	dev_warn(dev, "IRQ request failed (%d) – falling back to GPIO polling on the IRQ line\n", ret);
+	dev_warn(dev, "IRQ request failed (%d) – falling back to GPIO polling\n", ret);
 
 polling:
 	ihid->use_polling = true;
 	ret = i2c_hid_init_polling(ihid);
 	if (ret == 0)
-		msleep(10);                 /* let polling thread settle before reset sequence */
+		msleep(10);                 /* let polling thread settle */
 	return ret;
 }
 
@@ -1436,17 +1460,17 @@ int i2c_hid_core_probe(struct i2c_client *client, struct i2chid_ops *ops,
 
 	dbg_hid("HID probe called for i2c 0x%02x\n", client->addr);
 
-	if (!client->irq) {
-		dev_err(&client->dev,
-			"HID over i2c has not been provided an Int IRQ\n");
-		return -EINVAL;
-	}
-
 	if (client->irq < 0) {
 		if (client->irq != -EPROBE_DEFER)
 			dev_err(&client->dev,
 				"HID over i2c doesn't have a valid IRQ\n");
 		return client->irq;
+	}
+	if (client->irq == 0) {
+		dev_info(&client->dev,
+			 "no IRQ provided – enabling blind polling mode\n");
+	} else {
+		dev_dbg(&client->dev, "IRQ %d provided\n", client->irq);
 	}
 
 	ihid = devm_kzalloc(&client->dev, sizeof(*ihid), GFP_KERNEL);
