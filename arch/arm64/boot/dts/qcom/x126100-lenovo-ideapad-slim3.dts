@@ -31,6 +31,7 @@
 
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9385-codec";
+		#sound-dai-cells = <1>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_default>;
@@ -51,8 +52,6 @@
 		vdd-rxtx-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l15b_1p8>;
 		vdd-mic-bias-supply = <&vreg_bob1>;
-
-		#sound-dai-cells = <1>;
 	};
 
 	gpio-keys {
@@ -70,15 +69,54 @@
 		};
 	};
 
+	hdmi-bridge {
+		compatible = "realtek,rtd2171";
+
+		pinctrl-0 = <&hdmi_hpd_default>;
+		pinctrl-names = "default";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hdmi_bridge_dp_in: endpoint {
+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				hdmi_bridge_tmds_out: endpoint {
+					remote-endpoint = <&hdmi_con>;
+				};
+			};
+		};
+	};
+
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con: endpoint {
+				remote-endpoint = <&hdmi_bridge_tmds_out>;
+			};
+		};
+	};
+
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
 				"qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
-				<&tlmm 123 GPIO_ACTIVE_HIGH>;
+				<&tlmm 123 GPIO_ACTIVE_HIGH>,
+				<&tlmm 125 GPIO_ACTIVE_HIGH>;
 
-		/* Display-adjacent port */
 		connector@0 {
 			compatible = "usb-c-connector";
 			reg = <0>;
@@ -114,43 +152,144 @@
 				};
 			};
 		};
+	};
 
-		/* User-adjacent port */
-		connector@1 {
-			compatible = "usb-c-connector";
-			reg = <1>;
-			power-role = "dual";
-			data-role = "host";
-
-			ports {
-				#address-cells = <1>;
-				#size-cells = <0>;
-
-				port@0 {
-					reg = <0>;
-
-					pmic_glink_ss1_hs_in: endpoint {
-						remote-endpoint = <&usb_1_ss1_dwc3_hs>;
-					};
-				};
-
-				port@1 {
-					reg = <1>;
-
-					pmic_glink_ss1_ss_in: endpoint {
-						remote-endpoint = <&usb_1_ss1_qmpphy_out>;
-					};
-				};
-
-				port@2 {
-					reg = <2>;
-
-					pmic_glink_ss1_sbu: endpoint {
-						remote-endpoint = <&usb_1_ss1_sbu_mux>;
-					};
-				};
-			};
+	reserved-memory {
+		linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x0 0x8000000>;
+			reusable;
+			linux,cma-default;
 		};
+	};
+
+	vreg_edp_3p3: regulator-edp-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_EDP_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 70 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&edp_reg_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+	};
+
+	vreg_misc_3p3: regulator-misc-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_MISC_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&pm8550ve_8_gpios 6 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&misc_3p3_reg_en>;
+
+		regulator-boot-on;
+		regulator-always-on;
+	};
+
+	vreg_nvme: regulator-nvme {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_NVME_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 18 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&nvme_reg_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+	};
+
+	vreg_pcie3_nvme: regulator-pcie3-nvme {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_PCIE3_NVME_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&pmc8380_3_gpios 5 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&pcie3_nvme_reg_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+		startup-delay-us = <10000>;
+	};
+
+	vreg_wcn_0p95: regulator-wcn-0p95 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_0P95";
+		regulator-min-microvolt = <950000>;
+		regulator-max-microvolt = <950000>;
+
+		vin-supply = <&vreg_wcn_3p3>;
+	};
+
+	vreg_wcn_1p9: regulator-wcn-1p9 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_1P9";
+		regulator-min-microvolt = <1900000>;
+		regulator-max-microvolt = <1900000>;
+
+		vin-supply = <&vreg_wcn_3p3>;
+	};
+
+	vreg_wcn_3p3: regulator-wcn-3p3 {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VREG_WCN_3P3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&wcn_sw_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+	};
+
+	vreg_wwan: regulator-wwan {
+		compatible = "regulator-fixed";
+
+		regulator-name = "VCC3B_WAN_RCM";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+
+		gpio = <&tlmm 221 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+
+		pinctrl-0 = <&wwan_sw_en>;
+		pinctrl-names = "default";
+
+		regulator-boot-on;
+	};
+
+	vph_pwr: regulator-vph-pwr {
+		compatible = "regulator-fixed";
+
+		regulator-name = "vph_pwr";
+		regulator-min-microvolt = <3700000>;
+		regulator-max-microvolt = <3700000>;
+
+		regulator-always-on;
+		regulator-boot-on;
 	};
 
 	sound {
@@ -163,9 +302,41 @@
 				"AMIC2", "MIC BIAS2",
 				"VA DMIC0", "MIC BIAS3",
 				"VA DMIC1", "MIC BIAS3",
-				"VA DMIC2", "VA MIC BIAS1",
-				"VA DMIC3", "VA MIC BIAS1",
+				"VA DMIC0", "VA MIC BIAS1",
+				"VA DMIC1", "VA MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
+
+		displayport-0-dai-link {
+			link-name = "DisplayPort0 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		displayport-2-dai-link {
+			link-name = "DisplayPort2 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp2>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
 
 		wcd-playback-dai-link {
 			link-name = "WCD Playback";
@@ -251,151 +422,15 @@
 		};
 	};
 
-	usb-1-ss1-sbu-mux {
-		compatible = "onnn,fsusb42", "gpio-sbu-mux";
+	wcn7850-pmu {
+		compatible = "qcom,wcn7850-pmu";
 
-		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-0 = <&usb_1_ss1_sbu_default>;
-		pinctrl-names = "default";
-
-		mode-switch;
-		orientation-switch;
-
-		port {
-			usb_1_ss1_sbu_mux: endpoint {
-				remote-endpoint = <&pmic_glink_ss1_sbu>;
-			};
-		};
-	};
-
-
-	vreg_edp_3p3: regulator-edp-3p3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_EDP_3P3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&tlmm 70 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&edp_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_misc_3p3: regulator-misc-3p3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_MISC_3P3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&pm8550ve_8_gpios 6 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&misc_3p3_reg_en>;
-
-		regulator-boot-on;
-		regulator-always-on;
-	};
-
-	vreg_nvme: regulator-nvme {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_NVME_3P3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&tlmm 18 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&nvme_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_wcn_0p95: regulator-wcn-0p95 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_WCN_0P95";
-		regulator-min-microvolt = <950000>;
-		regulator-max-microvolt = <950000>;
-
-		vin-supply = <&vreg_wcn_3p3>;
-	};
-
-	vreg_wcn_1p9: regulator-wcn-1p9 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_WCN_1P9";
-		regulator-min-microvolt = <1900000>;
-		regulator-max-microvolt = <1900000>;
-
-		vin-supply = <&vreg_wcn_3p3>;
-	};
-
-	vreg_wcn_3p3: regulator-wcn-3p3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_WCN_3P3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&tlmm 214 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&wcn_sw_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_wwan: regulator-wwan {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VCC3B_WAN_RCM";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&tlmm 221 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&wwan_sw_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vph_pwr: regulator-vph-pwr {
-		compatible = "regulator-fixed";
-
-		regulator-name = "vph_pwr";
-		regulator-min-microvolt = <3700000>;
-		regulator-max-microvolt = <3700000>;
-
-		regulator-always-on;
-		regulator-boot-on;
-	};
-
-	wcn6855-pmu {
-		compatible = "qcom,wcn6855-pmu";
-
+		vdd-supply = <&vreg_wcn_0p95>;
+		vddio-supply = <&vreg_l15b_1p8>;
 		vddaon-supply = <&vreg_wcn_0p95>;
-		vddio-supply = <&vreg_wcn_1p9>;
-		vddpcie1p3-supply = <&vreg_wcn_1p9>;
-		vddpcie1p9-supply = <&vreg_wcn_1p9>;
-		vddpmu-supply = <&vreg_wcn_0p95>;
-		vddpmumx-supply = <&vreg_wcn_0p95>;
-		vddpmucx-supply = <&vreg_wcn_0p95>;
-		vddrfa0p95-supply = <&vreg_wcn_0p95>;
-		vddrfa1p3-supply = <&vreg_wcn_1p9>;
-		vddrfa1p9-supply = <&vreg_wcn_1p9>;
+		vdddig-supply = <&vreg_wcn_0p95>;
+		vddrfa1p2-supply = <&vreg_wcn_1p9>;
+		vddrfa1p8-supply = <&vreg_wcn_1p9>;
 
 		wlan-enable-gpios = <&tlmm 117 GPIO_ACTIVE_HIGH>;
 		bt-enable-gpios = <&tlmm 116 GPIO_ACTIVE_HIGH>;
@@ -404,44 +439,44 @@
 		pinctrl-names = "default";
 
 		regulators {
-			vreg_pmu_rfa_cmn_0p8: ldo0 {
-				regulator-name = "vreg_pmu_rfa_cmn_0p8";
+			vreg_pmu_rfa_cmn: ldo0 {
+				regulator-name = "vreg_pmu_rfa_cmn";
 			};
 
-			vreg_pmu_aon_0p8: ldo1 {
-				regulator-name = "vreg_pmu_aon_0p8";
+			vreg_pmu_aon_0p59: ldo1 {
+				regulator-name = "vreg_pmu_aon_0p59";
 			};
 
 			vreg_pmu_wlcx_0p8: ldo2 {
 				regulator-name = "vreg_pmu_wlcx_0p8";
 			};
 
-			vreg_pmu_wlmx_0p8: ldo3 {
-				regulator-name = "vreg_pmu_wlmx_0p8";
+			vreg_pmu_wlmx_0p85: ldo3 {
+				regulator-name = "vreg_pmu_wlmx_0p85";
 			};
 
-			vreg_pmu_btcmx_0p8: ldo4 {
-				regulator-name = "vreg_pmu_btcmx_0p8";
+			vreg_pmu_btcmx_0p85: ldo4 {
+				regulator-name = "vreg_pmu_btcmx_0p85";
 			};
 
-			vreg_pmu_pcie_1p8: ldo5 {
-				regulator-name = "vreg_pmu_pcie_1p8";
-			};
-
-			vreg_pmu_pcie_0p9: ldo6 {
-				regulator-name = "vreg_pmu_pcie_0p9";
-			};
-
-			vreg_pmu_rfa_0p8: ldo7 {
+			vreg_pmu_rfa_0p8: ldo5 {
 				regulator-name = "vreg_pmu_rfa_0p8";
 			};
 
-			vreg_pmu_rfa_1p2: ldo8 {
+			vreg_pmu_rfa_1p2: ldo6 {
 				regulator-name = "vreg_pmu_rfa_1p2";
 			};
 
-			vreg_pmu_rfa_1p7: ldo9 {
-				regulator-name = "vreg_pmu_rfa_1p7";
+			vreg_pmu_rfa_1p8: ldo7 {
+				regulator-name = "vreg_pmu_rfa_1p8";
+			};
+
+			vreg_pmu_pcie_0p9: ldo8 {
+				regulator-name = "vreg_pmu_pcie_0p9";
+			};
+
+			vreg_pmu_pcie_1p8: ldo9 {
+				regulator-name = "vreg_pmu_pcie_1p8";
 			};
 		};
 	};
@@ -857,15 +892,81 @@
 &i2c9 {
 	clock-frequency = <400000>;
 
-//	pinctrl-0 = <&qup_i2c9_data_clk>, <&kybd_default>;
-//	pinctrl-names = "default";
+	pinctrl-0 = <&qup_i2c9_data_clk>;
+	pinctrl-names = "default";
 	status = "okay";
 
-	keyboard@3a {
+//	keyboard@3a {
+//		compatible = "hid-over-i2c";
+//		reg = <0x3a>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+//		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
+};
+
+&i2c19 {
+	clock-frequency = <400000>;
+
+	pinctrl-0 = <&qup_i2c19_data_clk>;
+	pinctrl-names = "default";
+	status = "okay";
+
+//	/* ELAN06FA */
+//	touchpad@15 {
+//		compatible = "hid-over-i2c";
+//		reg = <0x15>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&gpio67_irqmux 1>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
+//
+//	/* CIRQ1080 or SYNA2BA6 */
+//	touchpad@2c {
+//		compatible = "hid-over-i2c";
+//		reg = <0x2c>;
+//
+//		hid-descr-addr = <0x20>;
+//		interrupts-extended = <&gpio67_irqmux 1>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
+//
+//	/* FTCS0038 */
+//	touchpad@38 {
+//		compatible = "hid-over-i2c";
+//		reg = <0x38>;
+//
+//		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&gpio67_irqmux 1>;
+//
+//		vdd-supply = <&vreg_misc_3p3>;
+//		vddl-supply = <&vreg_l12b_1p2>;
+//
+//		wakeup-source;
+//	};
+
+	/* GXTP5100 */
+	touchpad@5d {
 		compatible = "hid-over-i2c";
-		reg = <0x3a>;
+		reg = <0x5d>;
 
 		hid-descr-addr = <0x1>;
+//		interrupts-extended = <&gpio67_irqmux 1>;
 		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
 
 		pinctrl-0 = <&kybd_default>;
@@ -878,72 +979,10 @@
 	};
 };
 
-&i2c19 {
-	clock-frequency = <400000>;
-
-//	pinctrl-0 = <&qup_i2c19_data_clk>;
-//	pinctrl-names = "default";
-	status = "okay";
-
-//	/* ELAN06FA */
-//	touchpad@15 {
-//		compatible = "hid-over-i2c";
-//		reg = <0x15>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
-
-//	/* CIRQ1080 or SYNA2BA6 */
-//	touchpad@2c {
-//		compatible = "hid-over-i2c";
-//		reg = <0x2c>;
-//
-//		hid-descr-addr = <0x20>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
-
-	/* FTCS0038 */
-	touchpad@38 {
-		compatible = "hid-over-i2c";
-		reg = <0x38>;
-
-		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		pinctrl-0 = <&tpad_default>;
-//		pinctrl-names = "default";
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-//	/* GXTP5100 */
-//	touchpad@5d {
-//		compatible = "hid-over-i2c";
-//		reg = <0x5d>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
-};
+//&iris {
+//	firmware-name = "qcom/x1p42100/LENOVO/83N3/qcvss8380.mbn";
+//	status = "okay";
+//};
 
 &lpass_tlmm {
 	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
@@ -956,7 +995,7 @@
 };
 
 &lpass_vamacro {
-	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
+	pinctrl-0 = <&dmic01_default>;
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
@@ -968,20 +1007,22 @@
 };
 
 &mdss_dp0 {
+	sound-name-prefix = "DisplayPort0";
+
 	status = "okay";
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
-&mdss_dp1 {
+&mdss_dp2 {
+	sound-name-prefix = "DisplayPort2";
+
 	status = "okay";
 };
 
-&mdss_dp1_out {
-	data-lanes = <0 1 2 3>;
+&mdss_dp2_out {
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -994,7 +1035,7 @@
 	status = "okay";
 
 	aux-bus {
-		panel {
+		panel: panel {
 			compatible = "edp-panel";
 
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
@@ -1026,6 +1067,27 @@
 	status = "okay";
 };
 
+&pcie3 {
+	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+
+	vddpe-3v3-supply = <&vreg_pcie3_nvme>;
+
+	pinctrl-0 = <&pcie3_default>;
+	pinctrl-names = "default";
+
+	max-link-speed = <1>;
+	status = "okay";
+};
+
+&pcie3_phy {
+	vdda-phy-supply = <&vreg_l3c_0p8>;
+	vdda-pll-supply = <&vreg_l3e_1p2>;
+	vdda-qref-supply = <&vreg_l3j_0p8>;
+
+	status = "okay";
+};
+
 &pcie4 {
 	perst-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
@@ -1048,15 +1110,15 @@
 		compatible = "pci17cb,1107";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
 
-		vddaon-supply = <&vreg_pmu_aon_0p8>;
-		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
-		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+		vddaon-supply = <&vreg_pmu_aon_0p59>;
+		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
 		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
-		vddrfacmn-supply = <&vreg_pmu_rfa_cmn_0p8>;
-		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-		vddwlmx-supply = <&vreg_pmu_wlmx_0p8>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
+		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
+		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
 	};
 };
 
@@ -1103,9 +1165,9 @@
 		pins = "gpio6";
 		function = "normal";
 		bias-disable;
+		drive-push-pull;
 		input-disable;
 		output-enable;
-		drive-push-pull;
 		power-source = <1>; /* 1.8 V */
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
 	};
@@ -1118,6 +1180,16 @@
 		power-source = <1>; /* 1.8V */
 		input-disable;
 		output-enable;
+	};
+	pcie3_nvme_reg_en: pcie3-nvme-reg-en-state {
+		pins = "gpio5";
+		function = "normal";
+		power-source = <0>;
+		input-disable;
+		output-enable;
+		drive-push-pull;
+		bias-disable;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
 	};
 };
 
@@ -1147,19 +1219,6 @@
 	status = "okay";
 };
 
-&sdhc_2 {
-	cd-gpios = <&tlmm 71 GPIO_ACTIVE_LOW>;
-	pinctrl-0 = <&sdc2_default &sdc2_card_det_n>;
-	pinctrl-1 = <&sdc2_sleep &sdc2_card_det_n>;
-	pinctrl-names = "default", "sleep";
-	vmmc-supply = <&vreg_l9b_2p9>;
-	vqmmc-supply = <&vreg_l6b_1p8>;
-//	bus-width = <4>;
-//	no-sdio;
-//	no-mmc;
-	status = "okay";
-};
-
 &smb2360_0 {
 	status = "okay";
 };
@@ -1169,11 +1228,20 @@
 	vdd3-supply = <&vreg_l2b_3p0>;
 };
 
+&smb2360_1 {
+	status = "okay";
+};
+
+&smb2360_1_eusb2_repeater {
+	vdd18-supply = <&vreg_l3d_1p8>;
+	vdd3-supply = <&vreg_l14b_3p0>;
+};
+
 &swr0 {
+	status = "okay";
+
 	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
 	pinctrl-names = "default";
-
-	status = "okay";
 
 	/* WSA8845, Left Speaker */
 	left_spkr: speaker@0,0 {
@@ -1264,16 +1332,18 @@
 		bias-disable;
 	};
 
-	hdmi_hpd_default: hdmi-hpd-state {
+	hdmi_hpd_default: hdmi-hpd-default-state {
 		pins = "gpio126";
-		function = "gpio";
-		bias-pull-down;
+		function = "usb2_dp";
+		bias-disable;
 	};
 
 	kybd_default: kybd-default-state {
 		pins = "gpio67";
 		function = "gpio";
-		bias-disable;
+		bias-pull-up;
+		drive-strength = <2>;
+		input-enable;
 	};
 
 	nvme_reg_en: nvme-reg-en-state {
@@ -1281,6 +1351,29 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
+	};
+
+	pcie3_default: pcie3-default-state {
+		clkreq-n-pins {
+			pins = "gpio144";
+			function = "pcie3_clk";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		perst-n-pins {
+			pins = "gpio143";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		wake-n-pins {
+			pins = "gpio145";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
 	};
 
 	pcie4_default: pcie4-default-state {
@@ -1352,20 +1445,6 @@
 		};
 	};
 
-	sdc2_card_det_n: sdc2-card-det-state {
-		pins = "gpio71";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-pull-up;
-	};
-
-//	tpad_default: tpad-default-state {
-//		pins = "gpio67";
-//		function = "gpio";
-//		bias-pull-up;
-//		drive-strength = <2>;
-//	};
-
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
 		oe-n-pins {
 			pins = "gpio168";
@@ -1377,26 +1456,10 @@
 		sel-pins {
 			pins = "gpio167";
 			function = "gpio";
-			bias-pul-up;
-			drive-strength = <2>;
-		};
-
-	};
-
-	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
-		oe-n-pins {
-			pins = "gpio179";
-			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
-		sel-pins {
-			pins = "gpio178";
-			function = "gpio";
-			bias-pull-up;
-			drive-strength = <2>;
-		};
 	};
 
 	wcd_default: wcd-reset-n-active-state {
@@ -1410,7 +1473,7 @@
 	wcn_sw_en: wcn-sw-en-state {
 		pins = "gpio214";
 		function = "gpio";
-		drive-strength = <16>;
+		drive-strength = <2>;
 		bias-disable;
 	};
 
@@ -1433,17 +1496,16 @@
 	status = "okay";
 
 	bluetooth {
-		compatible = "qcom,wcn6855-bt";
+		compatible = "qcom,wcn7850-bt";
 		max-speed = <3200000>;
 
-		vddrfacmn-supply = <&vreg_pmu_rfa_cmn_0p8>;
-		vddaon-supply = <&vreg_pmu_aon_0p8>;
+		vddaon-supply = <&vreg_pmu_aon_0p59>;
 		vddwlcx-supply = <&vreg_pmu_wlcx_0p8>;
-		vddwlmx-supply = <&vreg_pmu_wlmx_0p8>;
-		vddbtcmx-supply = <&vreg_pmu_btcmx_0p8>;
+		vddwlmx-supply = <&vreg_pmu_wlmx_0p85>;
+		vddrfacmn-supply = <&vreg_pmu_rfa_cmn>;
 		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
+		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 	};
 };
 
@@ -1457,7 +1519,7 @@
 };
 
 &usb_1_ss0_qmpphy {
-	vdda-phy-supply = <&vreg_l3e_1p2>;
+	vdda-phy-supply = <&vreg_l2j_1p2>;
 	vdda-pll-supply = <&vreg_l1j_0p8>;
 
 	status = "okay";
@@ -1488,13 +1550,6 @@
 	status = "okay";
 };
 
-&usb_1_ss1_qmpphy {
-	vdda-phy-supply = <&vreg_l2j_1p2>;
-	vdda-pll-supply = <&vreg_l2d_0p9>;
-
-	status = "okay";
-};
-
 &usb_1_ss1 {
 	status = "okay";
 };
@@ -1503,44 +1558,33 @@
 	dr_mode = "host";
 };
 
-&usb_1_ss1_dwc3_hs {
-	remote-endpoint = <&pmic_glink_ss1_hs_in>;
-};
+&usb_1_ss2_qmpphy {
+	vdda-phy-supply = <&vreg_l2j_1p2>;
+	vdda-pll-supply = <&vreg_l2d_0p9>;
 
-&usb_1_ss1_qmpphy_out {
-	remote-endpoint = <&pmic_glink_ss1_ss_in>;
-};
-
-&usb_1_ss2 {
-	status = "okay";
-};
-
-&usb_1_ss2_dwc3 {
-	dr_mode = "host";
-	maximum-speed = "high-speed";
-	phys = <&usb_1_ss2_hsphy>;
-	phy-names = "usb2-phy";
-};
-
-&usb_1_ss2_hsphy {
-	vdd-supply = <&vreg_l3j_0p8>;
-	vdda12-supply = <&vreg_l2j_1p2>;
-
-	phys = <&eusb5_repeater>;
+	/delete-property/ mode-switch;
+	/delete-property/ orientation-switch;
 
 	status = "okay";
+
+	ports {
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint;
+
+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
+				reg = <0>;
+
+//				data-lanes = <3 2 1 0>;
+				remote-endpoint = <&hdmi_bridge_dp_in>;
+			};
+
+			/* No USB3 lanes connected */
+		};
+	};
 };
-
-//&usb_1_ss2_qmpphy {
-//	vdda-phy-supply = <&vreg_l2j_1p2>;
-//	vdda-pll-supply = <&vreg_l2d_0p9>;
-//
-//	status = "okay";
-//};
-
-//&usb_1_ss2_qmpphy_out {
-//	remote-endpoint = <&dp_connector_in>;
-//};
 
 &usb_2 {
 	status = "okay";
@@ -1572,18 +1616,18 @@
 	status = "okay";
 };
 
-&usb_mp_qmpphy0 {
-	vdda-phy-supply = <&vreg_l3e_1p2>;
-	vdda-pll-supply = <&vreg_l3c_0p8>;
-
-	status = "okay";
-};
-
 &usb_mp_hsphy1 {
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
 	phys = <&eusb3_repeater>;
+
+	status = "okay";
+};
+
+&usb_mp_qmpphy0 {
+	vdda-phy-supply = <&vreg_l3e_1p2>;
+	vdda-pll-supply = <&vreg_l3c_0p8>;
 
 	status = "okay";
 };
