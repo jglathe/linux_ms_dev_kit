@@ -115,7 +115,7 @@ struct i2c_hid_desc {
 struct i2c_hid {
 	struct i2c_client	*client;	/* i2c client */
 	struct hid_device	*hid;	/* pointer to corresponding HID dev */
-	struct i2c_hid_desc hdesc;		/* the HID Descriptor */
+	struct i2c_hid_desc	hdesc;		/* the HID Descriptor */
 	__le16			wHIDDescRegister; /* location of the i2c
 						   * register of the HID
 						   * descriptor. */
@@ -136,6 +136,7 @@ struct i2c_hid {
 	struct i2chid_ops	*ops;
 	bool			use_polling;
 	bool			blind_polling;
+	bool			reset_completed;
 	struct drm_panel_follower panel_follower;
 	struct work_struct	panel_follower_work;
 	bool			is_panel_follower;
@@ -557,6 +558,8 @@ static int i2c_hid_finish_hwreset(struct i2c_hid *ihid)
 	if (!(ihid->quirks & I2C_HID_QUIRK_NO_WAKEUP_AFTER_RESET))
 		ret = i2c_hid_set_power(ihid, I2C_HID_PWR_ON);
 
+	WRITE_ONCE(ihid->reset_completed, true);
+
 	return ret;
 }
 
@@ -944,14 +947,20 @@ static bool interrupt_line_active(struct i2c_hid *ihid)
 	return status;
 }
 
-static int i2c_hid_polling_thread(void *i2c_hid)
+static int i2c_hid_polling_thread(void *data)
 {
-	struct i2c_hid *ihid = i2c_hid;
-	unsigned int polling_interval_idle;
+	struct i2c_hid *ihid = data;
+	unsigned int idle_interval_us;
 
 	while (!kthread_should_stop()) {
+		/* Wait until device has finished its hardware reset */
+		if (!READ_ONCE(ihid->reset_completed)) {
+			usleep_range(5000, 10000);
+			continue;
+		}
+
 		if (ihid->blind_polling) {
-			/* Independent blind polling – no GPIO sense, just read the device */
+			/* Blind polling (sub-case of sense polling) */
 			mutex_lock(&ihid->buffer_lock);
 			i2c_hid_get_input(ihid);
 			mutex_unlock(&ihid->buffer_lock);
@@ -961,10 +970,11 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 			continue;
 		}
 
-		/* original GPIO-sense polling (unchanged) */
+		/* GPIO-sense polling path */
 		while (interrupt_line_active(ihid) &&
 		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
 		       !kthread_should_stop()) {
+
 			mutex_lock(&ihid->buffer_lock);
 			i2c_hid_get_input(ihid);
 			mutex_unlock(&ihid->buffer_lock);
@@ -973,9 +983,9 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 				     polling_interval_active_us + 100);
 		}
 
-		polling_interval_idle = polling_interval_idle_ms * 1000;
-		usleep_range(polling_interval_idle,
-			     polling_interval_idle + 1000);
+		/* Idle sleep when line is not active */
+		idle_interval_us = polling_interval_idle_ms * 1000;
+		usleep_range(idle_interval_us, idle_interval_us + 1000);
 	}
 
 	return 0;
@@ -984,47 +994,11 @@ static int i2c_hid_polling_thread(void *i2c_hid)
 static int i2c_hid_init_polling(struct i2c_hid *ihid)
 {
 	struct i2c_client *client = ihid->client;
-	struct irq_data *irq_data;
-
-	if (ihid->blind_polling) {
-		/* Blind polling: no GPIO/IRQ data needed */
-		ihid->polling_thread = kthread_create(i2c_hid_polling_thread, ihid,
-						      "i2c-hid-polling-%s", client->name);
-		if (IS_ERR(ihid->polling_thread)) {
-			dev_err(&client->dev, "Failed to create blind polling thread");
-			return PTR_ERR(ihid->polling_thread);
-		}
-		wake_up_process(ihid->polling_thread);
-		return 0;
-	}
-
-	ihid->irq_trigger_type = irq_get_trigger_type(client->irq);
-	if (!ihid->irq_trigger_type) {
-		dev_dbg(&client->dev, "Failed to get IRQ trigger type for %s",
-			client->name);
-		return -EINVAL;
-	}
-
-	irq_data = irq_get_irq_data(client->irq);
-	if (!irq_data) {
-		dev_err(&client->dev, "Failed to get irq_data for %s", client->name);
-		return -EINVAL;
-	}
-
-	ihid->gpio_chip = irq_data_get_irq_chip_data(irq_data);
-	if (!ihid->gpio_chip) {
-		dev_err(&client->dev, "Failed to get gpio_chip for IRQ %d on %s",
-			client->irq, client->name);
-		return -EINVAL;
-	}
-
-	ihid->gpio_hwirq = irq_data->hwirq;
 
 	ihid->polling_thread = kthread_create(i2c_hid_polling_thread, ihid,
 					      "i2c-hid-polling-%s", client->name);
-
 	if (IS_ERR(ihid->polling_thread)) {
-		dev_err(&client->dev, "Failed to create I2C HID polling thread");
+		dev_err(&client->dev, "Failed to create polling thread\n");
 		return PTR_ERR(ihid->polling_thread);
 	}
 
@@ -1080,36 +1054,35 @@ static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 
 	ihid->use_polling = false;
 	ihid->blind_polling = false;
+	ihid->reset_completed = false;
 
-	/* 1. Explicit shared-line case */
+	/* Case 1: explicit shared-line polling-gpios */
 	if (device_property_present(dev, "polling-gpios")) {
-		dev_info(dev, "polling-gpios present → forcing GPIO-sense polling mode\n");
+		dev_info(dev, "polling-gpios present, use GPIO-sense polling mode\n");
 		ihid->use_polling = true;
-		goto polling;
+		goto start_polling;
 	}
 
-	/* 2. No IRQ at all → enable blind/independent polling (your requested case) */
-	if (client->irq <= 0) {
-		dev_info(dev, "no IRQ and no polling-gpios provided – enabling blind polling mode\n");
+	/* Case 2: no IRQ at all → blind polling (Lenovo keyboard@3a) */
+	if (client->irq == 0) {
+		dev_info(dev, "no IRQ provided, use blind polling mode\n");
 		ihid->use_polling = true;
 		ihid->blind_polling = true;
-		goto polling;
+		goto start_polling;
 	}
 
-	/* 3. Normal exclusive IRQ path */
+	/* Case 3: normal exclusive IRQ path */
 	ret = i2c_hid_init_irq(client);
 	if (ret == 0) {
 		dev_info(dev, "using exclusive IRQ mode\n");
 		return 0;
 	}
 
-	dev_warn(dev, "IRQ request failed (%d) – falling back to GPIO polling\n", ret);
+	dev_warn(dev, "IRQ request failed (%d), falling back to GPIO polling\n", ret);
 
-polling:
+start_polling:
 	ihid->use_polling = true;
 	ret = i2c_hid_init_polling(ihid);
-	if (ret == 0)
-		msleep(10);                 /* let polling thread settle */
 	return ret;
 }
 
