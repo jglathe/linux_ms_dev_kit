@@ -137,6 +137,7 @@ struct i2c_hid {
 	bool			use_polling;
 	bool			blind_polling;
 	bool			reset_completed;
+	bool			polling_active;
 	struct drm_panel_follower panel_follower;
 	struct work_struct	panel_follower_work;
 	bool			is_panel_follower;
@@ -950,27 +951,37 @@ static bool interrupt_line_active(struct i2c_hid *ihid)
 static int i2c_hid_polling_thread(void *data)
 {
 	struct i2c_hid *ihid = data;
-	unsigned int idle_interval_us;
+	unsigned int interval_us;
 
 	while (!kthread_should_stop()) {
-		/* Wait until device has finished its hardware reset */
+		/* Wait until device has finished hardware reset */
 		if (!READ_ONCE(ihid->reset_completed)) {
 			usleep_range(5000, 10000);
 			continue;
 		}
 
 		if (ihid->blind_polling) {
-			/* Blind polling (sub-case of sense polling) */
+			/* Lazy polling for keyboard: slow until first keypress */
+			if (!ihid->polling_active) {
+				/* Very slow poll while waiting for EC to arm touchpad */
+				usleep_range(100000, 120000);	/* 100-120 ms */
+			} else {
+				/* Normal fast polling after first keystroke */
+				interval_us = polling_interval_active_us;
+			}
+
 			mutex_lock(&ihid->buffer_lock);
 			i2c_hid_get_input(ihid);
 			mutex_unlock(&ihid->buffer_lock);
 
-			usleep_range(polling_interval_active_us,
-				     polling_interval_active_us + 100);
+			/* If we just received a real report, switch to fast mode */
+			if (!ihid->polling_active && ihid->hid && ihid->hid->claimed)
+				ihid->polling_active = true;
+
 			continue;
 		}
 
-		/* GPIO-sense polling path */
+		/* Normal GPIO-sense polling (touchpad) */
 		while (interrupt_line_active(ihid) &&
 		       !test_bit(I2C_HID_READ_PENDING, &ihid->flags) &&
 		       !kthread_should_stop()) {
@@ -983,9 +994,9 @@ static int i2c_hid_polling_thread(void *data)
 				     polling_interval_active_us + 100);
 		}
 
-		/* Idle sleep when line is not active */
-		idle_interval_us = polling_interval_idle_ms * 1000;
-		usleep_range(idle_interval_us, idle_interval_us + 1000);
+		/* Idle sleep for GPIO-sense path */
+		interval_us = polling_interval_idle_ms * 1000;
+		usleep_range(interval_us, interval_us + 1000);
 	}
 
 	return 0;
@@ -1055,6 +1066,7 @@ static int i2c_hid_setup_interrupt(struct i2c_hid *ihid)
 	ihid->use_polling = false;
 	ihid->blind_polling = false;
 	ihid->reset_completed = false;
+	ihid->polling_active = false;
 
 	/* Case 1: explicit shared-line polling-gpios */
 	if (device_property_present(dev, "polling-gpios")) {
