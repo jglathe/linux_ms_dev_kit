@@ -226,7 +226,7 @@
 		pinctrl-names = "default";
 
 		regulator-boot-on;
-		startup-delay-us = <10000>;
+		startup-delay-us = <100000>;
 	};
 
 	vreg_wcn_0p95: regulator-wcn-0p95 {
@@ -906,19 +906,21 @@
 	pinctrl-names = "default";
 	status = "okay";
 
-//	keyboard@3a {
-//		compatible = "hid-over-i2c";
-//		reg = <0x3a>;
-//
-//		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-//		polling-gpios = <&tlmm 67 GPIO_ACTIVE_LOW>;
-//
-//		vdd-supply = <&vreg_misc_3p3>;
-//		vddl-supply = <&vreg_l12b_1p2>;
-//
-//		wakeup-source;
-//	};
+	keyboard@3a {
+		compatible = "hid-over-i2c";
+		reg = <0x3a>;
+
+		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&kybd_default>;
+		pinctrl-names = "default";
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		wakeup-source;
+	};
 };
 
 &i2c19 {
@@ -976,16 +978,10 @@
 		reg = <0x5d>;
 
 		hid-descr-addr = <0x1>;
-//		interrupts-extended = <&gpio67_irqmux 1>;
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-
-		pinctrl-0 = <&kybd_default>;
-		pinctrl-names = "default";
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
 
-		wakeup-source;
 	};
 };
 
@@ -1236,15 +1232,6 @@
 &smb2360_0_eusb2_repeater {
 	vdd18-supply = <&vreg_l3d_1p8>;
 	vdd3-supply = <&vreg_l2b_3p0>;
-};
-
-&smb2360_1 {
-	status = "okay";
-};
-
-&smb2360_1_eusb2_repeater {
-	vdd18-supply = <&vreg_l3d_1p8>;
-	vdd3-supply = <&vreg_l14b_3p0>;
 };
 
 &swr0 {
@@ -1561,7 +1548,7 @@
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
 
-	phys = <&smb2360_1_eusb2_repeater>;
+	phys = <&eusb5_repeater>;
 
 	status = "okay";
 };
