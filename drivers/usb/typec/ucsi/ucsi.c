@@ -2092,6 +2092,8 @@ static int ucsi_init(struct ucsi *ucsi)
 	if (ret < 0)
 		goto err_reset;
 
+	dev_info(ucsi->dev, "UCSI features: 0x%04x\n", ucsi->cap.features);
+
 	if (!ucsi->cap.num_connectors) {
 		ret = -ENODEV;
 		goto err_reset;
