@@ -3774,6 +3774,7 @@ CONFIG_EC_HUAWEI_GAOKUN                         policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_C630                      policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_SLIM7X                    policy<{'arm64': 'm'}>
+CONFIG_EC_QCOM_HAMOA                            policy<{'arm64': 'm'}>
 CONFIG_EDAC                                     policy<{'arm64': 'y'}>
 CONFIG_EDAC_ALTERA                              policy<{'arm64': 'y'}>
 CONFIG_EDAC_ALTERA_ETHERNET                     policy<{'arm64': 'y'}>
@@ -9701,10 +9702,11 @@ CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_COERCE_POINTEE                 policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SLICE_AS_FLATTENED             policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190107'}>
+CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108501'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_EVENTS                            policy<{'arm64': 'y'}>
