@@ -2774,7 +2774,8 @@ static int wsa_macro_probe(struct platform_device *pdev)
 
 	/* set MCLK and NPL rates */
 	clk_set_rate(wsa->mclk, WSA_MACRO_MCLK_FREQ);
-	clk_set_rate(wsa->npl, WSA_MACRO_MCLK_FREQ);
+	if (wsa->npl)
+		clk_set_rate(wsa->npl, WSA_MACRO_MCLK_FREQ);
 
 	ret = devm_pm_clk_create(dev);
 	if (ret)
