@@ -34,6 +34,7 @@
 #define OV02C10_EXPOSURE_MIN		4
 #define OV02C10_EXPOSURE_MAX_MARGIN	8
 #define OV02C10_EXPOSURE_STEP		1
+#define OV02C10_EXPOSURE_DEFAULT	0x046c
 
 /* Analog gain controls from sensor */
 #define OV02C10_REG_ANALOG_GAIN		CCI_REG16(0x3508)
@@ -545,7 +546,8 @@ static int ov02c10_init_controls(struct ov02c10 *ov02c10)
 					      OV02C10_EXPOSURE_MIN,
 					      exposure_max,
 					      OV02C10_EXPOSURE_STEP,
-					      exposure_max);
+					      min_t(s64, exposure_max,
+						    OV02C10_EXPOSURE_DEFAULT));
 
 	v4l2_ctrl_new_std(ctrl_hdlr, &ov02c10_ctrl_ops, V4L2_CID_HFLIP,
 			  0, 1, 1, 0);
