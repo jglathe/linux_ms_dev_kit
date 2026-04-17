@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.12-jg-1) resolute; urgency=medium
+
+  * cleaned out the jg/i2c_polling functionality for now
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 17 Apr 2026 10:25:42 +0200
+
 linux-qcom-x1e (6.19.12-jg-0) resolute; urgency=medium
 
   * rebase to 6.19.12
