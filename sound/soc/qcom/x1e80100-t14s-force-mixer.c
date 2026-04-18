@@ -4,7 +4,8 @@
  * Forces the three DISPLAY_PORT_RX_* virtual mixers at probe so HDMI0/1/2
  * sinks appear reliably for the full T14s-HiFi UCM.
  *
- * DEBUG VERSION 3 – only the correct DAPM widget names (no more unknown pins)
+ * DEBUG VERSION 4 – only the exact DAPM widget names from your topology
+ * (DISPLAY_PORT_RX_X Audio Mixer) + full defer + extra logging
  */
 #include <linux/module.h>
 #include <linux/of.h>
@@ -18,7 +19,7 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	struct platform_device *sound_pdev;
 	struct snd_soc_card *card;
 
-	dev_info(&pdev->dev, "=== probe started (DEBUG 3) ===\n");
+	dev_info(&pdev->dev, "=== probe started (DEBUG 4) ===\n");
 
 	/* Prefer being a child of &sound; fallback to global lookup */
 	if (pdev->dev.of_node && pdev->dev.of_node->parent &&
@@ -48,16 +49,16 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	dev_info(&pdev->dev, "main sound card ready, forcing correct DP mixer widgets now\n");
+	dev_info(&pdev->dev, "main sound card ready, forcing exact topology DAPM widgets now\n");
 
-	/* === ONLY the widgets that actually exist (from your topology + working original) === */
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7");
+	/* === ONLY the widget names that actually exist in the topology === */
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer");
 
 	snd_soc_dapm_sync(&card->dapm);
 
-	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced (correct names only) + DAPM sync\n");
+	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced (topology names only) + DAPM sync\n");
 	return 0;
 }
 
@@ -78,5 +79,5 @@ static struct platform_driver t14s_force_mixer_driver = {
 
 module_platform_driver(t14s_force_mixer_driver);
 
-MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers (DEBUG 3)");
+MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers (DEBUG 4)");
 MODULE_LICENSE("GPL");
