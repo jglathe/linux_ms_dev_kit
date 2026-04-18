@@ -4,7 +4,7 @@
  * Forces the three DISPLAY_PORT_RX_* virtual mixers at probe so HDMI0/1/2
  * sinks appear reliably for the full T14s-HiFi UCM.
  *
- * DEBUG VERSION – heavy instrumentation, no kcontrol lookup at all
+ * DEBUG VERSION 2 – corrected DAPM widget names (name mismatch found!)
  */
 #include <linux/module.h>
 #include <linux/of.h>
@@ -18,7 +18,7 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	struct platform_device *sound_pdev;
 	struct snd_soc_card *card;
 
-	dev_info(&pdev->dev, "=== probe started ===\n");
+	dev_info(&pdev->dev, "=== probe started (DEBUG 2) ===\n");
 
 	/* Prefer being a child of &sound; fallback to global lookup */
 	if (pdev->dev.of_node && pdev->dev.of_node->parent &&
@@ -48,12 +48,13 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	dev_info(&pdev->dev, "main sound card ready, forcing DP widgets now\n");
+	dev_info(&pdev->dev, "main sound card ready, forcing correct DP widgets now\n");
 
-	/* === FORCE THE WIDGETS (this is the only thing that ever worked) === */
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7");
+	/* === FORCE THE *CORRECT* DAPM WIDGET NAMES (this was the mismatch) === */
+	/* From your topology: the actual widget is "DISPLAY_PORT_RX_0 Audio Mixer" */
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer");
 
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1");
@@ -61,7 +62,7 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 
 	snd_soc_dapm_sync(&card->dapm);
 
-	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced + DAPM sync (DEBUG BUILD)\n");
+	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced with correct names + DAPM sync\n");
 	return 0;
 }
 
@@ -82,5 +83,5 @@ static struct platform_driver t14s_force_mixer_driver = {
 
 module_platform_driver(t14s_force_mixer_driver);
 
-MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers (DEBUG)");
+MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers (DEBUG 2)");
 MODULE_LICENSE("GPL");
