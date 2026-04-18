@@ -15,9 +15,6 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	struct device_node *sound_np;
 	struct platform_device *sound_pdev;
 	struct snd_soc_card *card;
-	struct snd_kcontrol *kctl;
-	struct snd_ctl_elem_value ucontrol = {};
-	int i;
 
 	/* Prefer being a child of &sound; fallback to global lookup */
 	if (pdev->dev.of_node && pdev->dev.of_node->parent &&
@@ -38,26 +35,25 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	card = dev_get_drvdata(&sound_pdev->dev);
 	put_device(&sound_pdev->dev);
 
-	if (!card)
+	if (!card || !card->dapm.card)
 		return -EPROBE_DEFER;	/* main card not ready yet */
 
-	/* === WAIT FOR KCONTROLS (this is the part you asked about) === */
+	/* WAIT FOR KCONTROLS (UCM expects them) */
 	const char *mixers[] = {
 		"DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5",
 		"DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6",
 		"DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7",
 	};
+	int i;
 
 	for (i = 0; i < ARRAY_SIZE(mixers); i++) {
-		kctl = snd_soc_card_get_kcontrol(card, mixers[i]);
-		if (!kctl) {
-			dev_dbg(&pdev->dev, "kcontrol '%s' not registered yet → deferring\n",
-				mixers[i]);
+		if (!snd_soc_card_get_kcontrol(card, mixers[i])) {
+			dev_dbg(&pdev->dev, "kcontrol '%s' not ready yet → defer\n", mixers[i]);
 			return -EPROBE_DEFER;
 		}
 	}
 
-	/* === FORCE THE WIDGETS (this makes the HDMI sinks appear in UCM) === */
+	/* Force the widgets the T14s-HiFi UCM expects */
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7");
@@ -66,20 +62,9 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2");
 
-	/* === AUTOMATICALLY ACTIVATE THE MIXERS (replaces your manual amixer) === */
-	for (i = 0; i < ARRAY_SIZE(mixers); i++) {
-		kctl = snd_soc_card_get_kcontrol(card, mixers[i]);
-		if (kctl && kctl->put) {
-			ucontrol.value.integer.value[0] = 1;   /* "on" */
-			kctl->put(kctl, &ucontrol);
-			dev_dbg(&pdev->dev, "activated %s\n", mixers[i]);
-		}
-	}
-
 	snd_soc_dapm_sync(&card->dapm);
 
-	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced + mixers activated + DAPM sync\n");
-	
+	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced + DAPM sync\n");
 	return 0;
 }
 
