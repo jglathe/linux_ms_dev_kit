@@ -252,4 +252,13 @@ config SND_SOC_X1E80100
 	  X1E80100 SoC-based systems.
 	  Say Y or M if you want to use audio device on this SoCs.
 
+config SND_SOC_X1E80100_T14S_FORCE_MIXER
+	tristate "Lenovo ThinkPad T14s Gen 6 force DP virtual mixers"
+	depends on SND_SOC_X1E80100
+	help
+	  Forces the three DISPLAY_PORT_RX_* virtual mixers into existence
+	  at probe time on the Lenovo ThinkPad T14s Gen 6. This makes the
+	  full HDMI0/1/2 sinks appear reliably for PipeWire + T14s-HiFi.conf.
+	  Only useful on that specific laptop; safe to leave off elsewhere.
+
 endif #SND_SOC_QCOM

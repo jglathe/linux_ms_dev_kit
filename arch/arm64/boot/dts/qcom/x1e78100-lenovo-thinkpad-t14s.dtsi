@@ -550,6 +550,11 @@
 		};
 	};
 
+	force-dp-mixers {
+		compatible = "lenovo,t14s-force-dp-mixer";
+		status = "okay";
+	};
+
 	wcn7850-pmu {
 		compatible = "qcom,wcn7850-pmu";
 
