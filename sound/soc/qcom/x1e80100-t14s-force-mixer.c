@@ -15,7 +15,6 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	struct device_node *sound_np;
 	struct platform_device *sound_pdev;
 	struct snd_soc_card *card;
-	int ret;
 
 	/* Prefer being a child of &sound; fallback to global lookup */
 	if (pdev->dev.of_node && pdev->dev.of_node->parent &&
@@ -40,9 +39,13 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;	/* main card not ready yet */
 
 	/* Force the widgets the UCM expects */
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer");
-	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7");
+
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1");
+	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2");
 
 	snd_soc_dapm_sync(&card->dapm);
 
