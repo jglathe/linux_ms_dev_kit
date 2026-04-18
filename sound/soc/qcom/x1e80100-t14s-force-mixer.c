@@ -3,6 +3,8 @@
  * Minimal in-tree wrapper for Lenovo ThinkPad T14s Gen 6 (X1E80100)
  * Forces the three DISPLAY_PORT_RX_* virtual mixers at probe so HDMI0/1/2
  * sinks appear reliably for the full T14s-HiFi UCM.
+ *
+ * DEBUG VERSION – heavy instrumentation, no kcontrol lookup at all
  */
 #include <linux/module.h>
 #include <linux/of.h>
@@ -16,6 +18,8 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	struct platform_device *sound_pdev;
 	struct snd_soc_card *card;
 
+	dev_info(&pdev->dev, "=== probe started ===\n");
+
 	/* Prefer being a child of &sound; fallback to global lookup */
 	if (pdev->dev.of_node && pdev->dev.of_node->parent &&
 	    of_device_is_compatible(pdev->dev.of_node->parent, "qcom,x1e80100-sndcard"))
@@ -23,37 +27,30 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 	else
 		sound_np = of_find_compatible_node(NULL, NULL, "qcom,x1e80100-sndcard");
 
-	if (!sound_np)
+	if (!sound_np) {
+		dev_info(&pdev->dev, "sound card node not found → EPROBE_DEFER\n");
 		return -EPROBE_DEFER;
+	}
 
 	sound_pdev = of_find_device_by_node(sound_np);
 	of_node_put(sound_np);
 
-	if (!sound_pdev)
+	if (!sound_pdev) {
+		dev_info(&pdev->dev, "sound_pdev not found → EPROBE_DEFER\n");
 		return -EPROBE_DEFER;
+	}
 
 	card = dev_get_drvdata(&sound_pdev->dev);
 	put_device(&sound_pdev->dev);
 
-	if (!card || !card->dapm.card)
-		return -EPROBE_DEFER;	/* main card not ready yet */
-
-	/* WAIT FOR KCONTROLS (UCM expects them) */
-	const char *mixers[] = {
-		"DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5",
-		"DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6",
-		"DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7",
-	};
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(mixers); i++) {
-		if (!snd_soc_card_get_kcontrol(card, mixers[i])) {
-			dev_dbg(&pdev->dev, "kcontrol '%s' not ready yet → defer\n", mixers[i]);
-			return -EPROBE_DEFER;
-		}
+	if (!card || !card->dapm.card) {
+		dev_info(&pdev->dev, "card or dapm.card not ready → EPROBE_DEFER\n");
+		return -EPROBE_DEFER;
 	}
 
-	/* Force the widgets the T14s-HiFi UCM expects */
+	dev_info(&pdev->dev, "main sound card ready, forcing DP widgets now\n");
+
+	/* === FORCE THE WIDGETS (this is the only thing that ever worked) === */
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_0 Audio Mixer MultiMedia5");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_1 Audio Mixer MultiMedia6");
 	snd_soc_dapm_force_enable_pin(&card->dapm, "DISPLAY_PORT_RX_2 Audio Mixer MultiMedia7");
@@ -64,7 +61,7 @@ static int t14s_force_mixer_probe(struct platform_device *pdev)
 
 	snd_soc_dapm_sync(&card->dapm);
 
-	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced + DAPM sync\n");
+	dev_info(&pdev->dev, "T14s Gen 6 DP widgets forced + DAPM sync (DEBUG BUILD)\n");
 	return 0;
 }
 
@@ -85,5 +82,5 @@ static struct platform_driver t14s_force_mixer_driver = {
 
 module_platform_driver(t14s_force_mixer_driver);
 
-MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers");
+MODULE_DESCRIPTION("Lenovo ThinkPad T14s Gen 6 - force virtual DP mixers (DEBUG)");
 MODULE_LICENSE("GPL");
