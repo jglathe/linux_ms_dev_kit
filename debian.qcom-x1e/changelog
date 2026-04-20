@@ -1,3 +1,9 @@
+linux-qcom-x1e (6.19.12-jg-2) resolute; urgency=medium
+
+  * add q6dsp patchset from srinik (1-11) https://lore.kernel.org/all/177514411128.51134.5760476545108119591.b4-ty@b4/
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 20 Apr 2026 14:10:30 +0200
+
 linux-qcom-x1e (6.19.12-jg-1) resolute; urgency=medium
 
   * cleaned out the jg/i2c_polling functionality for now
