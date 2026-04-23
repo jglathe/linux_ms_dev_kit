@@ -49,6 +49,17 @@ static void msm_dp_bridge_debugfs_init(struct drm_bridge *bridge, struct dentry 
 	msm_dp_display_debugfs_init(dp, root, false);
 }
 
+static int msm_dp_audio_startup(struct drm_bridge *bridge,
+                                struct drm_connector *connector)
+{
+        struct msm_dp *msm_dp_display = to_dp_bridge(bridge)->msm_dp_display;
+
+        if (!msm_dp_display->power_on)
+                return -ENOTSUPP;
+
+        return 0;
+}
+
 static void msm_dp_bridge_atomic_pre_enable(struct drm_bridge *drm_bridge,
 					    struct drm_atomic_commit *state)
 {
@@ -111,6 +122,7 @@ static const struct drm_bridge_funcs msm_dp_bridge_ops = {
 	.hpd_notify   = msm_dp_bridge_hpd_notify,
 	.debugfs_init = msm_dp_bridge_debugfs_init,
 
+	.dp_audio_startup = msm_dp_audio_startup,
 	.dp_audio_prepare = msm_dp_audio_prepare,
 	.dp_audio_shutdown = msm_dp_audio_shutdown,
 };
