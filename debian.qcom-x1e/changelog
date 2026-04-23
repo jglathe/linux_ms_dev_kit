@@ -1,3 +1,11 @@
+linux-qcom-x1e (6.19.13-jg-1) resolute; urgency=medium
+
+  * drm/msm/dp: implement dp_audio_startup to guard against unconnected state [Steev Klimaszewski <threeway@gmail.com>]
+  * arm64: dts: qcom: x1p42100-lenovo-thinkbook-16: add displayport backend DAIs
+  * arm64: dts: qcom: x1p42100-lenovo-thinkbook-16: enable gpi_dma controllers
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 23 Apr 2026 20:50:07 +0200
+
 linux-qcom-x1e (6.19.13-jg-0) resolute; urgency=medium
 
   * rebase to 6.19.13
