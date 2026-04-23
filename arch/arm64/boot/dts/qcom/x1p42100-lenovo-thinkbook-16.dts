@@ -1296,6 +1296,18 @@
 	status = "okay";
 };
 
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
 &remoteproc_adsp {
 	firmware-name = "qcom/x1p42100/LENOVO/21NH/qcadsp8380.mbn",
 			"qcom/x1p42100/LENOVO/21NH/adsp_dtbs.elf";
