@@ -1,3 +1,14 @@
+linux-qcom-x1e (6.19.13-jg-2) resolute; urgency=medium
+
+  * arm64: dts: qcom: hamoa: add audio PD remote heap region [Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>]
+  * usb: typec: mux: ps883x: Power the retimer off when not in use [Jack Pham <jack.pham@oss.qualcomm.com>]
+  * ASoC: qcom: x1e80100: limit speaker volumes [Tobias Heider <tobias.heider@canonical.com>]
+  * drm/panel-edp Add surface pro 12inch panel NE120DRM-N28 [harrison <harrison.vanderbyl@gmail.com>]
+  * dts: qcom: Add surface pro 12inch device tree [harrison <harrison.vanderbyl@gmail.com>]
+  * clk: qcom: x1e80100-dispcc: Stop disp_cc_mdss_mdp_clk_src from getting parked [Hans de Goede <johannes.goede@oss.qualcomm.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 27 Apr 2026 07:26:22 +0200
+
 linux-qcom-x1e (6.19.13-jg-1) resolute; urgency=medium
 
   * drm/msm/dp: implement dp_audio_startup to guard against unconnected state [Steev Klimaszewski <threeway@gmail.com>]
