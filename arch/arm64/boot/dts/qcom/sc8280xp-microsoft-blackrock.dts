@@ -28,32 +28,6 @@
 		serial1 = &uart2;
 	};
 
-	wcd938x: audio-codec {
-		compatible = "qcom,wcd9380-codec";
-
-		pinctrl-0 = <&wcd_default>;
-		pinctrl-names = "default";
-
-		reset-gpios = <&tlmm 106 GPIO_ACTIVE_LOW>;
-
-		vdd-buck-supply = <&vreg_s10b>;
-		vdd-rxtx-supply = <&vreg_s10b>;
-		vdd-io-supply = <&vreg_s10b>;
-		vdd-mic-bias-supply = <&vreg_bob>;
-
-		qcom,micbias1-microvolt = <1800000>;
-		qcom,micbias2-microvolt = <1800000>;
-		qcom,micbias3-microvolt = <1800000>;
-		qcom,micbias4-microvolt = <1800000>;
-		qcom,mbhc-buttons-vthreshold-microvolt = <75000 150000 237000 500000 500000 500000 500000 500000>;
-		qcom,mbhc-headset-vthreshold-microvolt = <1700000>;
-		qcom,mbhc-headphone-vthreshold-microvolt = <50000>;
-		qcom,rx-device = <&wcd_rx>;
-		qcom,tx-device = <&wcd_tx>;
-
-		#sound-dai-cells = <1>;
-	};
-
 	dp3_connector: connector {
 		compatible = "dp-connector";
 		label = "DP-3";
@@ -587,34 +561,40 @@
 };
 
 &mdss0_dp0 {
+	sound-name-prefix = "DisplayPort0";
 	status = "okay";
 };
 
 &mdss0_dp0_out {
 	data-lanes = <0 1 2 3>;
+
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 	remote-endpoint = <&usb_0_qmpphy_dp_in>;
 };
 
 &mdss0_dp1 {
+	sound-name-prefix = "DisplayPort1";
 	status = "okay";
 };
 
 &mdss0_dp1_out {
 	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+
 	remote-endpoint = <&usb_1_qmpphy_dp_in>;
 };
 
 &mdss0_dp2 {
+	sound-name-prefix = "DisplayPort2";
 	compatible = "qcom,sc8280xp-dp";
-
-	data-lanes = <0 1 2 3>;
 
 	status = "okay";
 };
 
 &mdss0_dp2_out {
+	data-lanes = <0 1 2 3>;
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+
 	remote-endpoint = <&dp1_connector_in>;
 };
 
@@ -860,17 +840,17 @@
 
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
-	model = "SC8280XP-MICROSOFT-BACKROCK";
+	model = "SC8280XP-MICROSOFT-BLACKROCK";
 
-	wcd-playback-dai-link {
-		link-name = "WCD Playback";
-
-		cpu {
-			sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
-		};
+	dp0-dai-link {
+		link-name = "DP0 Playback";
 
 		codec {
-			sound-dai = <&wcd938x 0>, <&swr1 0>, <&rxmacro 0>;
+			sound-dai = <&mdss0_dp0>;
+		};
+
+		cpu {
+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
 		};
 
 		platform {
@@ -878,15 +858,15 @@
 		};
 	};
 
-	wcd-capture-dai-link {
-		link-name = "WCD Capture";
-
-		cpu {
-			sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
-		};
+	dp1-dai-link {
+		link-name = "DP1 Playback";
 
 		codec {
-			sound-dai = <&wcd938x 1>, <&swr2 0>, <&txmacro 0>;
+			sound-dai = <&mdss0_dp1>;
+		};
+
+		cpu {
+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_1>;
 		};
 
 		platform {
@@ -894,65 +874,21 @@
 		};
 	};
 
-	wsa-dai-link {
-		link-name = "WSA Playback";
-
-		cpu {
-			sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
-		};
+	dp2-dai-link {
+		link-name = "DP2 Playback";
 
 		codec {
-			sound-dai = <&swr0 0>, <&wsamacro 0>;
+			sound-dai = <&mdss0_dp2>;
+		};
+
+		cpu {
+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
 		};
 
 		platform {
 			sound-dai = <&q6apm>;
 		};
 	};
-
-	va-dai-link {
-		link-name = "VA Capture";
-
-		cpu {
-			sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
-		};
-
-		platform {
-			sound-dai = <&q6apm>;
-		};
-
-		codec {
-			sound-dai = <&vamacro 0>;
-		};
-	};
-};
-
-&swr0 {
-	status = "okay";
-};
-
-&swr1 {
-	status = "okay";
-
-	wcd_rx: wcd9380-rx@0,4 {
-		compatible = "sdw20217010d00";
-		reg = <0 4>;
-		qcom,rx-port-mapping = <1 2 3 4 5>;
-	};
-};
-
-&swr2 {
-	status = "okay";
-
-	wcd_tx: wcd9380-tx@0,3 {
-		compatible = "sdw20217010d00";
-		reg = <0 3>;
-		qcom,tx-port-mapping = <1 1 2 3>;
-	};
-};
-
-&txmacro {
-	status = "okay";
 };
 
 &uart2 {
@@ -1080,23 +1016,8 @@
 	status = "okay";
 };
 
-&vamacro {
-	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
-	pinctrl-names = "default";
-
-	vdd-micb-supply = <&vreg_s10b>;
-
-	qcom,dmic-sample-rate = <4800000>;
-
-	status = "okay";
-};
-
 &venus {
 	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
-	status = "okay";
-};
-
-&wsamacro {
 	status = "okay";
 };
 
@@ -1105,10 +1026,6 @@
 };
 
 /* PINCTRL */
-
-&lpass_tlmm {
-	status = "okay";
-};
 
 &pmc8280_1_gpios {
 	misc_3p3_reg_en: misc-3p3-reg-en-state {
@@ -1309,14 +1226,6 @@
 		drive-strength = <2>;
 		bias-disable;
 		output-low;
-	};
-
-	wcd_default: wcd-default-state {
-		reset-pins {
-			pins = "gpio106";
-			function = "gpio";
-			bias-disable;
-		};
 	};
 
 	wlan_en: wlan-en-state {
