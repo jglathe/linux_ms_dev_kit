@@ -7,7 +7,7 @@
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/iio/qcom,spmi-adc7-pm8350.h>
+#include <dt-bindings/iio/adc/qcom,pm8550-adc5-gen3.h>
 #include <dt-bindings/input/gpio-keys.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/leds/common.h>
@@ -913,13 +913,13 @@
 		pinctrl-0 = <&ec_int_n_default>;
 		pinctrl-names = "default";
 
-		io-channels = <&pmk8550_vadc PM8350_ADC7_GPIO3_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_GPIO4_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM1_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM2_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM3_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM4_100K_PU(1)>,
-			      <&pmk8550_vadc PM8350_ADC7_AMUX_THM5_100K_PU(1)>;
+		io-channels = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM4_100K_PU(1)>,
+			      <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
 
 		io-channel-names = "sys_therm0", "sys_therm1", "sys_therm2",
 				   "sys_therm3", "sys_therm4", "sys_therm5",
@@ -1215,61 +1215,68 @@
 	};
 };
 
-&pmk8550_vadc {
+&pmk8550_adc_tm {
 	/* sys_therm0, around DRAM */
 	channel@14c {
-		reg = <PM8350_ADC7_GPIO3_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>;
 		label = "sys_therm0";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm1, around left Type-C charging controller */
 	channel@14d {
-		reg = <PM8350_ADC7_GPIO4_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>;
 		label = "sys_therm1";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm2, around upper-left side of motherboard */
 	channel@144 {
-		reg = <PM8350_ADC7_AMUX_THM1_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>;
 		label = "sys_therm2";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm3, around right Type-C charging controller */
 	channel@145 {
-		reg = <PM8350_ADC7_AMUX_THM2_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>;
 		label = "sys_therm3";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm4, around SSD connector */
 	channel@146 {
-		reg = <PM8350_ADC7_AMUX_THM3_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>;
 		label = "sys_therm4";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm5, around battery charging circuit */
 	channel@147 {
-		reg = <PM8350_ADC7_AMUX_THM4_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX_THM4_100K_PU(1)>;
 		label = "sys_therm5";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 
 	/* sys_therm6, around keyboard */
 	channel@148 {
-		reg = <PM8350_ADC7_AMUX_THM5_100K_PU(1)>;
-		qcom,hw-settle-time = <200>;
-		qcom,ratiometric;
+		reg = <PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
 		label = "sys_therm6";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 };
 
