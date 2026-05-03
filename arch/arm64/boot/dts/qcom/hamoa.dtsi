@@ -2936,6 +2936,7 @@
 			phy-names = "ufsphy";
 
 			#reset-cells = <1>;
+			qcom,ice = <&ice>;
 
 			status = "disabled";
 			
@@ -2978,6 +2979,14 @@
 					required-opps = <&rpmhpd_opp_nom>;
 				};
 			};			
+		};
+
+		ice: crypto@1d88000 {
+			compatible = "qcom,x1e80100-inline-crypto-engine",
+				     "qcom,inline-crypto-engine";
+			reg = <0 0x01d88000 0 0x8000>;
+
+			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
 		};
 
 		cryptobam: dma-controller@1dc4000 {
@@ -9385,7 +9394,7 @@
 				qcom,remote-pid = <5>;
 
 				fastrpc {
-					compatible = "qcom,fastrpc";					
+					compatible = "qcom,fastrpc";
 					qcom,glink-channels = "fastrpcglink-apps-dsp";
 					label = "cdsp";
 					qcom,non-secure-domain;
