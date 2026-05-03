@@ -2939,7 +2939,7 @@
 			qcom,ice = <&ice>;
 
 			status = "disabled";
-			
+
 			ufs_opp_table: opp-table {
 				compatible = "operating-points-v2";
 
@@ -2987,6 +2987,8 @@
 			reg = <0 0x01d88000 0 0x8000>;
 
 			clocks = <&gcc GCC_UFS_PHY_ICE_CORE_CLK>;
+
+			status = "disabled";
 		};
 
 		cryptobam: dma-controller@1dc4000 {
@@ -3000,6 +3002,8 @@
 			qcom,controlled-remotely;
 			num-channels = <20>;
 			qcom,num-ees = <4>;
+
+			status = "disabled";
 		};
 
 		crypto: crypto@1dfa000 {
@@ -3013,6 +3017,8 @@
 			interconnects = <&aggre2_noc MASTER_CRYPTO QCOM_ICC_TAG_ALWAYS
 					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
 			interconnect-names = "memory";
+
+			status = "disabled";
 		};
 
 		usb_1_ss0_hsphy: phy@fd3000 {
