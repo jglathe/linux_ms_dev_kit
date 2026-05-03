@@ -422,19 +422,20 @@ static const struct software_node *ssam_node_group_sp11[] = {
 	NULL,
 };
 
+//
+// there is something here ssam:01:0e:01:00:01 (ssam_node_kip_tablet_switch) that is not the tablet mode kip switch.
+// 
 static const struct software_node *ssam_node_group_sp12[] = {
-	&ssam_node_root,
-	&ssam_node_hub_kip,
-	&ssam_node_tmp_sensors,
-	&ssam_node_hid_kip_keyboard,
-	&ssam_node_hid_kip_penstash,
-	&ssam_node_hid_kip_touchpad,
-	&ssam_node_hid_kip_fwupd,
-	&ssam_node_hid_sam_sensors,
-	&ssam_node_kip_tablet_switch,
-	NULL,
+    &ssam_node_root,
+    &ssam_node_hub_kip,
+    &ssam_node_tmp_sensors,
+    &ssam_node_hid_kip_keyboard,      
+    &ssam_node_hid_sam_penstash,     
+    &ssam_node_hid_kip_touchpad,      
+    &ssam_node_hid_kip_fwupd,        
+    &ssam_node_pos_tablet_switch,        
+    NULL,
 };
-
 /* -- SSAM platform/meta-hub driver. ---------------------------------------- */
 
 static const struct acpi_device_id ssam_platform_hub_acpi_match[] = {
