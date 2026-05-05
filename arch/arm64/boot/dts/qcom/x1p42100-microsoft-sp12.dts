@@ -23,7 +23,7 @@
 
 / {
 	model = "Surface Pro 12 inch";
-	compatible = "microsoft,sp12", "qcom,x1p42100";
+	compatible = "microsoft,sp12", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "tablet";
 
 	aliases {
@@ -38,7 +38,7 @@
 		power-supply = <&vreg_edp_3p3>;
 	};
 
-gpio-keys {
+	gpio-keys {
 		compatible = "gpio-keys";
 
 		pinctrl-0 = <&hall_int_n_default>;
@@ -78,6 +78,7 @@ gpio-keys {
 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
 
+		/* Left-side rear port */
 		connector@0 {
 			compatible = "usb-c-connector";
 			reg = <0>;
@@ -380,20 +381,6 @@ gpio-keys {
 
 };
 
-
-&pm8550ve_8_gpios {
-	misc_3p3_reg_en: misc-3p3-reg-en-state {
-		pins = "gpio6";
-		function = "normal";
-		bias-disable;
-		input-disable;
-		output-enable;
-		drive-push-pull;
-		power-source = <1>; /* 1.8 V */
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-	};
-};
-
 &apps_rsc {
 	regulators-0 {
 		compatible = "qcom,pm8550-rpmh-regulators";
@@ -627,74 +614,6 @@ gpio-keys {
 		};
 	};
 
-
-
-
-	regulators-8 {
-		compatible = "qcom,pm8010-rpmh-regulators";
-		qcom,pmic-id = "m";
-
-		vdd-l1-l2-supply = <&vreg_s5j_1p2>;
-		vdd-l3-l4-supply = <&vreg_s4c_1p8>;
-		vdd-l7-supply = <&vreg_bob1>;
-
-		vreg_l1m_1p2: ldo1 {
-			regulator-name = "vreg_l1m_1p2";
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <1260000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l2m_1p2: ldo2 {
-			regulator-name = "vreg_l2m_1p2";
-			regulator-min-microvolt = <1150000>;
-			regulator-max-microvolt = <1200000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l3m_1p8: ldo3 {
-			regulator-name = "vreg_l3m_1p8";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l4m_1p8: ldo4 {
-			regulator-name = "vreg_l4m_1p8";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l5m_2p8: ldo5 {
-			regulator-name = "vreg_l5m_2p8";
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l6m_1p8: ldo6 {
-			regulator-name = "vreg_l6m_1p8";
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-
-		vreg_l7m_2p8: ldo7 {
-			regulator-name = "vreg_l7m_2p8";
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <2800000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-			
-		};
-	};
-
 	regulators-6 {
 		compatible = "qcom,pm8550ve-rpmh-regulators";
 		qcom,pmic-id = "i";
@@ -787,6 +706,72 @@ gpio-keys {
 						   RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
+
+	regulators-8 {
+		compatible = "qcom,pm8010-rpmh-regulators";
+		qcom,pmic-id = "m";
+
+		vdd-l1-l2-supply = <&vreg_s5j_1p2>;
+		vdd-l3-l4-supply = <&vreg_s4c_1p8>;
+		vdd-l7-supply = <&vreg_bob1>;
+
+		vreg_l1m_1p2: ldo1 {
+			regulator-name = "vreg_l1m_1p2";
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1260000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l2m_1p2: ldo2 {
+			regulator-name = "vreg_l2m_1p2";
+			regulator-min-microvolt = <1150000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l3m_1p8: ldo3 {
+			regulator-name = "vreg_l3m_1p8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l4m_1p8: ldo4 {
+			regulator-name = "vreg_l4m_1p8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l5m_2p8: ldo5 {
+			regulator-name = "vreg_l5m_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l6m_1p8: ldo6 {
+			regulator-name = "vreg_l6m_1p8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+
+		vreg_l7m_2p8: ldo7 {
+			regulator-name = "vreg_l7m_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			
+		};
+	};
+
 };
 
 &gpu {
@@ -816,33 +801,25 @@ gpio-keys {
 		pinctrl-0 = <&ts0_default>;
 		pinctrl-names = "default";
 	};
-
 };
-
 
 &i2c0 {
 	clock-frequency = <400000>;
 
 	status = "okay";
-
 };
 
 &i2c4 {
 	clock-frequency = <400000>;
 
 	status = "okay";
-
 };
 
 &i2c9 {
 	clock-frequency = <400000>;
 
 	status = "okay";
-
-	
-	
 };
-
 
 &iris {
 	firmware-name = "qcom/x1p42100/Microsoft/Surface12/qcvss8380.mbn";
@@ -937,10 +914,10 @@ gpio-keys {
 	perst-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
 
-	pinctrl-names = "default";
+	pinctrl-0 = <&pcie4_default>;
+
 	vdda-supply = <&vreg_l3e_1p2>;
 	vddpe-3v3-supply = <&vreg_wcn_3p3>;
-
 
 	status = "okay";
 };
@@ -966,11 +943,24 @@ gpio-keys {
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 		vddpcie0p9-supply = <&vreg_pmu_pcie_0p9>;
 		vddpcie1p8-supply = <&vreg_pmu_pcie_1p8>;
+
+		disable-rfkill;
+		local-mac-address = [ 8d fd f0 00 5a ae ];
+
 	};
 };
 
-&pmk8550_pwm {
-	status = "okay";
+&pm8550ve_8_gpios {
+	misc_3p3_reg_en: misc-3p3-reg-en-state {
+		pins = "gpio6";
+		function = "normal";
+		bias-disable;
+		input-disable;
+		output-enable;
+		drive-push-pull;
+		power-source = <1>; /* 1.8 V */
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
+	};
 };
 
 &pmk8550_gpios {
@@ -984,6 +974,10 @@ gpio-keys {
         power-source = <0>;
         qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
     };
+};
+
+&pmk8550_pwm {
+	status = "okay";
 };
 
 &qupv3_0 {
@@ -1103,6 +1097,29 @@ gpio-keys {
 		output-low;
 	};
 
+	pcie4_default: pcie4-default-state {
+		clkreq-n-pins {
+			pins = "gpio147";
+			function = "pcie4_clk";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		perst-n-pins {
+			pins = "gpio146";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		wake-n-pins {
+			pins = "gpio148";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
 	ssam_state: ssam-state-state {
 		pins = "gpio91";
 		function = "gpio";
@@ -1202,7 +1219,7 @@ gpio-keys {
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
 		vddrfa1p8-supply = <&vreg_pmu_rfa_1p8>;
 
-		// local-bd-address = [ 8d fd f0 00 5a ad ];
+		local-bd-address = [ 8d fd f0 00 5a ad ];
 	};
 };
 
