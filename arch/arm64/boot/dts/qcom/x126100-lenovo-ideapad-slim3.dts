@@ -225,6 +225,8 @@
 
 		pinctrl-0 = <&pcie3_nvme_reg_en>;
 		pinctrl-names = "default";
+		
+		startup-delay-us = <2000000>;
 
 		regulator-boot-on;
 		regulator-always-on;
