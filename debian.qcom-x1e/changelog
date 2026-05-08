@@ -1,3 +1,10 @@
+linux-qcom-x1e (6.19.14-jg-3) resolute; urgency=medium
+
+  * sp12 updates, ips3 updates
+  * firmware: psci: Set pm_set_resume/suspend_via_firmware() for SYSTEM_SUSPEND [Konrad Dybcio <konradybcio@kernel.org>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 08 May 2026 07:32:07 +0200
+
 linux-qcom-x1e (6.19.14-jg-2) resolute; urgency=medium
 
   * sp12 updates, add dp altmode / retimers wiring
