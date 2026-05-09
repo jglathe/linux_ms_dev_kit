@@ -1277,10 +1277,6 @@
 	vdda-pll-supply = <&vreg_l3e_1p2>;
 };
 
-&ice {
-	status = "okay";
-};
-
 &usb_1_ss0_hsphy {
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
@@ -1299,9 +1295,7 @@
 
 &usb_1_ss0 {
 	status = "okay";
-};
 
-&usb_1_ss0_dwc3 {
 	dr_mode = "host";
 };
 
@@ -1331,9 +1325,7 @@
 
 &usb_1_ss1 {
 	status = "okay";
-};
 
-&usb_1_ss1_dwc3 {
 	dr_mode = "host";
 };
 
