@@ -1356,7 +1356,7 @@
 	status = "okay";
 };
 
-&pcie3_port {
+&pcie3_port0 {
 	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_HIGH>;
 
@@ -1476,7 +1476,7 @@
 };
 
 &pmc8380_5_gpios {
-	usb0_pwr_1p15_en: usb0-pwr-1p15-en-state {
+	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
 		pins = "gpio8";
 		function = "normal";
 		power-source = <1>; /* 1.8 V */
