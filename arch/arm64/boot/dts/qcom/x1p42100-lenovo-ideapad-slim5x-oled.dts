@@ -307,6 +307,7 @@
 		pinctrl-names = "default";
 
 		regulator-boot-on;
+		regulator-always-on;
 	};
 
 	vreg_misc_3p3: regulator-misc-3p3 {
