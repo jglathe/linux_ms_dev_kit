@@ -1493,9 +1493,7 @@
 
 &usb_1_ss0 {
 	status = "okay";
-};
 
-&usb_1_ss0_dwc3 {
 	dr_mode = "host";
 };
 
@@ -1525,9 +1523,7 @@
 
 &usb_1_ss1 {
 	status = "okay";
-};
 
-&usb_1_ss1_dwc3 {
 	dr_mode = "host";
 };
 
@@ -1541,9 +1537,7 @@
 
 &usb_1_ss2 {
 	status = "okay";
-};
 
-&usb_1_ss2_dwc3 {
 	dr_mode = "host";
 	maximum-speed = "high-speed";
 	phys = <&usb_1_ss2_hsphy>;
@@ -1572,9 +1566,7 @@
 
 &usb_2 {
 	status = "okay";
-};
 
-&usb_2_dwc3 {
 	dr_mode = "host";
 };
 
