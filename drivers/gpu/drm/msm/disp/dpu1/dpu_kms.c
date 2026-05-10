@@ -879,9 +879,11 @@ static int _dpu_kms_drm_obj_init(struct dpu_kms *dpu_kms)
 		}
 	}
 
-	/* All CRTCs are compatible with all encoders */
+	/* All CRTCs are compatible with all encoders,
+	 * Nevertheless have enc/crtc paired up for better resource re-assignment in dpu_rm */
+	num_encoders = 0;
 	drm_for_each_encoder(encoder, dev)
-		encoder->possible_crtcs = (1 << dev->mode_config.num_crtc) - 1;
+		encoder->possible_crtcs = 1 << num_encoders++;
 
 	return 0;
 }
