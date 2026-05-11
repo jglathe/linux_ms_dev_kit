@@ -290,24 +290,7 @@ struct dpu_encoder_phys *dpu_encoder_phys_wb_init(struct drm_device *dev,
 
 void dpu_encoder_helper_trigger_start(struct dpu_encoder_phys *phys_enc);
 
-static inline enum dpu_3d_blend_mode dpu_encoder_helper_get_3d_blend_mode(
-		struct dpu_encoder_phys *phys_enc)
-{
-	struct dpu_crtc_state *dpu_cstate;
-
-	if (!phys_enc || phys_enc->enable_state == DPU_ENC_DISABLING)
-		return BLEND_3D_NONE;
-
-	dpu_cstate = to_dpu_crtc_state(phys_enc->parent->crtc->state);
-
-	/* Use merge_3d unless DSC MERGE topology is used */
-	if (phys_enc->split_role == ENC_ROLE_SOLO &&
-	    dpu_cstate->num_mixers == CRTC_DUAL_MIXERS &&
-	    !dpu_encoder_use_dsc_merge(phys_enc->parent))
-		return BLEND_3D_H_ROW_INT;
-
-	return BLEND_3D_NONE;
-}
+enum dpu_3d_blend_mode dpu_encoder_helper_get_3d_blend_mode(struct dpu_encoder_phys *phys_enc);
 
 unsigned int dpu_encoder_helper_get_cwb_mask(struct dpu_encoder_phys *phys_enc);
 
