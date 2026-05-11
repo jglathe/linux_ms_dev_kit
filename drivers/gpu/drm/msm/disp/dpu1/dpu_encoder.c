@@ -2373,11 +2373,6 @@ void dpu_encoder_helper_phys_setup_cwb(struct dpu_encoder_phys *phys_enc,
 	struct dpu_hw_ctl *hw_ctl;
 	struct dpu_hw_cwb_setup_cfg cwb_cfg;
 
-	struct dpu_kms *dpu_kms;
-	struct dpu_global_state *global_state;
-	struct dpu_hw_blk *rt_pp_list[MAX_CHANNELS_PER_ENC];
-	int num_pp;
-
 	if (!phys_enc->hw_wb)
 		return;
 
@@ -2386,18 +2381,6 @@ void dpu_encoder_helper_phys_setup_cwb(struct dpu_encoder_phys *phys_enc,
 	if (!phys_enc->hw_ctl) {
 		DPU_DEBUG("[wb:%d] no ctl assigned\n",
 			  phys_enc->hw_wb->idx - WB_0);
-		return;
-	}
-
-	dpu_kms = phys_enc->dpu_kms;
-	global_state = dpu_kms_get_existing_global_state(dpu_kms);
-	num_pp = dpu_rm_get_assigned_resources(&dpu_kms->rm, global_state,
-					       phys_enc->parent->crtc,
-					       DPU_HW_BLK_PINGPONG, rt_pp_list,
-					       ARRAY_SIZE(rt_pp_list));
-
-	if (num_pp == 0 || num_pp > MAX_CHANNELS_PER_ENC) {
-		DPU_DEBUG_ENC(dpu_enc, "invalid num_pp %d\n", num_pp);
 		return;
 	}
 
@@ -2413,9 +2396,8 @@ void dpu_encoder_helper_phys_setup_cwb(struct dpu_encoder_phys *phys_enc,
 			continue;
 
 		if (enable) {
-			struct dpu_hw_pingpong *hw_pp =
-					to_dpu_hw_pingpong(rt_pp_list[i]);
-			cwb_cfg.pp_idx = hw_pp->idx;
+			cwb_cfg.pp_idx = i < ARRAY_SIZE(dpu_enc->hw_pp) && dpu_enc->hw_pp[i] ?
+					dpu_enc->hw_pp[i]->idx : PINGPONG_NONE;
 		} else {
 			cwb_cfg.pp_idx = PINGPONG_NONE;
 		}
