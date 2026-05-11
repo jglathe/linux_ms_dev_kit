@@ -1,3 +1,13 @@
+linux-qcom-x1e (7.1-rc3-jg-0) resolute; urgency=medium
+
+  * complete rebuild onto v7.1-rc3
+  * base: torvalds v7.1-rc
+  * add: sre branch for t14s on 7.0
+  * add: qcom-x1e-7.0
+  * add: jg/ubuntu-qcom-x1e
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 11 May 2026 17:14:01 +0200
+
 linux-qcom-x1e (7.0.0-22.22) questing; urgency=medium
 
   * x1e80100-lenovo-yoga-slim7x: fix RGB cam supply voltage fix
