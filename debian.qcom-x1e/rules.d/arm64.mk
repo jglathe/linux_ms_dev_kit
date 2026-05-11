@@ -18,4 +18,4 @@ do_tools_rtla = true
 
 do_dtbs		= true
 do_stubble	= true
-do_skip_checks	= true
+do_skip_checks	= false
