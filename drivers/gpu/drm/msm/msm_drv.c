@@ -61,9 +61,12 @@ module_param(separate_gpu_kms, bool, 0400);
 DECLARE_FAULT_ATTR(fail_gem_alloc);
 DECLARE_FAULT_ATTR(fail_gem_iova);
 
-bool msm_gpu_no_components(void)
+bool msm_gpu_use_separate_drm_dev(struct platform_device *pdev)
 {
-	return separate_gpu_kms;
+	if (!pdev)
+		return separate_gpu_kms;
+
+	return of_device_is_compatible(pdev->dev.of_node, "amd,imageon") || separate_gpu_kms;
 }
 
 static int msm_drm_uninit(struct device *dev, const struct component_ops *gpu_ops)
@@ -1034,7 +1037,7 @@ static int add_gpu_components(struct device *dev,
 static int msm_drm_bind(struct device *dev)
 {
 	return msm_drm_init(dev,
-			    msm_gpu_no_components() ?
+			    msm_gpu_use_separate_drm_dev(NULL) ?
 				    &msm_kms_driver :
 				    &msm_driver,
 			    NULL);
@@ -1073,7 +1076,7 @@ int msm_drv_probe(struct device *master_dev,
 			return ret;
 	}
 
-	if (!msm_gpu_no_components()) {
+	if (!msm_gpu_use_separate_drm_dev(NULL)) {
 		ret = add_gpu_components(master_dev, &match);
 		if (ret)
 			return ret;
