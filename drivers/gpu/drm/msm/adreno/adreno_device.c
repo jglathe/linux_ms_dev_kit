@@ -271,18 +271,26 @@ static const struct component_ops a3xx_ops = {
 
 static int adreno_probe(struct platform_device *pdev)
 {
-	if (msm_gpu_use_separate_drm_dev(pdev))
-		return msm_gpu_probe(pdev, &a3xx_ops);
+	int ret;
 
-	return component_add(&pdev->dev, &a3xx_ops);
+	if (msm_gpu_use_separate_drm_dev(pdev)) {
+		ret = msm_gpu_probe(pdev);
+		if (ret)
+			return ret;
+	}
+
+	ret = component_add(&pdev->dev, &a3xx_ops);
+	if (ret && msm_gpu_use_separate_drm_dev(pdev))
+		msm_gpu_remove(pdev);
+
+	return ret;
 }
 
 static void adreno_remove(struct platform_device *pdev)
 {
+	component_del(&pdev->dev, &a3xx_ops);
 	if (msm_gpu_use_separate_drm_dev(pdev))
-		msm_gpu_remove(pdev, &a3xx_ops);
-	else
-		component_del(&pdev->dev, &a3xx_ops);
+		msm_gpu_remove(pdev);
 }
 
 static void adreno_shutdown(struct platform_device *pdev)
