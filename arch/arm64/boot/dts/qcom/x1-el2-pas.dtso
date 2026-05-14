@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * Extra EL2 overlay for platforms where Linux programs remoteproc
- * IOMMU streams because PAS is available.
- *
- * Do not apply this on current WoA firmware. Those DSPs are started
- * by the bootloader and rely on the SMMU SID bypass set up in
- * qcom_smmu_cfg_probe(). Attaching iommus here replaces that bypass
- * with an empty translated context and faults SID 0x1000.
+ * EL2 overlay variant for configurations where Linux manages remote
+ * processors via PAS (Peripheral Authentication Service).
  */
 
 /dts-v1/;
 /plugin/;
+
+#include "x1-el2.dtso"
 
 &remoteproc_adsp {
 	iommus = <&apps_smmu 0x1000 0x80>;
