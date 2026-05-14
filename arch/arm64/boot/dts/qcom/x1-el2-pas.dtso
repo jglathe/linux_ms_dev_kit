@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * EL2 overlay variant for configurations where Linux manages remote
+ * processors via PAS (Peripheral Authentication Service).
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include "x1-el2.dtso"
+
+&remoteproc_adsp {
+	iommus = <&apps_smmu 0x1000 0x80>;
+};
+
+&remoteproc_cdsp {
+	iommus = <&apps_smmu 0x0c00 0x0>;
+};
