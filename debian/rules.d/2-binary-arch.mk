@@ -192,7 +192,7 @@ else
 endif
 
 ifeq ($(do_dtbs),true)
-	$(kmake) O=$(build_dir) $(conc_level) dtbs_install \
+	$(kmake) O=$(build_dir) -j1 dtbs_install \
 		INSTALL_DTBS_PATH=$(pkgdir)/lib/firmware/$(abi_release)-$*/device-tree
 endif
 
