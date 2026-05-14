@@ -327,6 +327,7 @@
 		pinctrl-names = "default";
 
 		regulator-boot-on;
+		regulator-always-on;
 	};
 
 	vreg_misc_3p3: regulator-misc-3p3 {
@@ -1013,11 +1014,6 @@
 //			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
 
-			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
-
-			pinctrl-0 = <&edp_bl_en>;
-			pinctrl-names = "default";
-
 			power-supply = <&vreg_edp_3p3>;
 
 			port {
@@ -1106,16 +1102,6 @@
 		drive-push-pull;
 		power-source = <1>; /* 1.8 V */
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-	};
-};
-
-&pmc8380_3_gpios {
-	edp_bl_en: edp-bl-en-state {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		input-disable;
-		output-enable;
 	};
 };
 
