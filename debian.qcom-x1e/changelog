@@ -1,3 +1,13 @@
+linux-qcom-x1e (7.1-rc3-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x: Fix display brightness regression [olav-st <olav.s.th@gmail.com>]
+  * debian/rules: limit target dtbs_install to -j1
+  * ASoC: qcom: q6apm-dai: Allocate an extra page for PCM buffers [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * arm64: dts: qcom: x1: Add x1-el2-pas.dtso for PAS-managed remoteproc
+  * arm64: dts: qcom: idepad-5-2in1: remove backlight gpio
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 14 May 2026 15:15:00 +0200
+
 linux-qcom-x1e (7.1-rc3-jg-0) resolute; urgency=medium
 
   * complete rebuild onto v7.1-rc3
