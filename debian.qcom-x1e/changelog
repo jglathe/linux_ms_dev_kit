@@ -1,3 +1,23 @@
+linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
+
+  * ASoC: qcom: q6asm-dai: fix error handling [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * drm/msm/dp: Do not fail audio prepare when DP is inactive [Xilin Wu <sophon@radxa.com>]
+  * arm64: dts: qcom: idepad-slim5x: update from working ip5 2in1
+  * arm64: dts: qcom: idepad-5-2in1: enable hdmi, fp-reader, dp sound
+  * arm64: dts: qcom: sc8280xp: correct usb phy power supply [Pengyu Luo <mitltlatltl@gmail.com>]
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x: Fix display brightness regression [olav-st <olav.s.th@gmail.com>]
+  * debian/rules: limit target dtbs_install to -j1
+  * ASoC: qcom: q6apm-dai: Allocate an extra page for PCM buffers [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * arm64: dts: qcom: x1: Add x1-el2-pas.dtso for PAS-managed remoteproc
+  * arm64: dts: qcom: idepad-5-2in1: remove backlight gpio
+  * complete rebuild onto v7.1-rc3
+  * base: torvalds v7.1-rc
+  * add: sre branch for t14s on 7.0
+  * add: qcom-x1e-7.0
+  * add: jg/ubuntu-qcom-x1e
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 19 Sep 2026 12:00:00 +0200
+
 linux (7.3.0-5.5) stonking; urgency=medium
 
   * stonking/linux: 7.3.0-5.5 -proposed tracker (LP: #2167199)
