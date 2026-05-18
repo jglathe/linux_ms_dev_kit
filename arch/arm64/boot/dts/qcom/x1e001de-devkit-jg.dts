@@ -61,6 +61,7 @@
 
 	pmic-glink {
 		compatible = "qcom,x1e80100-pmic-glink",
+			     "qcom,sm8550-pmic-glink",
 			     "qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -192,9 +193,17 @@
 	sound {
 		compatible = "qcom,x1e80100-sndcard";
 		model = "X1E001DE-DEVKIT";
-		audio-routing = "IN1_HPHL", "HPHL_OUT",
+		audio-routing = "WooferLeft IN", "WSA WSA_SPK1 OUT",
+				"TweeterLeft IN", "WSA WSA_SPK2 OUT",
+				"WooferRight IN", "WSA2 WSA_SPK2 OUT",
+				"TweeterRight IN", "WSA2 WSA_SPK2 OUT",
+				"IN1_HPHL", "HPHL_OUT",
 				"IN2_HPHR", "HPHR_OUT",
 				"AMIC2", "MIC BIAS2",
+				"VA DMIC0", "MIC BIAS3",
+				"VA DMIC1", "MIC BIAS3",
+				"VA DMIC2", "MIC BIAS1",
+				"VA DMIC3", "MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
 
 		displayport-0-dai-link {
@@ -285,7 +294,9 @@
 			};
 
 			codec {
-				sound-dai = <&swr0 0>, <&lpass_wsamacro 0>,
+				sound-dai = <&left_woofer>, <&left_tweeter>,
+					    <&swr0 0>, <&lpass_wsamacro 0>,
+					    <&right_woofer>, <&right_tweeter>,
 					    <&swr3 0>, <&lpass_wsa2macro 0>;
 			};
 
@@ -307,6 +318,80 @@
 
 			platform {
 				sound-dai = <&q6apm>;
+			};
+		};
+	};
+
+	thermal-zones {
+		soc-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>;
+
+			trips {
+				soc-critical {
+					temperature = <110000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		dc-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>;
+
+			trips {
+				dc-critical {
+					temperature = <100000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		usb0-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>;
+
+			trips {
+				usb0-critical {
+					temperature = <100000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		usb2-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>;
+
+			trips {
+				usb2-critical {
+					temperature = <100000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		edp-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>;
+
+			trips {
+				edp-critical {
+					temperature = <100000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
+			};
+		};
+
+		usb1-thermal {
+			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
+
+			trips {
+				usb1-critical {
+					temperature = <100000>;
+					hysteresis = <1000>;
+					type = "critical";
+				};
 			};
 		};
 	};
@@ -869,10 +954,10 @@
 
 &gpu {
 	status = "okay";
+};
 
-	zap-shader {
-		firmware-name = "qcom/x1e80100/Thundercomm/DEVKIT/qcdxkmsuc8380.mbn";
-	};
+&gpu_zap_shader {
+	firmware-name = "qcom/x1e80100/Thundercomm/DEVKIT/qcdxkmsuc8380.mbn";
 };
 
 &i2c1 {
@@ -900,8 +985,6 @@
 
 		orientation-switch;
 		retimer-switch;
-
-		ps8830,boot-on;
 
 		ports {
 			#address-cells = <1>;
@@ -959,8 +1042,6 @@
 
 		retimer-switch;
 		orientation-switch;
-
-		ps8830,boot-on;
 
 		ports {
 			#address-cells = <1>;
@@ -1053,8 +1134,6 @@
 		retimer-switch;
 		orientation-switch;
 
-		ps8830,boot-on;
-
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1086,12 +1165,41 @@
 	};
 };
 
+&i2c13 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	rtc@68 {
+		compatible = "dallas,ds1308";
+		reg = <0x68>;
+		vcc-supply = <&vreg_l15b_1p8>;
+	};
+};
+
+&lpass_tlmm {
+	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
+		pins = "gpio12";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+		output-low;
+	};
+
+	spkr_23_sd_n_active: spkr-23-sd-n-active-state {
+		pins = "gpio13";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+		output-low;
+	};
+};
+
 &lpass_vamacro {
 	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &mdss {
@@ -1105,7 +1213,6 @@
 };
 
 &mdss_dp0_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1116,7 +1223,6 @@
 };
 
 &mdss_dp1_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1127,14 +1233,10 @@
 };
 
 &mdss_dp2_out {
-	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
 &pcie4 {
-	perst-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
-
 	vddpe-3v3-supply = <&vreg_wcn_3p3>;
 
 	pinctrl-0 = <&pcie4_default>;
@@ -1150,10 +1252,12 @@
 	status = "okay";
 };
 
-&pcie5 {
-	perst-gpios = <&tlmm 149 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 151 GPIO_ACTIVE_LOW>;
+&pcie4_port0 {
+	reset-gpios = <&tlmm 146 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 148 GPIO_ACTIVE_LOW>;
+};
 
+&pcie5 {
 	vddpe-3v3-supply = <&vreg_wwan>;
 
 	pinctrl-0 = <&pcie5_default>;
@@ -1167,6 +1271,11 @@
 	vdda-pll-supply = <&vreg_l3e_1p2>;
 
 	status = "okay";
+};
+
+&pcie5_port0 {
+	reset-gpios = <&tlmm 149 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 151 GPIO_ACTIVE_LOW>;
 };
 
 &pcie6a {
@@ -1186,6 +1295,11 @@
 	vdda-pll-supply = <&vreg_l2j_1p2>;
 
 	status = "okay";
+};
+
+&pcie6a_port0 {
+	reset-gpios = <&tlmm 152 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 154 GPIO_ACTIVE_LOW>;
 };
 
 &pm8550_gpios {
@@ -1208,16 +1322,14 @@
 	};
 };
 
-&pm8550ve_8_gpios {
-	misc_3p3_reg_en: misc-3p3-reg-en-state {
-		pins = "gpio6";
+&pmc8380_5_gpios {
+	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
+		pins = "gpio8";
 		function = "normal";
+		power-source = <1>; /* 1.8 V */
 		bias-disable;
 		input-disable;
 		output-enable;
-		drive-push-pull;
-		power-source = <1>; /* 1.8 V */
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
 	};
 };
 
@@ -1232,25 +1344,55 @@
 	};
 };
 
-&pmc8380_3_gpios {
-	edp_bl_en: edp-bl-en-state {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		input-disable;
-		output-enable;
+&pmk8550_adc_tm {
+	channel@144 {
+		reg = <PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>;
+		label = "SYS_THERM2";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
+	};
+	channel@145 {
+		reg = <PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>;
+		label = "SYS_THERM3";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
+	};
+	channel@146 {
+		reg = <PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>;
+		label = "SYS_THERM4";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
+	};
+	/* SYS_THERM5 is unused */
+	channel@148 {
+		reg = <PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
+		label = "SYS_THERM6";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
+	};
+	channel@14a {
+		reg = <PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>;
+		label = "SYS_THERM0";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
+	};
+	channel@14b {
+		reg = <PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>;
+		label = "SYS_THERM1";
+		qcom,hw-settle-time = <100>;
+		qcom,ratiometric;
+		qcom,adc-tm;
 	};
 };
 
-&pmc8380_5_gpios {
-	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
-		pins = "gpio8";
-		function = "normal";
-		power-source = <1>; /* 1.8 V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
+&pmk8550_rtc {
+	/* DS1308 RTC is more useful since it is backed by battery */
+	status = "disabled";
 };
 
 &qupv3_0 {
@@ -1319,6 +1461,37 @@
 	vdd3-supply = <&vreg_l8b_3p0>;
 };
 
+&swr0 {
+	status = "okay";
+
+	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
+	pinctrl-names = "default";
+
+	/* WSA8845, Left Woofer (SPK0 on pin header) */
+	left_woofer: speaker@0,0 {
+		compatible = "sdw20217020400";
+		reg = <0 0>;
+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "WooferLeft";
+		vdd-1p8-supply = <&vreg_l15b_1p8>;
+		vdd-io-supply = <&vreg_l12b_1p2>;
+		qcom,port-mapping = <1 2 3 7 10 13>;
+	};
+
+	/* WSA8845, Left Tweeter (SPK1 on pin header) */
+	left_tweeter: speaker@0,1 {
+		compatible = "sdw20217020400";
+		reg = <0 1>;
+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "TweeterLeft";
+		vdd-1p8-supply = <&vreg_l15b_1p8>;
+		vdd-io-supply = <&vreg_l12b_1p2>;
+		qcom,port-mapping = <4 5 6 7 11 13>;
+	};
+};
+
 &swr1 {
 	status = "okay";
 
@@ -1341,10 +1514,39 @@
 	};
 };
 
+&swr3 {
+	status = "okay";
+
+	pinctrl-0 = <&wsa2_swr_active>, <&spkr_23_sd_n_active>;
+	pinctrl-names = "default";
+
+	/* WSA8845, Right Woofer (SPK2 on pin header) */
+	right_woofer: speaker@0,0 {
+		compatible = "sdw20217020400";
+		reg = <0 0>;
+		reset-gpios = <&lpass_tlmm 13 GPIO_ACTIVE_LOW>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "WooferRight";
+		vdd-1p8-supply = <&vreg_l15b_1p8>;
+		vdd-io-supply = <&vreg_l12b_1p2>;
+		qcom,port-mapping = <1 2 3 7 10 13>;
+	};
+
+	/* WSA8845, Right Tweeter (SPK3 on pin header) */
+	right_tweeter: speaker@0,1 {
+		compatible = "sdw20217020400";
+		reg = <0 1>;
+		reset-gpios = <&lpass_tlmm 13 GPIO_ACTIVE_LOW>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "TweeterRight";
+		vdd-1p8-supply = <&vreg_l15b_1p8>;
+		vdd-io-supply = <&vreg_l12b_1p2>;
+		qcom,port-mapping = <4 5 6 7 11 13>;
+	};
+};
+
 &tlmm {
-	gpio-reserved-ranges = <34 2>, /* Unused */
-			       <44 4>, /* SPI (TPM) */
-			       <238 1>; /* UFS Reset */
+	gpio-reserved-ranges = <44 4>; /* SPI (TPM) */
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
@@ -1546,9 +1748,10 @@
 };
 
 &usb_1_ss0 {
-	status = "okay";
+	dr_mode = "otg";
+	usb-role-switch;
 
-	dr_mode = "host";
+	status = "okay";
 };
 
 &usb_1_ss0_dwc3_hs {
@@ -1576,9 +1779,9 @@
 };
 
 &usb_1_ss1 {
-	status = "okay";
-
 	dr_mode = "host";
+
+	status = "okay";
 };
 
 &usb_1_ss1_dwc3_hs {
@@ -1606,9 +1809,9 @@
 };
 
 &usb_1_ss2 {
-	status = "okay";
-
 	dr_mode = "host";
+
+	status = "okay";
 };
 
 &usb_1_ss2_dwc3_hs {
@@ -1627,7 +1830,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb6_repeater>;
+	phys = <&eusb3_repeater>;
 
 	status = "okay";
 };
@@ -1636,7 +1839,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb3_repeater>;
+	phys = <&eusb6_repeater>;
 
 	status = "okay";
 };
