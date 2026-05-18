@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1-rc4-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1-rc4
+  * arm64: dts: qcom: x1e001-devkit-jg: add variant from 6.19.y
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 18 May 2026 19:39:08 +0200
+
 linux-qcom-x1e (7.1-rc3-jg-2) resolute; urgency=medium
 
   * ASoC: qcom: q6asm-dai: fix error handling [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
