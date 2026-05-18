@@ -1,5 +1,7 @@
 linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
 
+  * rebased the whole stack to v7.1-rc4
+  * arm64: dts: qcom: x1e001-devkit-jg: add variant from 6.19.y
   * ASoC: qcom: q6asm-dai: fix error handling [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
   * drm/msm/dp: Do not fail audio prepare when DP is inactive [Xilin Wu <sophon@radxa.com>]
   * arm64: dts: qcom: idepad-slim5x: update from working ip5 2in1
