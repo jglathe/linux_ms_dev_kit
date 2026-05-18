@@ -1,3 +1,13 @@
+linux-qcom-x1e (7.1-rc3-jg-2) resolute; urgency=medium
+
+  * ASoC: qcom: q6asm-dai: fix error handling [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * drm/msm/dp: Do not fail audio prepare when DP is inactive [Xilin Wu <sophon@radxa.com>]
+  * arm64: dts: qcom: idepad-slim5x: update from working ip5 2in1
+  * arm64: dts: qcom: idepad-5-2in1: enable hdmi, fp-reader, dp sound
+  * arm64: dts: qcom: sc8280xp: correct usb phy power supply [Pengyu Luo <mitltlatltl@gmail.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 18 May 2026 11:46:20 +0200
+
 linux-qcom-x1e (7.1-rc3-jg-1) resolute; urgency=medium
 
   * arm64: dts: qcom: x1p42100-ideapad-slim5x: Fix display brightness regression [olav-st <olav.s.th@gmail.com>]
