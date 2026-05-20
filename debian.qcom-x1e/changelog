@@ -1,3 +1,19 @@
+linux-qcom-x1e (6.19.14-jg-4) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1e001-devkit-jg: add variant from 6.19.y
+  * ASoC: qcom: q6asm-dai: fix error handling [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * drm/msm/dp: Do not fail audio prepare when DP is inactive [Xilin Wu <sophon@radxa.com>]
+  * arm64: dts: qcom: idepad-slim5x: update from working ip5 2in1
+  * arm64: dts: qcom: idepad-5-2in1: enable hdmi, fp-reader, dp sound
+  * arm64: dts: qcom: sc8280xp: correct usb phy power supply [Pengyu Luo <mitltlatltl@gmail.com>]
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x: Fix display brightness regression [olav-st <olav.s.th@gmail.com>]
+  * debian/rules: limit target dtbs_install to -j1
+  * ASoC: qcom: q6apm-dai: Allocate an extra page for PCM buffers [Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>]
+  * arm64: dts: qcom: x1: Add x1-el2-pas.dtso for PAS-managed remoteproc
+  * arm64: dts: qcom: idepad-5-2in1: remove backlight gpio
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 20 May 2026 14:35:58 +0200
+
 linux-qcom-x1e (6.19.14-jg-3) resolute; urgency=medium
 
   * sp12 updates, ips3 updates

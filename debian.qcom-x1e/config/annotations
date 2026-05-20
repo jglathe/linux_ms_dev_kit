@@ -9684,7 +9684,7 @@ CONFIG_RTW89_8852AU                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852B                              policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852BE                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852BTE                            policy<{'arm64': 'n'}>
-CONFIG_RTW89_8852BU                             policy<{'arm64': 'n'}>
+CONFIG_RTW89_8852BU                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852B_COMMON                       policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852C                              policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852CE                             policy<{'arm64': 'm'}>
