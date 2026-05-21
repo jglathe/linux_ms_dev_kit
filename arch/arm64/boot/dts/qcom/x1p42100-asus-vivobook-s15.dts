@@ -22,11 +22,11 @@
 	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcdxkmsucpurwa.mbn";
 };
 
-&iris {
-	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcvss8380.mbn";
-
-	status = "okay";
-};
+//&iris {
+//	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcvss8380.mbn";
+//
+//	status = "okay";
+//};
 
 &remoteproc_adsp {
 	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcadsp8380.mbn",
