@@ -445,19 +445,19 @@
 
 		cluster_pd0: power-domain-cpu-cluster0 {
 			#power-domain-cells = <0>;
-			domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+			domain-idle-states = <&cluster_cl4>;
 			power-domains = <&system_pd>;
 		};
 
 		cluster_pd1: power-domain-cpu-cluster1 {
 			#power-domain-cells = <0>;
-			domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+			domain-idle-states = <&cluster_cl4>;
 			power-domains = <&system_pd>;
 		};
 
 		cluster_pd2: power-domain-cpu-cluster2 {
 			#power-domain-cells = <0>;
-			domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+			domain-idle-states = <&cluster_cl4>;
 			power-domains = <&system_pd>;
 		};
 
