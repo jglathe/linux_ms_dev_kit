@@ -40,4 +40,6 @@ endif # CONFIG_ARCH_WANT_FLAT_DTB_INSTALL
 __dtbs_install: $(addprefix $(dst)/, $(dtbs))
 	@:
 
+.NOTPARALLEL: __dtbs_install
+
 .PHONY: $(PHONY)
