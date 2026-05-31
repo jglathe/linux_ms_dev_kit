@@ -319,11 +319,39 @@ u32 msm_dp_panel_get_mode_bpp(struct msm_dp_panel *msm_dp_panel,
 int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
 	struct drm_connector *connector)
 {
+	int modes;
+	int retry;
+	struct msm_dp_panel_private *panel;
+
 	if (!msm_dp_panel) {
 		DRM_ERROR("invalid input\n");
 		return -EINVAL;
 	}
 
+	panel = container_of(msm_dp_panel, struct msm_dp_panel_private, msm_dp_panel);
+
+	if (msm_dp_panel->drm_edid) {
+		modes = drm_edid_connector_add_modes(connector);
+		if (modes > 0)
+			return modes;
+
+		drm_edid_free(msm_dp_panel->drm_edid);
+		msm_dp_panel->drm_edid = NULL;
+	}
+
+	for (retry = 0; retry < 5; retry++) {
+		usleep_range(20000, 25000);
+		msm_dp_panel->drm_edid =
+			drm_edid_read_ddc(connector, &panel->aux->ddc);
+		if (msm_dp_panel->drm_edid)
+			break;
+
+		drm_dbg_dp(connector->dev,
+			   "get_modes re-read attempt %d/5 failed\n",
+			   retry + 1);
+	}
+
+	drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
 	if (msm_dp_panel->drm_edid)
 		return drm_edid_connector_add_modes(connector);
 
