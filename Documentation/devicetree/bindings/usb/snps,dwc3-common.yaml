@@ -212,6 +212,16 @@ properties:
       When set, run the SOF/ITP counter based on ref_clk.
     type: boolean
 
+  snps,reinit-phy-on-resume:
+    description:
+      When set, the DWC3 will re-initialize the USB2 PHYs during the
+      host-mode fast resume path (device_may_wakeup). Some platforms
+      cut PHY power during deep sleep even when USB wake is enabled,
+      and the standard PHY runtime PM resume is insufficient to restore
+      the PHY register state. This quirk forces a full phy_exit() +
+      phy_init() cycle on each USB2 PHY.
+    type: boolean
+
   snps,resume-hs-terminations:
     description:
       Fix the issue of HS terminations CRC error on resume by enabling this
