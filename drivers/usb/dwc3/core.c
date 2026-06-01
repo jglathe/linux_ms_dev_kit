@@ -1873,6 +1873,8 @@ static void dwc3_get_properties(struct dwc3 *dwc)
 
 	dwc->dis_split_quirk = device_property_read_bool(dev,
 				"snps,dis-split-quirk");
+	dwc->reinit_phy_on_resume = device_property_read_bool(dev,
+				"snps,reinit-phy-on-resume");
 
 	dwc->lpm_nyet_threshold = lpm_nyet_threshold;
 	dwc->tx_de_emphasis = tx_de_emphasis;
@@ -2580,6 +2582,29 @@ static int dwc3_resume_common(struct dwc3 *dwc, pm_message_t msg)
 				reg &= ~DWC3_GUSB2PHYCFG_ENBLSLPM;
 
 			dwc3_writel(dwc, DWC3_GUSB2PHYCFG(i), reg);
+		}
+
+		/*
+		 * Some platforms gate USB2 PHY power during deep sleep even
+		 * when device_may_wakeup is true, causing register state to be
+		 * lost.  Re-initialize the PHY to ensure clean signalling.
+		 */
+		if (dwc->reinit_phy_on_resume && !PMSG_IS_AUTO(msg)) {
+			for (i = 0; i < dwc->num_usb2_ports; i++) {
+				int ret;
+
+				ret = phy_exit(dwc->usb2_generic_phy[i]);
+				if (ret)
+					dev_warn_ratelimited(dwc->dev,
+						"failed to exit usb2 phy %d: %d\n",
+						i, ret);
+
+				ret = phy_init(dwc->usb2_generic_phy[i]);
+				if (ret)
+					dev_warn_ratelimited(dwc->dev,
+						"failed to init usb2 phy %d: %d\n",
+						i, ret);
+			}
 		}
 
 		for (i = 0; i < dwc->num_usb2_ports; i++)
