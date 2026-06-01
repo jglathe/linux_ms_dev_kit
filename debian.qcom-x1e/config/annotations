@@ -111,12 +111,6 @@ CONFIG_CRYPTO_SHA512                            note<'module signing'>
 CONFIG_DEBUG_FS                                 policy<{'arm64': 'y'}>
 CONFIG_DEBUG_FS                                 note<'required debug option'>
 
-CONFIG_DEBUG_INFO                               policy<{'arm64': 'y'}>
-CONFIG_DEBUG_INFO                               note<'required for debug packages'>
-
-CONFIG_DEBUG_INFO_SPLIT                         policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_SPLIT                         note<'LP: #1413664'>
-
 CONFIG_DEBUG_KERNEL                             policy<{'arm64': 'y'}>
 CONFIG_DEBUG_KERNEL                             note<'required debug option'>
 
@@ -2906,21 +2900,15 @@ CONFIG_DEBUG_CGROUP_REF                         policy<{'arm64': 'n'}>
 CONFIG_DEBUG_CLOSURES                           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_DEVRES                             policy<{'arm64': 'n'}>
 CONFIG_DEBUG_DRIVER                             policy<{'arm64': 'n'}>
-CONFIG_DEBUG_EFI                                policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FORCE_FUNCTION_ALIGN_64B           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FORCE_WEAK_PER_CPU                 policy<{'arm64': 'n'}>
 CONFIG_DEBUG_FS_ALLOW_ALL                       policy<{'arm64': 'y'}>
 CONFIG_DEBUG_FS_ALLOW_NONE                      policy<{'arm64': 'n'}>
 CONFIG_DEBUG_GPIO                               policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_BTF                           policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_COMPRESSED_NONE               policy<{'arm64': 'y'}>
-CONFIG_DEBUG_INFO_COMPRESSED_ZLIB               policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_COMPRESSED_ZSTD               policy<{'arm64': 'n'}>
 CONFIG_DEBUG_INFO_DWARF4                        policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_DWARF5                        policy<{'arm64': 'y'}>
+CONFIG_DEBUG_INFO_DWARF5                        policy<{'arm64': 'n'}>
 CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT       policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_NONE                          policy<{'arm64': 'n'}>
-CONFIG_DEBUG_INFO_REDUCED                       policy<{'arm64': 'n'}>
+CONFIG_DEBUG_INFO_NONE                          policy<{'arm64': 'y'}>
 CONFIG_DEBUG_IRQFLAGS                           policy<{'arm64': 'n'}>
 CONFIG_DEBUG_KERNEL_DC                          policy<{'arm64': 'n'}>
 CONFIG_DEBUG_KMEMLEAK                           policy<{'arm64': 'n'}>
@@ -4282,10 +4270,8 @@ CONFIG_GCC_NO_STRINGOP_OVERFLOW                 policy<{'arm64': 'y'}>
 CONFIG_GCC_SUPPORTS_DYNAMIC_FTRACE_WITH_ARGS    policy<{'arm64': 'y'}>
 CONFIG_GCC_VERSION                              policy<{'arm64': '150200'}>
 CONFIG_GCOV_KERNEL                              policy<{'arm64': 'n'}>
-CONFIG_GDB_SCRIPTS                              policy<{'arm64': 'y'}>
 CONFIG_GEHC_PMC_ADC                             policy<{'arm64': 'm'}>
 CONFIG_GEMINI_ETHERNET                          policy<{'arm64': 'm'}>
-CONFIG_GENDWARFKSYMS                            policy<{'arm64': 'n'}>
 CONFIG_GENERIC_ADC_BATTERY                      policy<{'arm64': 'm'}>
 CONFIG_GENERIC_ADC_THERMAL                      policy<{'arm64': 'm'}>
 CONFIG_GENERIC_ALLOCATOR                        policy<{'arm64': 'y'}>
@@ -7976,7 +7962,6 @@ CONFIG_PAGE_SIZE_4KB                            policy<{'arm64': 'y'}>
 CONFIG_PAGE_SIZE_LESS_THAN_256KB                policy<{'arm64': 'y'}>
 CONFIG_PAGE_SIZE_LESS_THAN_64KB                 policy<{'arm64': 'y'}>
 CONFIG_PAGE_TABLE_CHECK                         policy<{'arm64': 'n'}>
-CONFIG_PAHOLE_HAS_LANG_EXCLUDE                  policy<{'arm64': 'y'}>
 CONFIG_PAHOLE_VERSION                           policy<{'arm64': '131'}>
 CONFIG_PALMAS_GPADC                             policy<{'arm64': 'm'}>
 CONFIG_PANEL                                    policy<{'arm64': 'm'}>
@@ -9703,7 +9688,7 @@ CONFIG_RTW89_8852AU                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852B                              policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852BE                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852BTE                            policy<{'arm64': 'n'}>
-CONFIG_RTW89_8852BU                             policy<{'arm64': 'n'}>
+CONFIG_RTW89_8852BU                             policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852B_COMMON                       policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852C                              policy<{'arm64': 'm'}>
 CONFIG_RTW89_8852CE                             policy<{'arm64': 'm'}>
@@ -9719,12 +9704,10 @@ CONFIG_RTW89_USB                                policy<{'arm64': 'm'}>
 CONFIG_RT_GROUP_SCHED                           policy<{'arm64': 'n'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '20'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '19'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190101'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108200'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_DEADLINE                          policy<{'arm64': 'n'}>
@@ -11777,10 +11760,10 @@ CONFIG_SYSTEM_BLACKLIST_KEYRING                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_DATA_VERIFICATION                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_EXTRA_CERTIFICATE                 policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_EXTRA_CERTIFICATE_SIZE            policy<{'arm64': '4096'}>
-CONFIG_SYSTEM_REVOCATION_KEYS                   policy<{'arm64': '"debian/canonical-revoked-certs.pem"'}>
+CONFIG_SYSTEM_REVOCATION_KEYS                   policy<{'arm64': '""'}>
 CONFIG_SYSTEM_REVOCATION_LIST                   policy<{'arm64': 'y'}>
 CONFIG_SYSTEM_TRUSTED_KEYRING                   policy<{'arm64': 'y'}>
-CONFIG_SYSTEM_TRUSTED_KEYS                      policy<{'arm64': '"debian/canonical-certs.pem"'}>
+CONFIG_SYSTEM_TRUSTED_KEYS                      policy<{'arm64': '""'}>
 CONFIG_SYSV68_PARTITION                         policy<{'arm64': 'y'}>
 CONFIG_SYSVIPC                                  policy<{'arm64': 'y'}>
 CONFIG_SYSVIPC_COMPAT                           policy<{'arm64': 'y'}>
