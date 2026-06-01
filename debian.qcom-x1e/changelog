@@ -1,3 +1,21 @@
+linux-qcom-x1e (7.1-rc5-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1-rc5  
+  * arm64: dts: qcom: x1-asus-vivobook-s15: add 4-speaker 3-dp sound nodes
+  * arm64: dts: qcom: sc8280xp-blackrock: correct usb phy power supply
+  * arm64: dts: qcom: x1p4-asus-vivobook-s15: disable Iris
+  * arm64: dts: qcom: hamoa: Drop cluster_cl5 idle state from CPU clusters
+  * Revert "usb: typec: mux: avoid duplicated mux switches"
+  * drm/msm: force mode_changed when gamma_lut changes [Stephan Gerhold <stephan.gerhold@linaro.org>]
+  * drm/msm/dpu: skip resource reallocation on color_mgmt_changed only [Stephan Gerhold <stephan.gerhold@linaro.org>]
+  * usb: typec: ps883x: fix DP_STATE_D handling [Stephan Gerhold <stephan.gerhold@linaro.org>]
+  * drm/msm/dp: add EDID re-read retry in msm_dp_panel_get_modes()
+  * kbuild: dtbinst: mark __dtbs_install as .NOTPARALLEL to avoid install -D race
+  * arm64: dts: qcom: idepad-slim3x: update pcie nodes to 7.0 syntax
+  * arm64: dts: qcom: x1p42100-lenovo-thinkbook-16: align eUSB2 repeaters
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 01 Jun 2026 08:51:59 +0200
+
 linux-qcom-x1e (7.1-rc4-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1-rc4
