@@ -331,6 +331,7 @@ int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
 	panel = container_of(msm_dp_panel, struct msm_dp_panel_private, msm_dp_panel);
 
 	if (msm_dp_panel->drm_edid) {
+		drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
 		modes = drm_edid_connector_add_modes(connector);
 		if (modes > 0)
 			return modes;
