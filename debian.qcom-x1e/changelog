@@ -1,5 +1,7 @@
 linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
 
+  * rebased the whole stack to v7.1-rc6  
+  * drm/msm/dp: add missing drm_edid_connector_update() before add_modes on cached EDID
   * rebased the whole stack to v7.1-rc5  
   * arm64: dts: qcom: x1-asus-vivobook-s15: add 4-speaker 3-dp sound nodes
   * arm64: dts: qcom: sc8280xp-blackrock: correct usb phy power supply
