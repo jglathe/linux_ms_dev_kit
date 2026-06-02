@@ -335,6 +335,11 @@ int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
 		if (modes > 0)
 			return modes;
 
+		drm_dbg_dp(connector->dev,
+			   "EDID produced 0 modes, re-reading (bad/placeholder EDID?)\n");
+		print_hex_dump(KERN_DEBUG, "bad EDID: ", DUMP_PREFIX_OFFSET, 16, 1,
+			       drm_edid_raw(msm_dp_panel->drm_edid), EDID_LENGTH, true);
+
 		drm_edid_free(msm_dp_panel->drm_edid);
 		msm_dp_panel->drm_edid = NULL;
 	}
