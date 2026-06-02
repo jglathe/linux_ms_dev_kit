@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1-rc6-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1-rc6  
+  * drm/msm/dp: add missing drm_edid_connector_update() before add_modes on cached EDID
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 02 Jun 2026 22:16:25 +0200
+
 linux-qcom-x1e (7.1-rc5-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1-rc5  
