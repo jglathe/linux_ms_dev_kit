@@ -7,7 +7,6 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/err.h>
-#include <linux/interconnect-provider.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -248,7 +247,7 @@ static struct platform_driver apss_ipq5424_driver = {
 	.driver = {
 		.name   = "apss-ipq5424-clk",
 		.of_match_table = apss_ipq5424_match_table,
-		.sync_state = icc_sync_state,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 
