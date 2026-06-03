@@ -6,7 +6,6 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/interconnect-clk.h>
-#include <linux/interconnect-provider.h>
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -249,7 +248,7 @@ static void qcom_msm8996_cbf_icc_remove(struct platform_device *pdev)
 
 	icc_clk_unregister(provider);
 }
-#define qcom_msm8996_cbf_icc_sync_state icc_sync_state
+#define qcom_msm8996_cbf_icc_sync_state qcom_cc_sync_state
 #else
 static int qcom_msm8996_cbf_icc_register(struct platform_device *pdev,  struct clk_hw *cbf_hw)
 {
@@ -258,7 +257,7 @@ static int qcom_msm8996_cbf_icc_register(struct platform_device *pdev,  struct c
 	return 0;
 }
 #define qcom_msm8996_cbf_icc_remove(pdev) { }
-#define qcom_msm8996_cbf_icc_sync_state NULL
+#define qcom_msm8996_cbf_icc_sync_state clk_sync_state
 #endif
 
 static int qcom_msm8996_cbf_probe(struct platform_device *pdev)
