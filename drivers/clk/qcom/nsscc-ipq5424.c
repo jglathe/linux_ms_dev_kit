@@ -6,7 +6,6 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/err.h>
-#include <linux/interconnect-provider.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -1331,7 +1330,7 @@ static struct platform_driver nss_cc_ipq5424_driver = {
 		.name = "qcom,ipq5424-nsscc",
 		.of_match_table = nss_cc_ipq5424_match_table,
 		.pm = &nss_cc_ipq5424_pm_ops,
-		.sync_state = icc_sync_state,
+		.sync_state = qcom_cc_sync_state,
 	},
 };
 module_platform_driver(nss_cc_ipq5424_driver);
