@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.1-rc6-jg-1) resolute; urgency=medium
+
+  * hid: Pen battery quirk for Surface Pro 12in [Harrison Vanderbyl <harrison.vanderbyl@gmail.com>]
+  * arm64: dts: qcom: Add Microsoft Surface Pro 12in [Harrison Vanderbyl <harrison.vanderbyl@gmail.com>]
+  * arm64: dts: qcom: x1p42100-microsoft-sp12in: remove previous sp12 dts
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 04 Jun 2026 17:44:31 +0200
+
 linux-qcom-x1e (7.1-rc6-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1-rc6  
