@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include "common.h"
 
 #include <dt-bindings/interconnect/qcom,msm8996-cbf.h>
 
