@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1-rc6-jg-2) resolute; urgency=medium
+
+  * clk: implement sync_state support [Brian Masney <bmasney@redhat.com>] - whole series https://lore.kernel.org/all/20260603-clk-sync-state-v1-0-457120eed200@redhat.com/
+  * update config/annotations with android binder
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 05 Jun 2026 18:10:00 +0200
+
 linux-qcom-x1e (7.1-rc6-jg-1) resolute; urgency=medium
 
   * hid: Pen battery quirk for Surface Pro 12in [Harrison Vanderbyl <harrison.vanderbyl@gmail.com>]
