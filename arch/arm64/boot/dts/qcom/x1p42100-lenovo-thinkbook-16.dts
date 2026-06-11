@@ -632,6 +632,10 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l5b_3p0: ldo5 {
@@ -689,6 +693,10 @@
 			regulator-min-microvolt = <3072000>;
 			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l14b_3p0: ldo14 {
