@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1-rc6-jg-3) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-thinkbook-16: Keep PTN3222 supplies in retention during deep suspend
+  * arm64: dts: qcom: x1-lenovo-ideapad-5: Keep PTN3222 supplies in retention during deep suspend
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 12 Jun 2026 20:32:59 +0200
+
 linux-qcom-x1e (7.1-rc6-jg-2) resolute; urgency=medium
 
   * clk: implement sync_state support [Brian Masney <bmasney@redhat.com>] - whole series https://lore.kernel.org/all/20260603-clk-sync-state-v1-0-457120eed200@redhat.com/
