@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2024, Linaro Limited
- * Copyright (c) 2025, Jens Glathe
+ * Copyright (c) 2026 Jens Glathe
  */
 
 /dts-v1/;
@@ -57,8 +57,6 @@
 
 	hdmi-bridge {
 		compatible = "realtek,rtd2171";
-
-		enable-gpios = <&tlmm 120 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
@@ -566,6 +564,10 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l6b_1p8: ldo6 {
@@ -598,8 +600,8 @@
 
 		vreg_l12b_1p2: ldo12 {
 			regulator-name = "vreg_l12b_1p2";
-			regulator-min-microvolt = <1150000>;
-			regulator-max-microvolt = <1250000>;
+			regulator-min-microvolt = <1190000>;
+			regulator-max-microvolt = <1210000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -609,6 +611,10 @@
 			regulator-min-microvolt = <3072000>;
 			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l14b_3p0: ldo14 {
@@ -754,8 +760,8 @@
 
 		vreg_l1i_1p8: ldo1 {
 			regulator-name = "vreg_l1i_1p8";
-			regulator-min-microvolt = <1750000>;
-			regulator-max-microvolt = <1850000>;
+			regulator-min-microvolt = <1790000>;
+			regulator-max-microvolt = <1810000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -929,6 +935,14 @@
 	/* 1st PS883x */
 };
 
+&i2c4 {
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	/* unknown but active on Windows */
+};
+
 &i2c5 {
 	clock-frequency = <400000>;
 
@@ -992,6 +1006,14 @@
 	status = "okay";
 
 	/* 2nd PS883x */
+};
+
+&i2c8 {
+	clock-frequency = <400000>;
+
+	status = "okay";
+
+	/* unknown but active on Windows */
 };
 
 //&iris {
@@ -1063,6 +1085,10 @@
 		panel {
 //			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
+
+			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
+			pinctrl-0 = <&edp_bl_en>;
+			pinctrl-names = "default";
 
 			power-supply = <&vreg_edp_3p3>;
 
@@ -1178,6 +1204,16 @@
 	};
 };
 
+&pmc8380_3_gpios {
+	edp_bl_en: edp-bl-en-state {
+		pins = "gpio4";
+		function = "normal";
+		power-source = <1>; /* 1.8V */
+		input-disable;
+		output-enable;
+	};
+};
+
 &qupv3_0 {
 	status = "okay";
 };
@@ -1232,6 +1268,12 @@
 &smb2360_1_eusb2_repeater {
 	vdd18-supply = <&vreg_l3d_1p8>;
 	vdd3-supply = <&vreg_l14b_3p0>;
+};
+
+&spi10 {
+	status = "disabled";
+
+	/* Unknown device */
 };
 
 &swr0 {
@@ -1327,13 +1369,6 @@
 		pins = "gpio92";
 		function = "gpio";
 		bias-disable;
-	};
-
-	hdmi_bridge_en: hdmi-bridge-en-state {
-		pins = "gpio120";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-pull-down;
 	};
 
 	hdmi_hpd_default: hdmi-hpd-default-state {
@@ -1638,7 +1673,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb6_repeater>;
+	phys = <&eusb3_repeater>;
 
 	status = "okay";
 };
@@ -1654,7 +1689,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb3_repeater>;
+	phys = <&eusb6_repeater>;
 
 	status = "okay";
 };
