@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.1-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 14 Jun 2026 20:53:54 +0200
+
 linux-qcom-x1e (7.1-rc7-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1-rc7
