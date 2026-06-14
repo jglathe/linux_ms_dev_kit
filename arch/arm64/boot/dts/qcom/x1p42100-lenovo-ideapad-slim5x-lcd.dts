@@ -57,12 +57,9 @@
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
-		pwms = <&pmk8550_pwm 0 4266537>;
-		enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
-		power-supply = <&vreg_edp_bl>;
+		pwms = <&pmk8550_pwm 0 4166667>;
 
-		pinctrl-0 = <&edp_bl_en>, <&edp_bl_pwm>;
-		pinctrl-names = "default";
+		power-supply = <&vreg_edp_3p3>;
 	};
 
 	hdmi-bridge {
@@ -70,6 +67,8 @@
 
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
+
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -333,8 +332,8 @@
 	usb-1-ss0-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 167 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 168 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 168 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 167 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss0_sbu_default>;
 		pinctrl-names = "default";
@@ -352,8 +351,8 @@
 	usb-1-ss1-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 178 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 179 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss1_sbu_default>;
 		pinctrl-names = "default";
@@ -380,22 +379,6 @@
 		enable-active-high;
 
 		pinctrl-0 = <&edp_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_edp_bl: regulator-edp-bl {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VBL9";
-		regulator-min-microvolt = <3600000>;
-		regulator-max-microvolt = <3600000>;
-
-		gpio = <&pmc8380_3_gpios 10 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&edp_bl_reg_en>;
 		pinctrl-names = "default";
 
 		regulator-boot-on;
@@ -1110,10 +1093,9 @@
 	aux-bus {
 		panel {
 			compatible = "edp-panel";
+			power-supply = <&vreg_edp_3p3>;
 
 			backlight = <&backlight>;
-
-			power-supply = <&vreg_edp_3p3>;
 
 			port {
 				edp_panel_in: endpoint {
@@ -1214,17 +1196,6 @@
 	wake-gpios = <&tlmm 154 GPIO_ACTIVE_LOW>;
 };
 
-&pmk8550_gpios {
-	edp_bl_pwm: edp-bl-pwm-state {
-		pins = "gpio5";
-		function = "func3";
-	};
-};
-
-&pmk8550_pwm {
-	status = "okay";
-};
-
 &pm8550ve_8_gpios {
 	misc_3p3_reg_en: misc-3p3-reg-en-state {
 		pins = "gpio6";
@@ -1238,19 +1209,8 @@
 	};
 };
 
-&pmc8380_3_gpios {
-	edp_bl_en: edp-bl-en-state {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		input-disable;
-		output-enable;
-	};
-
-	edp_bl_reg_en: edp-bl-reg-en-state {
-		pins = "gpio10";
-		function = "normal";
-	};
+&pmk8550_pwm {
+	status = "okay";
 };
 
 &qupv3_0 {
@@ -1513,14 +1473,14 @@
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
 		oe-n-pins {
-			pins = "gpio167";
+			pins = "gpio168";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio168";
+			pins = "gpio167";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1530,14 +1490,14 @@
 
 	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
 		oe-n-pins {
-			pins = "gpio178";
+			pins = "gpio179";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio179";
+			pins = "gpio178";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1670,7 +1630,7 @@
 	/delete-property/ mode-switch;
 	/delete-property/ orientation-switch;
 
-	status = "okay";
+	status = "disabled";
 
 	ports {
 		port@0 {
