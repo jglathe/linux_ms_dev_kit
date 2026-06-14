@@ -61,6 +61,8 @@
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
 
+		status = "disabled";
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -323,8 +325,8 @@
 	usb-1-ss0-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 167 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 168 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 168 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 167 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss0_sbu_default>;
 		pinctrl-names = "default";
@@ -342,8 +344,8 @@
 	usb-1-ss1-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 178 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 179 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss1_sbu_default>;
 		pinctrl-names = "default";
@@ -1085,11 +1087,6 @@
 		panel {
 //			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
-
-			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
-			pinctrl-0 = <&edp_bl_en>;
-			pinctrl-names = "default";
-
 			power-supply = <&vreg_edp_3p3>;
 
 			port {
@@ -1201,16 +1198,6 @@
 		output-enable;
 		power-source = <1>; /* 1.8 V */
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-	};
-};
-
-&pmc8380_3_gpios {
-	edp_bl_en: edp-bl-en-state {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		input-disable;
-		output-enable;
 	};
 };
 
@@ -1474,14 +1461,14 @@
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
 		oe-n-pins {
-			pins = "gpio167";
+			pins = "gpio168";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio168";
+			pins = "gpio167";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1491,14 +1478,14 @@
 
 	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
 		oe-n-pins {
-			pins = "gpio178";
+			pins = "gpio179";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio179";
+			pins = "gpio178";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1631,7 +1618,7 @@
 	/delete-property/ mode-switch;
 	/delete-property/ orientation-switch;
 
-	status = "okay";
+	status = "disabled";
 
 	ports {
 		port@0 {
