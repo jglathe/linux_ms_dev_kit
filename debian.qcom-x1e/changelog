@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1-rc7-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1-rc7
+  * arm64: dts: qcom: x1-lenovo-ideapad-slim5x: re-configure backlight
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 14 Jun 2026 19:49:07 +0200
+
 linux-qcom-x1e (7.1-rc6-jg-3) resolute; urgency=medium
 
   * arm64: dts: qcom: x1-thinkbook-16: Keep PTN3222 supplies in retention during deep suspend
