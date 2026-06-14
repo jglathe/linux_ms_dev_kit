@@ -62,46 +62,44 @@
 		power-supply = <&vreg_edp_3p3>;
 	};
 
-	hdmi-bridge {
-		compatible = "realtek,rtd2171";
-
-		pinctrl-0 = <&hdmi_hpd_default>;
-		pinctrl-names = "default";
-
-		status = "disabled";
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			port@0 {
-				reg = <0>;
-
-				hdmi_bridge_dp_in: endpoint {
-					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
-				};
-			};
-
-			port@1 {
-				reg = <1>;
-
-				hdmi_bridge_tmds_out: endpoint {
-					remote-endpoint = <&hdmi_con>;
-				};
-			};
-		};
-	};
-
-	hdmi-connector {
-		compatible = "hdmi-connector";
-		type = "a";
-
-		port {
-			hdmi_con: endpoint {
-				remote-endpoint = <&hdmi_bridge_tmds_out>;
-			};
-		};
-	};
+//	hdmi-bridge {
+//		compatible = "realtek,rtd2171";
+//
+//		pinctrl-0 = <&hdmi_hpd_default>;
+//		pinctrl-names = "default";
+//
+//		ports {
+//			#address-cells = <1>;
+//			#size-cells = <0>;
+//
+//			port@0 {
+//				reg = <0>;
+//
+//				hdmi_bridge_dp_in: endpoint {
+//					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
+//				};
+//			};
+//
+//			port@1 {
+//				reg = <1>;
+//
+//				hdmi_bridge_tmds_out: endpoint {
+//					remote-endpoint = <&hdmi_con>;
+//				};
+//			};
+//		};
+//	};
+//
+//	hdmi-connector {
+//		compatible = "hdmi-connector";
+//		type = "a";
+//
+//		port {
+//			hdmi_con: endpoint {
+//				remote-endpoint = <&hdmi_bridge_tmds_out>;
+//			};
+//		};
+//	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -1623,31 +1621,29 @@
 	status = "okay";
 };
 
-&usb_1_ss2_qmpphy {
-	vdda-phy-supply = <&vreg_l2j_1p2>;
-	vdda-pll-supply = <&vreg_l2d_0p9>;
-
-	/delete-property/ mode-switch;
-	/delete-property/ orientation-switch;
-
-	status = "disabled";
-
-	ports {
-		port@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			/delete-node/ endpoint;
-
-			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
-				reg = <0>;
-
-				data-lanes = <0 1 2 3>;
-				remote-endpoint = <&hdmi_bridge_dp_in>;
-			};
-		};
-	};
-};
+//&usb_1_ss2_qmpphy {
+//	vdda-phy-supply = <&vreg_l2j_1p2>;
+//	vdda-pll-supply = <&vreg_l2d_0p9>;
+//
+//	/delete-property/ mode-switch;
+//	/delete-property/ orientation-switch;
+//
+//	ports {
+//		port@0 {
+//			#address-cells = <1>;
+//			#size-cells = <0>;
+//
+//			/delete-node/ endpoint;
+//
+//			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
+//				reg = <0>;
+//
+//				data-lanes = <0 1 2 3>;
+//				remote-endpoint = <&hdmi_bridge_dp_in>;
+//			};
+//		};
+//	};
+//};
 
 &usb_2 {
 	dr_mode = "host";
