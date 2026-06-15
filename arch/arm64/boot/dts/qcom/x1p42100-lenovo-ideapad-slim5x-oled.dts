@@ -1066,7 +1066,7 @@
 &mdss_dp2 {
 	sound-name-prefix = "DisplayPort2";
 
-	status = "okay";
+	status = "disabled";
 };
 
 &mdss_dp2_out {
