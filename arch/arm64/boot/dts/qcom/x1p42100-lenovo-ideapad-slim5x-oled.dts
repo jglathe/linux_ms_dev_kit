@@ -955,6 +955,11 @@
 
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
+
+		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&eusb5_reset_n>;
+		pinctrl-names = "default";
 	};
 
 	eusb3_repeater: redriver@47 {
@@ -1084,8 +1089,7 @@
 	aux-bus {
 		panel {
 //			compatible = "samsung,atna40ct01";
-//			compatible = "edp-panel";
-			compatible = "samsung,atna33xc20";
+			compatible = "edp-panel";
 			power-supply = <&vreg_edp_3p3>;
 
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
@@ -1208,7 +1212,7 @@
 	edp_bl_en: edp-bl-en-state {
 		pins = "gpio4";
 		function = "normal";
-		power-source = <1>; /* 1.8V */
+		power-source = <0>;
 		input-disable;
 		output-enable;
 	};
@@ -1336,6 +1340,14 @@
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	eusb5_reset_n: eusb5-reset-n-state {
+		pins = "gpio9";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
