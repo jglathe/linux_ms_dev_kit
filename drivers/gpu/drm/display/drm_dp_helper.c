@@ -4399,6 +4399,17 @@ drm_edp_backlight_probe_max(struct drm_dp_aux *aux, struct drm_edp_backlight_inf
 	}
 	pn_max &= DP_EDP_PWMGEN_BIT_COUNT_MASK;
 
+	/* === DEBUG: ATNA40CT01 / eDP backlight bit count reporting === */
+	drm_info(aux->drm_dev,
+		 "[eDP BL DEBUG] PWMGEN_BIT_COUNT (0x724) raw=0x%02x (Pn=%u), "
+		 "CAP_MIN (0x725)=0x%02x (min=%u), CAP_MAX (0x726)=0x%02x (max=%u)\n",
+		 bit_count, bit_count,
+		 pn_min, pn_min,
+		 pn_max, pn_max);
+	if (unlikely(pn_min > pn_max)) {
+		drm_info(aux->drm_dev, "[eDP BL DEBUG] Invalid CAP_MIN > CAP_MAX!\n");
+	}
+
 	if (unlikely(pn_min > pn_max)) {
 		drm_dbg_kms(aux->drm_dev, "%s: Invalid pwmgen bit count cap min/max returned: %d %d\n",
 			    aux->name, pn_min, pn_max);
