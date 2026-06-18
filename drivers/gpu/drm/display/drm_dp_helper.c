@@ -42,6 +42,7 @@
 #include <drm/drm_print.h>
 #include <drm/drm_vblank.h>
 #include <drm/drm_panel.h>
+#include <linux/log2.h>
 
 #include "drm_dp_helper_internal.h"
 
@@ -4429,6 +4430,42 @@ drm_edp_backlight_probe_max(struct drm_dp_aux *aux, struct drm_edp_backlight_inf
 		pn = clamp(bit_count, pn_min, pn_max);
 
 	bl->max = (1 << pn) - 1;
+
+	/* Allow DT to override the DPCD-reported brightness range
+	 * (e.g. Samsung ATNA40CT01 reports 16-bit but only implements 2047 levels).
+	 */
+	struct device_node *np = aux->dev->of_node;
+	struct device_node *target_np = np;
+
+	if (np) {
+		struct device_node *auxbus = of_get_child_by_name(np, "aux-bus");
+		if (auxbus) {
+			struct device_node *panel = of_get_child_by_name(auxbus, "panel");
+			if (panel) {
+				target_np = panel;
+				of_node_put(panel);
+			}
+			of_node_put(auxbus);
+		}
+	}
+
+	if (target_np) {
+		u32 val;
+		if (!of_property_read_u32(target_np, "max-brightness", &val)) {
+			dev_info(aux->dev, "%s: found max-brightness=%u on %s\n",
+				 aux->name, val, target_np->full_name);
+			/* === your override logic goes here === */
+			if (val > 0) {
+				bl->max = val;
+				pn = ilog2(val + 1);
+				drm_dbg_kms(aux->drm_dev, "%s: using DT max-brightness = %u (pn=%u)\n",
+					    aux->name, val, pn);
+			}
+		} else {
+			dev_info(aux->dev, "%s: no max-brightness property found\n", aux->name);
+		}
+	}
+
 	if (!driver_pwm_freq_hz) {
 		if (pn != bit_count)
 			goto bit_count_write_back;
