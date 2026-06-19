@@ -1087,10 +1087,11 @@
 
 	aux-bus {
 		panel {
-//			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
 
 			power-supply = <&vreg_edp_3p3>;
+
+			max-brightness = <2045>;
 
 			port {
 				edp_panel_in: endpoint {
