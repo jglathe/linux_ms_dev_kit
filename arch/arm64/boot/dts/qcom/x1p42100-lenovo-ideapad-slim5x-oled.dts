@@ -1088,13 +1088,14 @@
 
 	aux-bus {
 		panel {
-//			compatible = "samsung,atna40ct01";
 			compatible = "edp-panel";
 			power-supply = <&vreg_edp_3p3>;
 
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 			pinctrl-0 = <&edp_bl_en>;
 			pinctrl-names = "default";
+
+			max-brightness = <2045>;
 
 			port {
 				edp_panel_in: endpoint {
