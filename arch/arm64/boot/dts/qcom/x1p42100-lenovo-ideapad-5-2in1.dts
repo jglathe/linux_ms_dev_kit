@@ -380,6 +380,7 @@
 		pinctrl-names = "default";
 
 		regulator-boot-on;
+		regulator-always-on;
 	};
 
 	vreg_edp_3p3: regulator-edp-3p3 {
