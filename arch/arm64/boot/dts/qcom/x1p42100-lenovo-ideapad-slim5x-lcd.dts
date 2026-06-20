@@ -246,21 +246,21 @@
 			};
 		};
 
-		displayport-2-dai-link {
-			link-name = "DisplayPort2 Playback";
-
-			codec {
-				sound-dai = <&mdss_dp2>;
-			};
-
-			cpu {
-				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
-			};
-
-			platform {
-				sound-dai = <&q6apm>;
-			};
-		};
+//		displayport-2-dai-link {
+//			link-name = "DisplayPort2 Playback";
+//
+//			codec {
+//				sound-dai = <&mdss_dp2>;
+//			};
+//
+//			cpu {
+//				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
+//			};
+//
+//			platform {
+//				sound-dai = <&q6apm>;
+//			};
+//		};
 
 		wcd-playback-dai-link {
 			link-name = "WCD Playback";
