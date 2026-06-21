@@ -1,3 +1,14 @@
+linux-qcom-x1e (7.1-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-lenovo-ideapad-slim3: fix formatting
+  * arm64: dts: qcom: x1-lenovo-ideapad-5-2in1: set camera regulator to always on
+  * arm64: dts: qcom: x1-lenovo-ideapad-5-2in1: switch mic setup to T14s mapping (2 dmics
+  * drm/msm/dpu: Update catalog for X1E80100 display support [William Larson <William.Larson@canonical.com>]
+  * powercap: qcom: Add SPEL powercap driver [Manaf Meethalavalappu Pallikunhi <manaf.pallikunhi@oss.qualcomm.com>]
+  * arm64: dts: qcom: x1-lenovo-ideapad-slim5x: disable displayport-2-dai-link
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 21 Jun 2026 08:33:05 +0200
+
 linux-qcom-x1e (7.1-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1
