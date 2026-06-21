@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.1.1-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1.1
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 21 Jun 2026 11:41:34 +0200
+
 linux-qcom-x1e (7.1-jg-1) resolute; urgency=medium
 
   * arm64: dts: qcom: x1-lenovo-ideapad-slim3: fix formatting
