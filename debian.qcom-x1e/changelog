@@ -1,5 +1,6 @@
 linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
 
+  * rebased the whole stack to v7.1.1
   * arm64: dts: qcom: x1-lenovo-ideapad-slim3: fix formatting
   * arm64: dts: qcom: x1-lenovo-ideapad-5-2in1: set camera regulator to always on
   * arm64: dts: qcom: x1-lenovo-ideapad-5-2in1: switch mic setup to T14s mapping (2 dmics
