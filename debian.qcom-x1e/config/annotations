@@ -3244,6 +3244,7 @@ CONFIG_DRM_MSM_KMS_FBDEV                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
+CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -8923,6 +8924,7 @@ CONFIG_QCOM_SMEM_STATE                          policy<{'arm64': 'y'}>
 CONFIG_QCOM_SMP2P                               policy<{'arm64': 'y'}>
 CONFIG_QCOM_SMSM                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SOCINFO                             policy<{'arm64': 'm'}>
+CONFIG_QCOM_SPEL                                policy<{'arm64': 'y'}>
 CONFIG_QCOM_SPM                                 policy<{'arm64': 'y'}>
 CONFIG_QCOM_SPMI_ADC5                           policy<{'arm64': 'm'}>
 CONFIG_QCOM_SPMI_ADC5_GEN3                      policy<{'arm64': 'n'}>
@@ -9722,7 +9724,6 @@ CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
 CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
 CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_DEADLINE                          policy<{'arm64': 'n'}>
