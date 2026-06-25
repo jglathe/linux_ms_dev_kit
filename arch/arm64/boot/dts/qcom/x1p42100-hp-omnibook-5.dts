@@ -58,6 +58,47 @@
 	};
 };
 
+&i2c5 {
+	eusb9_repeater: redriver@4b {
+		compatible = "nxp,ptn3222";
+		reg = <0x4b>;
+		#phy-cells = <0>;
+
+		vdd3v3-supply = <&vreg_l13b_3p0>;
+		vdd1v8-supply = <&vreg_l4b_1p8>;
+
+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&eusb9_reset_n>;
+		pinctrl-names = "default";
+	};
+};
+
 &sound {
 	model = "X1P42100-HP-OMNIBOOK-5";
+};
+
+&tlmm {
+	eusb9_reset_n: eusb9-reset-n-state {
+		pins = "gpio7";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+};
+
+&usb_2 {
+	dr_mode = "host";
+
+	status = "okay";
+};
+
+&usb_2_hsphy {
+	vdd-supply = <&vreg_l2e_0p8>;
+	vdda12-supply = <&vreg_l3e_1p2>;
+
+	phys = <&eusb9_repeater>;
+
+	status = "okay";
 };
