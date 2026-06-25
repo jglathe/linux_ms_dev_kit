@@ -10,7 +10,7 @@
 
 / {
 	model = "HP OmniBook 5";
-	compatible = "hp,omnibook-5", "qcom,x1p42100";
+	compatible = "hp,omnibook-5", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 };
 
