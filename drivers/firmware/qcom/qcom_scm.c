@@ -2316,6 +2316,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
 	{ .compatible = "hp,elitebook-6-g1q" },
 	{ .compatible = "hp,elitebook-ultra-g1q" },
 	{ .compatible = "hp,elitebook-x-g2q" },
+	{ .compatible = "hp,omnibook-5" },
 	{ .compatible = "hp,omnibook-x14" },
 	{ .compatible = "hp,omnibook-x14-fe1" },
 	{ .compatible = "huawei,gaokun3" },
