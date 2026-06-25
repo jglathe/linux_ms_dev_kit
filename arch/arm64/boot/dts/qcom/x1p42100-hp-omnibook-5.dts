@@ -5,8 +5,12 @@
 #include "purwa.dtsi"
 #include "hamoa-pmics.dtsi"
 #include "x1-hp-omnibook-x14.dtsi"
+/delete-node/ &backlight;
+/delete-node/ &edp_bl_pwm;
+/delete-node/ &edp_bl_reg_en;
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
+/delete-node/ &vreg_edp_bl;
 
 / {
 	model = "HP OmniBook 5";
@@ -30,6 +34,10 @@
 			"qcom/x1p42100/hp/omnibook-5/cdsp_dtbs.elf";
 
 	status = "okay";
+};
+
+&edp_bl_en {
+	power-source = <0>;
 };
 
 &i2c0 {
@@ -71,6 +79,20 @@
 
 		pinctrl-0 = <&eusb9_reset_n>;
 		pinctrl-names = "default";
+	};
+};
+
+&mdss_dp3 {
+	aux-bus {
+		panel {
+			/delete-property/ backlight;
+
+			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
+			pinctrl-0 = <&edp_bl_en>;
+			pinctrl-names = "default";
+
+			max-brightness = <2045>;
+		};
 	};
 };
 
