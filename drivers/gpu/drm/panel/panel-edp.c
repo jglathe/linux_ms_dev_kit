@@ -2202,6 +2202,7 @@ static const struct edp_panel_entry edp_panels[] = {
 	EDP_PANEL_ENTRY('S', 'H', 'P', 0x15a7, &delay_200_500_e200, "LQ120P1JX51"),
 
 	EDP_PANEL_ENTRY('S', 'D', 'C', 0x4187, &delay_200_500_e80_d50, "ATNA40CT01"),
+	EDP_PANEL_ENTRY('S', 'D', 'C', 0x4213, &delay_200_500_e80_d50, "ATNA40KW02"),
 
 	EDP_PANEL_ENTRY('S', 'T', 'A', 0x0004, &delay_200_500_e200, "116KHD024006"),
 	EDP_PANEL_ENTRY('S', 'T', 'A', 0x0009, &delay_200_500_e250, "116QHD024002"),
