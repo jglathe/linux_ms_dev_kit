@@ -178,6 +178,8 @@ static inline bool dev_has_sync_state(struct device *dev)
 
 	if (!dev)
 		return false;
+	if (!list_empty(&dev->sync_state_list))
+		return true;
 	drv = READ_ONCE(dev->driver);
 	if (drv && drv->sync_state)
 		return true;
@@ -188,10 +190,15 @@ static inline bool dev_has_sync_state(struct device *dev)
 
 static inline void dev_sync_state(struct device *dev)
 {
+	struct sync_state_entry *entry;
+
 	if (dev->bus->sync_state)
 		dev->bus->sync_state(dev);
 	else if (dev->driver && dev->driver->sync_state)
 		dev->driver->sync_state(dev);
+
+	list_for_each_entry(entry, &dev->sync_state_list, node)
+		entry->fn(dev);
 }
 
 int driver_add_groups(const struct device_driver *drv,

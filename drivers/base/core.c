@@ -2616,6 +2616,7 @@ EXPORT_SYMBOL_GPL(device_show_string);
 static void device_release(struct kobject *kobj)
 {
 	struct device *dev = kobj_to_dev(kobj);
+	struct sync_state_entry *entry, *tmp;
 	struct device_private *p = dev->p;
 
 	/*
@@ -2628,6 +2629,11 @@ static void device_release(struct kobject *kobj)
 	 * possible memory leak.
 	 */
 	devres_release_all(dev);
+
+	list_for_each_entry_safe(entry, tmp, &dev->sync_state_list, node) {
+		list_del(&entry->node);
+		kfree(entry);
+	}
 
 	kfree(dev->dma_range_map);
 	kfree(dev->driver_override.name);
@@ -3243,11 +3249,34 @@ void device_initialize(struct device *dev)
 	INIT_LIST_HEAD(&dev->links.consumers);
 	INIT_LIST_HEAD(&dev->links.suppliers);
 	INIT_LIST_HEAD(&dev->links.defer_sync);
+	INIT_LIST_HEAD(&dev->sync_state_list);
 	dev->links.status = DL_DEV_NO_DRIVER;
 	dev_assign_dma_coherent(dev, dma_default_coherent);
 	swiotlb_dev_init(dev);
 }
 EXPORT_SYMBOL_GPL(device_initialize);
+
+int dev_add_sync_state(struct device *dev,
+			   void (*fn)(struct device *dev))
+{
+	struct sync_state_entry *entry;
+
+	if (!dev || !dev->driver)
+		return 0;
+
+	list_for_each_entry(entry, &dev->sync_state_list, node)
+		if (entry->fn == fn)
+			return 0;
+
+	entry = kmalloc_obj(*entry);
+	if (!entry)
+		return -ENOMEM;
+
+	entry->fn = fn;
+	list_add_tail(&entry->node, &dev->sync_state_list);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(dev_add_sync_state);
 
 struct kobject *virtual_device_parent(void)
 {

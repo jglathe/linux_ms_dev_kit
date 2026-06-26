@@ -644,6 +644,8 @@ enum struct_device_flags {
  * @driver_override: Driver name to force a match.  Do not touch directly; use
  *		     device_set_driver_override() instead.
  * @links:	Links to suppliers and consumers of this device.
+ * @sync_state_list: List of sync_state callbacks added by subsystem
+ *		frameworks (e.g. clk, genpd) via dev_add_sync_state().
  * @power:	For device power management.
  *		See Documentation/driver-api/pm/devices.rst for details.
  * @pm_domain:	Provide callbacks that are executed during system suspend,
@@ -725,6 +727,7 @@ struct device {
 					 */
 
 	struct dev_links_info	links;
+	struct list_head	sync_state_list;
 	struct dev_pm_info	power;
 	struct dev_pm_domain	*pm_domain;
 
@@ -1138,6 +1141,14 @@ static inline int dev_set_drv_sync_state(struct device *dev,
 		dev->driver->sync_state = fn;
 	return 0;
 }
+
+struct sync_state_entry {
+	struct list_head	node;
+	void			(*fn)(struct device *dev);
+};
+
+int dev_add_sync_state(struct device *dev,
+			   void (*fn)(struct device *dev));
 
 static inline void dev_set_removable(struct device *dev,
 				     enum device_removable removable)
