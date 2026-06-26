@@ -1092,11 +1092,7 @@
 			compatible = "edp-panel";
 			power-supply = <&vreg_edp_3p3>;
 
-			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
-			pinctrl-0 = <&edp_bl_en>;
-			pinctrl-names = "default";
-
-			max-brightness = <2045>;
+			max-brightness = <2047>;
 
 			port {
 				edp_panel_in: endpoint {
@@ -1207,16 +1203,6 @@
 		output-enable;
 		power-source = <1>; /* 1.8 V */
 		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-	};
-};
-
-&pmc8380_3_gpios {
-	edp_bl_en: edp-bl-en-state {
-		pins = "gpio4";
-		function = "normal";
-		power-source = <0>;
-		input-disable;
-		output-enable;
 	};
 };
 
