@@ -1,3 +1,12 @@
+linux-qcom-x1e (7.1.1-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1p42100-hp-omnibook-5: DT for HP OmniBook 5 laptop [Jay Sim <jsim3368@gmail.com>]
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x: Fix display brightness regression [olav-st <olav.s.th@gmail.com>]
+  * drivers/platform: lenovo-t14s-ec: Add hwmon support for temperatures and fan speed [Daniel Lezcano <daniel.lezcano@oss.qualcomm.com>]
+  * arm64: dts: qcom: x1p42100-hp-omnibook-5: remove max-brightness value
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 26 Jun 2026 16:34:27 +0200
+
 linux-qcom-x1e (7.1.1-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1.1
