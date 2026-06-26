@@ -90,8 +90,6 @@
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 			pinctrl-0 = <&edp_bl_en>;
 			pinctrl-names = "default";
-
-			max-brightness = <2045>;
 		};
 	};
 };
