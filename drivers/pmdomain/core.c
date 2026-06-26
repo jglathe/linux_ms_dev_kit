@@ -2697,7 +2697,7 @@ int of_genpd_add_provider_simple(struct device_node *np,
 		genpd->sync_state = GENPD_SYNC_STATE_SIMPLE;
 		device_set_node(&genpd->dev, fwnode);
 	} else {
-		dev_set_drv_sync_state(dev, genpd_sync_state);
+		dev_add_sync_state(dev, genpd_sync_state);
 	}
 
 	put_device(dev);
@@ -2771,7 +2771,7 @@ int of_genpd_add_provider_onecell(struct device_node *np,
 	if (!dev)
 		sync_state = true;
 	else
-		dev_set_drv_sync_state(dev, genpd_sync_state);
+		dev_add_sync_state(dev, genpd_sync_state);
 
 	put_device(dev);
 
