@@ -1130,18 +1130,6 @@ static inline void device_lock_assert(struct device *dev)
 	lockdep_assert_held(&dev->mutex);
 }
 
-static inline int dev_set_drv_sync_state(struct device *dev,
-					 void (*fn)(struct device *dev))
-{
-	if (!dev || !dev->driver)
-		return 0;
-	if (dev->driver->sync_state && dev->driver->sync_state != fn)
-		return -EBUSY;
-	if (!dev->driver->sync_state)
-		dev->driver->sync_state = fn;
-	return 0;
-}
-
 struct sync_state_entry {
 	struct list_head	node;
 	void			(*fn)(struct device *dev);
