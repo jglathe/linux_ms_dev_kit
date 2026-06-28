@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.1.2-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.1.2
+  * arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: add Displayport DAIs
+  * drm/msm/dpu: Reassert core clock rate on runtime resume [Xilin Wu <sophon@radxa.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 28 Jun 2026 19:33:51 +0200
+
 linux-qcom-x1e (7.1.1-jg-1) resolute; urgency=medium
 
   * arm64: dts: qcom: x1p42100-hp-omnibook-5: DT for HP OmniBook 5 laptop [Jay Sim <jsim3368@gmail.com>]
