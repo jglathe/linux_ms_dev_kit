@@ -62,6 +62,7 @@ struct ps883x_retimer {
 
 	enum typec_orientation orientation;
 	bool in_reset;
+	bool disable_usb4;
 };
 
 static int ps883x_enable_vregs(struct ps883x_retimer *retimer)
@@ -187,6 +188,23 @@ static int ps883x_configure(struct ps883x_retimer *retimer, int cfg0,
 	return 0;
 }
 
+static void ps883x_apply_dp_altmode(int *cfg0, int *cfg1, int dp_state)
+{
+	*cfg1 |= CONN_STATUS_1_DP_CONNECTED | CONN_STATUS_1_DP_HPD_LEVEL;
+
+	switch (dp_state) {
+	case TYPEC_DP_STATE_D:
+		*cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
+		fallthrough;
+	case TYPEC_DP_STATE_C:
+		*cfg1 |= CONN_STATUS_1_DP_SINK_REQUESTED |
+			 CONN_STATUS_1_DP_PIN_ASSIGNMENT_C_D;
+		break;
+	default:
+		break;
+	}
+}
+
 static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state *state)
 {
 	struct typec_thunderbolt_data *tb_data;
@@ -202,25 +220,11 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 	if (state->alt) {
 		switch (state->alt->svid) {
 		case USB_TYPEC_DP_SID:
-			cfg1 |= CONN_STATUS_1_DP_CONNECTED |
-				CONN_STATUS_1_DP_HPD_LEVEL;
-
-			switch (state->mode)  {
-			case TYPEC_DP_STATE_D:
-				cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
-				fallthrough;
-			case TYPEC_DP_STATE_C:
-				cfg1 |= CONN_STATUS_1_DP_SINK_REQUESTED |
-					CONN_STATUS_1_DP_PIN_ASSIGNMENT_C_D;
-				break;
-			default: /* MODE_E */
-				break;
-			}
+			ps883x_apply_dp_altmode(&cfg0, &cfg1, state->mode);
 			break;
 		case USB_TYPEC_TBT_SID:
 			tb_data = state->data;
 
-			/* Unconditional */
 			cfg2 |= CONN_STATUS_2_TBT_CONNECTED;
 
 			if (tb_data->cable_mode & TBT_CABLE_ACTIVE_PASSIVE)
@@ -249,6 +253,17 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 			cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
 			break;
 		case TYPEC_MODE_USB4:
+			if (retimer->disable_usb4) {
+				cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
+
+				/* Preserve DP altmode if it was also negotiated */
+				if (state->alt && state->alt->svid == USB_TYPEC_DP_SID)
+					ps883x_apply_dp_altmode(&cfg0, &cfg1, state->mode);
+
+				break;
+			}
+
+			/* Normal USB4 handling */
 			eudo_data = state->data;
 
 			cfg2 |= CONN_STATUS_2_USB4_CONNECTED;
@@ -376,6 +391,8 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 		return -ENOMEM;
 
 	retimer->client = client;
+
+	retimer->disable_usb4 = device_property_read_bool(dev, "qcom,disable-usb4");
 
 	mutex_init(&retimer->lock);
 
