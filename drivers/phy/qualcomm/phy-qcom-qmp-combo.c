@@ -3174,6 +3174,10 @@ static bool qmp_combo_configure_dp_mode(struct qmp_combo *qmp)
 	const struct phy_configure_opts_dp *dp_opts = &qmp->dp_opts;
 	u32 val;
 
+	dev_info(qmp->dev,
+		 "qmp_combo_configure_dp_mode ENTER: lanes=%d reverse=%d current_qmp_mode=%d dp_powered_on=%d\n",
+		 dp_opts->lanes, reverse, qmp->qmpphy_mode, qmp->dp_powered_on);
+
 	val = DP_PHY_PD_CTL_PWRDN | DP_PHY_PD_CTL_AUX_PWRDN |
 	      DP_PHY_PD_CTL_PLL_PWRDN | DP_PHY_PD_CTL_DP_CLAMP_EN;
 
@@ -3420,11 +3424,18 @@ static int qmp_v8_configure_dp_clocks(struct qmp_combo *qmp)
 	return 0;
 }
 
-static int qmp_v456_configure_dp_phy(struct qmp_combo *qmp)
+static int qmp_v456_configure_dp_phy(struct qmp_combo *qmp)   // or whichever version you have
 {
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
+	bool reverse = (qmp->orientation == TYPEC_ORIENTATION_REVERSE);
+	const struct phy_configure_opts_dp *dp_opts = &qmp->dp_opts;
+	u32 bias0_en, drvr0_en, bias1_en, drvr1_en;
 	u32 status;
 	int ret;
+
+	dev_info(qmp->dev,
+		 "qmp_v456_configure_dp_phy ENTER: lanes=%d reverse=%d\n",
+		 dp_opts->lanes, reverse);
 
 	writel(0x0f, qmp->dp_dp_phy + QSERDES_DP_PHY_CFG_1);
 
@@ -4462,9 +4473,20 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 	enum qmpphy_mode new_mode;
 	unsigned int svid;
+	struct device *dev = &mux->dev;
+	bool dp_was_powered = qmp->dp_powered_on;
 
-	/* print out call parameter */
-	printk(KERN_INFO "%s: qmp_combo_mux_set() enter mode=%d, altmode=%d\n", dev_name(&mux->dev),(int)state->mode,qmp->dp_powered_on);
+	dev_info(dev,
+		 "qmp_combo_typec_mux_set: mode=%lu has_alt=%d svid=0x%04x (DP? %d) current_qmp_mode=%d dp_powered_on=%d\n",
+		 state->mode,
+		 !!state->alt,
+		 state->alt ? state->alt->svid : 0,
+		 state->alt && state->alt->svid == USB_TYPEC_DP_SID,
+		 qmp->qmpphy_mode,
+		 qmp->dp_powered_on);
+
+//	/* print out call parameter */
+//	printk(KERN_INFO "%s: qmp_combo_mux_set() enter mode=%d, altmode=%d\n", dev_name(&mux->dev),(int)state->mode,qmp->dp_powered_on);
 
 	guard(mutex)(&qmp->phy_mutex);
 
@@ -4495,13 +4517,19 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 		new_mode = QMPPHY_MODE_USB3_ONLY;
 	}
 
+	dev_dbg(qmp->dev, "mux_set computed new_mode=%d (from state_mode=%d)\n", new_mode, state->mode);
+
 	if (new_mode == qmp->qmpphy_mode) {
-		dev_dbg(qmp->dev, "typec_mux_set: same qmpphy mode, bail out\n");
+		dev_info(qmp->dev,
+			 "BAIL same_mode: current=%d new=%d dp_powered_on=%d (was=%d) init_count=%d\n",
+			 qmp->qmpphy_mode, new_mode, qmp->dp_powered_on, dp_was_powered, qmp->init_count);
 		return 0;
 	}
 
 	if (qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY && qmp->dp_powered_on) {
-		dev_dbg(qmp->dev, "typec_mux_set: DP PHY is still in use, delaying switch\n");
+		dev_info(qmp->dev,
+			 "BAIL dp_still_in_use: current=%d new=%d dp_powered_on=%d init_count=%d\n",
+			 qmp->qmpphy_mode, new_mode, qmp->dp_powered_on, qmp->init_count);
 		return 0;
 	}
 
@@ -4511,6 +4539,7 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	qmp->qmpphy_mode = new_mode;
 
 	if (qmp->init_count) {
+		dev_dbg(qmp->dev, "mux_set doing power sequencing (init_count=%d)\n", qmp->init_count);
 		if (qmp->usb_init_count)
 			qmp_combo_usb_power_off(qmp->usb_phy);
 
@@ -4518,9 +4547,11 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 			writel(DP_PHY_PD_CTL_PSR_PWRDN, qmp->dp_dp_phy + QSERDES_DP_PHY_PD_CTL);
 
 		qmp_combo_com_exit(qmp, true);
+		dev_dbg(qmp->dev, "after com_exit: dp_powered_on=%d\n", qmp->dp_powered_on);
 
 		/* Now everything's powered down, power up the right PHYs */
 		qmp_combo_com_init(qmp, true);
+		dev_dbg(qmp->dev, "after com_init: dp_powered_on=%d\n", qmp->dp_powered_on);
 
 		if (new_mode == QMPPHY_MODE_DP_ONLY) {
 			if (qmp->usb_init_count)
@@ -4540,7 +4571,8 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	}
 
 	/* print out result */
-	printk(KERN_INFO "%s: qmp_combo_mux_set() exit mode=%d, new_mode=%d, altmode=%d\n", dev_name(&mux->dev),(int)state->mode,(int)new_mode,qmp->dp_powered_on);
+	dev_dbg(qmp->dev, "mux_set exit: final_qmpphy=%d dp_powered_on=%d\n",
+		qmp->qmpphy_mode, qmp->dp_powered_on);
 
 	return 0;
 }

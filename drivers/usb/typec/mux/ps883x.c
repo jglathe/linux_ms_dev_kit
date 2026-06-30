@@ -194,9 +194,11 @@ static void ps883x_apply_dp_altmode(int *cfg0, int *cfg1, int dp_state)
 
 	switch (dp_state) {
 	case TYPEC_DP_STATE_D:
+	case TYPEC_DP_STATE_F:          /* combo mode (USB + DP) used by other hubs */
 		*cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
 		fallthrough;
 	case TYPEC_DP_STATE_C:
+	case TYPEC_DP_STATE_E:
 		*cfg1 |= CONN_STATUS_1_DP_SINK_REQUESTED |
 			 CONN_STATUS_1_DP_PIN_ASSIGNMENT_C_D;
 		break;
@@ -214,12 +216,22 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 	int cfg2 = 0x00;
 	bool reset = false;
 
+	dev_info(&retimer->client->dev,
+		 "ps883x_set: mode=%lu alt=%p svid=0x%04x (DP? %d) orientation=%d in_reset=%d disable_usb4=%d\n",
+		 state->mode,
+		 state->alt,
+		 state->alt ? state->alt->svid : 0,
+		 state->alt && state->alt->svid == USB_TYPEC_DP_SID,
+		 retimer->orientation, retimer->in_reset, retimer->disable_usb4);
+
 	if (retimer->orientation == TYPEC_ORIENTATION_REVERSE)
 		cfg0 |= CONN_STATUS_0_ORIENTATION_REVERSED;
 
 	if (state->alt) {
 		switch (state->alt->svid) {
 		case USB_TYPEC_DP_SID:
+			dev_info(&retimer->client->dev,
+				 "ps883x_set: DP Altmode detected (state->mode=%lu)\n", state->mode);
 			ps883x_apply_dp_altmode(&cfg0, &cfg1, state->mode);
 			break;
 		case USB_TYPEC_TBT_SID:
@@ -240,11 +252,9 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 		}
 	} else {
 		switch (state->mode) {
-		/* SAFE can be transient or point to an actual disconnect */
 		case TYPEC_STATE_SAFE:
 			reset = retimer->orientation == TYPEC_ORIENTATION_NONE;
 			break;
-		/* USB2 pins don't even go through this chip */
 		case TYPEC_MODE_USB2:
 			reset = true;
 			break;
@@ -256,10 +266,8 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 			if (retimer->disable_usb4) {
 				cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
 
-				/* Preserve DP altmode if it was also negotiated */
 				if (state->alt && state->alt->svid == USB_TYPEC_DP_SID)
 					ps883x_apply_dp_altmode(&cfg0, &cfg1, state->mode);
-
 				break;
 			}
 
@@ -278,6 +286,10 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 		}
 	}
 
+	dev_info(&retimer->client->dev,
+		 "ps883x_set: final cfg0=0x%02x cfg1=0x%02x cfg2=0x%02x reset=%d\n",
+		 cfg0, cfg1, cfg2, reset);
+
 	return ps883x_configure(retimer, cfg0, cfg1, cfg2, reset);
 }
 
@@ -286,6 +298,10 @@ static int ps883x_sw_set(struct typec_switch_dev *sw,
 {
 	struct ps883x_retimer *retimer = typec_switch_get_drvdata(sw);
 	int ret = 0;
+
+	dev_info(&retimer->client->dev,
+		 "ps883x_sw_set: orientation=%d (NONE=0, NORMAL=1, REVERSE=2)\n",
+		 orientation);
 
 	ret = typec_switch_set(retimer->typec_switch, orientation);
 	if (ret)
@@ -296,11 +312,6 @@ static int ps883x_sw_set(struct typec_switch_dev *sw,
 	if (retimer->orientation != orientation) {
 		retimer->orientation = orientation;
 
-		/*
-		 * Orientation notifications usually come prior to mode switch
-		 * events. If the retimer is already in reset, we still want to
-		 * cache the new orientation value for the subsequent ps883x_set().
-		 */
 		if (retimer->in_reset)
 			return 0;
 
@@ -320,6 +331,10 @@ static int ps883x_retimer_set(struct typec_retimer *rtmr,
 	struct ps883x_retimer *retimer = typec_retimer_get_drvdata(rtmr);
 	struct typec_mux_state mux_state;
 	int ret = 0;
+
+	dev_info(&retimer->client->dev,
+		 "ps883x_retimer_set called: mode=%lu has_alt=%d\n",
+		 state->mode, !!state->alt);
 
 	mutex_lock(&retimer->lock);
 	ret = ps883x_set(retimer, state);
