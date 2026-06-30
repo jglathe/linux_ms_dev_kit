@@ -4474,7 +4474,6 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	unsigned int svid;
 	struct device *dev = &mux->dev;
 	bool dp_was_powered = qmp->dp_powered_on;
-	bool was_stale = false;
 
 	dev_info(dev,
 		 "qmp_combo_typec_mux_set: mode=%lu has_alt=%d svid=0x%04x (DP? %d) current_qmp_mode=%d dp_powered_on=%d\n",
@@ -4494,20 +4493,6 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 		svid = state->alt->svid;
 	else
 		svid = 0;
-
-	/* === FORCE-CLEAN STALE STATE ON FRESH DP ALT MODE REQUEST === */
-	if (svid == USB_TYPEC_DP_SID && state->mode != TYPEC_STATE_SAFE) {
-		if (qmp->dp_powered_on || qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY) {
-			dev_info(qmp->dev,
-				 "force-clean: stale DP context (powered=%d, mode=%d) -> forcing power cycle\n",
-				 qmp->dp_powered_on, qmp->qmpphy_mode);
-
-			qmp->dp_powered_on = false;
-			qmp->qmpphy_mode   = QMPPHY_MODE_USB3_ONLY;
-			was_stale = true;
-		}
-	}
-	/* === end force-clean === */
 
 	if (svid == USB_TYPEC_DP_SID) {
 		switch (state->mode) {
@@ -4533,14 +4518,14 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 
 	dev_dbg(qmp->dev, "mux_set computed new_mode=%d (from state_mode=%ld)\n", new_mode, state->mode);
 
-	if ((new_mode == qmp->qmpphy_mode) && !was_stale) {
+	if (new_mode == qmp->qmpphy_mode) {
 		dev_info(qmp->dev,
 			 "BAIL same_mode: current=%d new=%d dp_powered_on=%d (was=%d) init_count=%d\n",
 			 qmp->qmpphy_mode, new_mode, qmp->dp_powered_on, dp_was_powered, qmp->init_count);
 		return 0;
 	}
 
-	if ((qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY && qmp->dp_powered_on) && !was_stale) {
+	if (qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY && qmp->dp_powered_on) {
 		dev_info(qmp->dev,
 			 "BAIL dp_still_in_use: current=%d new=%d dp_powered_on=%d init_count=%d\n",
 			 qmp->qmpphy_mode, new_mode, qmp->dp_powered_on, qmp->init_count);
@@ -4553,9 +4538,6 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	qmp->qmpphy_mode = new_mode;
 
 	if (qmp->init_count) {
-		if (was_stale)
-			dev_info(qmp->dev, "mux_set: entering power sequencing because of stale DP context\n");
-
 		dev_dbg(qmp->dev, "mux_set doing power sequencing (init_count=%d)\n", qmp->init_count);
 		if (qmp->usb_init_count)
 			qmp_combo_usb_power_off(qmp->usb_phy);
