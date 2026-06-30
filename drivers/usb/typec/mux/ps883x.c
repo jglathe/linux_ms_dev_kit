@@ -264,11 +264,9 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 			break;
 		case TYPEC_MODE_USB4:
 			if (retimer->disable_usb4) {
-				cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
-
-				if (state->alt && state->alt->svid == USB_TYPEC_DP_SID)
-					ps883x_apply_dp_altmode(&cfg0, &cfg1, state->mode);
-				break;
+				dev_info(&retimer->client->dev,
+					 "USB4 disabled via DT property, rejecting USB4 mode\n");
+				return -EOPNOTSUPP;
 			}
 
 			/* Normal USB4 handling */
