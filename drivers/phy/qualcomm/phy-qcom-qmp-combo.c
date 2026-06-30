@@ -3429,7 +3429,6 @@ static int qmp_v456_configure_dp_phy(struct qmp_combo *qmp)   // or whichever ve
 	const struct qmp_phy_cfg *cfg = qmp->cfg;
 	bool reverse = (qmp->orientation == TYPEC_ORIENTATION_REVERSE);
 	const struct phy_configure_opts_dp *dp_opts = &qmp->dp_opts;
-	u32 bias0_en, drvr0_en, bias1_en, drvr1_en;
 	u32 status;
 	int ret;
 
@@ -4533,7 +4532,7 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 		new_mode = QMPPHY_MODE_USB3_ONLY;
 	}
 
-	dev_dbg(qmp->dev, "mux_set computed new_mode=%d (from state_mode=%d)\n", new_mode, state->mode);
+	dev_dbg(qmp->dev, "mux_set computed new_mode=%d (from state_mode=%ld)\n", new_mode, state->mode);
 
 	if (new_mode == qmp->qmpphy_mode) {
 		dev_info(qmp->dev,
