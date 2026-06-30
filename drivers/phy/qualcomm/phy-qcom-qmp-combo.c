@@ -4495,6 +4495,22 @@ static int qmp_combo_typec_mux_set(struct typec_mux_dev *mux, struct typec_mux_s
 	else
 		svid = 0;
 
+	/* === FORCE-CLEAR STALE STATE ON FRESH DP ALT MODE REQUEST === */
+	if (svid == USB_TYPEC_DP_SID && state->mode != TYPEC_STATE_SAFE) {
+		if (qmp->dp_powered_on && qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY) {
+			dev_info(qmp->dev,
+				 "force-clear: DP Alt Mode request while dp_powered_on=%d, forcing clear\n",
+				 qmp->dp_powered_on);
+			qmp->dp_powered_on = false;   /* allow the transition */
+		}
+		/* Optional stronger reset if still stuck */
+		if (qmp->qmpphy_mode != QMPPHY_MODE_USB3_ONLY) {
+			dev_dbg(qmp->dev, "force-clear: resetting qmpphy_mode to USB3_ONLY for clean transition\n");
+			qmp->qmpphy_mode = QMPPHY_MODE_USB3_ONLY;
+		}
+	}
+	/* === end force-clear === */
+
 	if (svid == USB_TYPEC_DP_SID) {
 		switch (state->mode) {
 		/* DP Only */
