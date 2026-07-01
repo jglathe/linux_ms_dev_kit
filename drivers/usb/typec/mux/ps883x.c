@@ -240,6 +240,7 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 		case USB_TYPEC_TBT_SID:
 			tb_data = state->data;
 
+			/* Unconditional */
 			cfg2 |= CONN_STATUS_2_TBT_CONNECTED;
 
 			if (tb_data->cable_mode & TBT_CABLE_ACTIVE_PASSIVE)
@@ -255,9 +256,11 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 		}
 	} else {
 		switch (state->mode) {
+		/* SAFE can be transient or point to an actual disconnect */
 		case TYPEC_STATE_SAFE:
 			reset = retimer->orientation == TYPEC_ORIENTATION_NONE;
 			break;
+		/* USB2 pins don't even go through this chip */
 		case TYPEC_MODE_USB2:
 			reset = true;
 			break;
@@ -313,6 +316,11 @@ static int ps883x_sw_set(struct typec_switch_dev *sw,
 	if (retimer->orientation != orientation) {
 		retimer->orientation = orientation;
 
+		/*
+		 * Orientation notifications usually come prior to mode switch
+		 * events. If the retimer is already in reset, we still want to
+		 * cache the new orientation value for the subsequent ps883x_set().
+		 */
 		if (retimer->in_reset)
 			return 0;
 
