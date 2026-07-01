@@ -347,9 +347,8 @@ static int ps883x_retimer_set(struct typec_retimer *rtmr,
 	mux_state.mode = state->mode;
 
 	/* 
-	 * Only propagate down the chain if an actual EXTERNAL downstream 
-	 * mux device handle exists. it is NULL if we ourselves are the 
-	 * mode-switch mux.
+	 * Safe Chain Termination: Only cascade if typec_mux points 
+	 * to an independent downstream node found during probe().
 	 */
 	if (retimer->typec_mux)
 		return typec_mux_set(retimer->typec_mux, &mux_state);
@@ -425,10 +424,7 @@ static const struct regmap_config ps883x_retimer_regmap = {
 static int ps883x_retimer_probe(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
-	struct typec_switch_desc sw_desc = { };
-	struct typec_retimer_desc rtmr_desc = { };
 	struct ps883x_retimer *retimer;
-	struct typec_mux_desc mux_desc = {};
 	int ret;
 
 	retimer = devm_kzalloc(dev, sizeof(*retimer), GFP_KERNEL);
@@ -465,18 +461,29 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 		return dev_err_probe(dev, PTR_ERR(retimer->typec_switch),
 				     "failed to acquire orientation-switch\n");
 
-	retimer->typec_mux = typec_mux_get(dev);
-	if (IS_ERR(retimer->typec_mux)) {
+	/* 
+	 * Conditional Resource Acquisition:
+	 * Only try to fetch an external downstream mux if we are NOT 
+	 * acting as the mode-switch ourselves in the device tree layout.
+	 */
+	if (!fwnode_property_present(dev_fwnode(dev), "mode-switch")) {
+		retimer->typec_mux = typec_mux_get(dev);
+		if (IS_ERR(retimer->typec_mux)) {
+			ret = dev_err_probe(dev, PTR_ERR(retimer->typec_mux),
+					    "failed to acquire downstream mode-mux\n");
+			goto err_switch_put; /* Assumes typec_switch_get ran before */
+		}
+	} else {
 		retimer->typec_mux = NULL;
 	}
 
 	ret = drm_aux_bridge_register(dev);
 	if (ret)
-		goto err_mux_put;
+		goto err_switch_put;
 
 	ret = ps883x_enable_vregs(retimer);
 	if (ret)
-		goto err_mux_put;
+		goto err_switch_put;
 
 	ret = clk_prepare_enable(retimer->xo_clk);
 	if (ret) {
@@ -503,54 +510,68 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 	/* Keep the retimer in reset until a Type-C notification comes */
 	ps883x_reset(retimer);
 
-	sw_desc.drvdata = retimer;
-	sw_desc.fwnode = dev_fwnode(dev);
-	sw_desc.set = ps883x_sw_set;
+	/* 
+	 * Conditional Switch Registration:
+	 * Only register properties explicitly specified in the OF node.
+	 */
+	if (fwnode_property_present(dev_fwnode(dev), "orientation-switch")) {
+		struct typec_switch_desc sw_desc = { };
+		sw_desc.drvdata = retimer;
+		sw_desc.fwnode = dev_fwnode(dev);
+		sw_desc.set = ps883x_sw_set;
 
-	retimer->sw = typec_switch_register(dev, &sw_desc);
-	if (IS_ERR(retimer->sw)) {
-		ret = PTR_ERR(retimer->sw);
-		dev_err(dev, "failed to register typec switch: %d\n", ret);
-		goto err_clk_disable;
+		retimer->sw = typec_switch_register(dev, &sw_desc);
+		if (IS_ERR(retimer->sw)) {
+			ret = PTR_ERR(retimer->sw);
+			goto err_clk_disable;
+		}
 	}
 
-	rtmr_desc.drvdata = retimer;
-	rtmr_desc.fwnode = dev_fwnode(dev);
-	rtmr_desc.set = ps883x_retimer_set;
+	if (fwnode_property_present(dev_fwnode(dev), "retimer-switch")) {
+		struct typec_retimer_desc rtmr_desc = { };
+		rtmr_desc.drvdata = retimer;
+		rtmr_desc.fwnode = dev_fwnode(dev);;
+		rtmr_desc.set = ps883x_retimer_set;
 
-	retimer->retimer = typec_retimer_register(dev, &rtmr_desc);
-	if (IS_ERR(retimer->retimer)) {
-		ret = PTR_ERR(retimer->retimer);
-		dev_err(dev, "failed to register typec retimer: %d\n", ret);
-		goto err_switch_unregister;
+		retimer->retimer = typec_retimer_register(dev, &rtmr_desc);
+		if (IS_ERR(retimer->retimer)) {
+			ret = PTR_ERR(retimer->retimer);
+			goto err_switch_unregister;
+		}
 	}
 
-	mux_desc.fwnode = dev_fwnode(dev);
-	mux_desc.set = ps883x_mux_set;
-	mux_desc.drvdata = retimer;
+	if (fwnode_property_present(dev_fwnode(dev), "mode-switch")) {
+		struct typec_mux_desc mux_desc = { };
+		mux_desc.drvdata = retimer;
+		mux_desc.fwnode = dev_fwnode(dev);;
+		mux_desc.set = ps883x_mux_set;
 
-	retimer->mux_dev = typec_mux_register(dev, &mux_desc);
-	if (IS_ERR(retimer->mux_dev)) {
-		ret = PTR_ERR(retimer->mux_dev);
-		dev_err(dev, "failed to register native mode-switch: %d\n", ret);
-		goto err_retimer_unregister;
+		retimer->mux_dev = typec_mux_register(dev, &mux_desc);
+		if (IS_ERR(retimer->mux_dev)) {
+			ret = PTR_ERR(retimer->mux_dev);
+			goto err_retimer_unregister;
+		}
 	}
 
 	i2c_set_clientdata(client, retimer);
 	return 0;
 
 err_retimer_unregister:
-	typec_retimer_unregister(retimer->retimer);
+	if (retimer->retimer)
+		typec_retimer_unregister(retimer->retimer);
 err_switch_unregister:
-	typec_switch_unregister(retimer->sw);
+	if (retimer->sw)
+		typec_switch_unregister(retimer->sw);
 err_clk_disable:
 	clk_disable_unprepare(retimer->xo_clk);
 err_vregs_disable:
 	gpiod_set_value(retimer->reset_gpio, 1);
 	ps883x_disable_vregs(retimer);
-err_mux_put:
-	typec_mux_put(retimer->typec_mux);
-	typec_switch_put(retimer->typec_switch);
+err_switch_put:
+	if (retimer->typec_mux)
+		typec_mux_put(retimer->typec_mux);
+	if (retimer->typec_switch)
+		typec_switch_put(retimer->typec_switch);
 
 	return ret;
 }

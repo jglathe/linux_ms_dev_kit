@@ -162,9 +162,6 @@
 			power-role = "dual";
 			data-role = "dual";
 
-			mode-switch = <&ps8830_port0>;
-			retimer-switch = <&ps8830_port0>;
-
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -201,9 +198,6 @@
 			reg = <1>;
 			power-role = "dual";
 			data-role = "dual";
-
-			mode-switch = <&ps8830_port1>;
-			retimer-switch = <&ps8830_port1>;
 
 			ports {
 				#address-cells = <1>;
@@ -1151,7 +1145,7 @@
 
 	status = "okay";
 
-	ps8830_port0: typec-mux@8 {
+	typec-mux@8 {
 		compatible = "parade,ps8830";
 		reg = <0x08>;
 
@@ -1170,7 +1164,7 @@
 		pinctrl-names = "default";
 
 		orientation-switch;
-		retimer-switch;
+		mode-switch;
 
 		qcom,disable-usb4;
 
@@ -1283,7 +1277,7 @@
 
 	status = "okay";
 
-	ps8830_port1: typec-mux@8 {
+	typec-mux@8 {
 		compatible = "parade,ps8830";
 		reg = <0x8>;
 
@@ -1301,8 +1295,8 @@
 		pinctrl-0 = <&rtmr1_default>;
 		pinctrl-names = "default";
 
-		retimer-switch;
 		orientation-switch;
+		mode-switch;
 
 		qcom,disable-usb4;
 
