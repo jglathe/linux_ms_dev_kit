@@ -57,6 +57,7 @@ struct ps883x_retimer {
 
 	struct typec_switch *typec_switch;
 	struct typec_mux *typec_mux;
+	struct typec_mux_dev *mux_dev;
 
 	struct mutex lock; /* protect non-concurrent retimer & switch */
 
@@ -345,7 +346,37 @@ static int ps883x_retimer_set(struct typec_retimer *rtmr,
 	mux_state.data = state->data;
 	mux_state.mode = state->mode;
 
-	return typec_mux_set(retimer->typec_mux, &mux_state);
+	/* 
+	 * Only propagate down the chain if an actual EXTERNAL downstream 
+	 * mux device handle exists. it is NULL if we ourselves are the 
+	 * mode-switch mux.
+	 */
+	if (retimer->typec_mux)
+		return typec_mux_set(retimer->typec_mux, &mux_state);
+
+	return 0;
+}
+
+static int ps883x_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
+{
+	struct ps883x_retimer *retimer = typec_mux_get_drvdata(mux);
+	struct typec_retimer_state rstate;
+	int ret;
+
+	dev_info(&retimer->client->dev,
+		 "ps883x_mux_set called: mode=%lu has_alt=%d\n",
+		 state->mode, !!state->alt);
+
+	/* Map the incoming mux state directly onto your existing retimer logic */
+	rstate.alt = state->alt;
+	rstate.data = state->data;
+	rstate.mode = state->mode;
+
+	mutex_lock(&retimer->lock);
+	ret = ps883x_set(retimer, &rstate);
+	mutex_unlock(&retimer->lock);
+
+	return ret;
 }
 
 static int ps883x_get_vregs(struct ps883x_retimer *retimer)
@@ -397,6 +428,7 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 	struct typec_switch_desc sw_desc = { };
 	struct typec_retimer_desc rtmr_desc = { };
 	struct ps883x_retimer *retimer;
+	struct typec_mux_desc mux_desc = {};
 	int ret;
 
 	retimer = devm_kzalloc(dev, sizeof(*retimer), GFP_KERNEL);
@@ -435,9 +467,7 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 
 	retimer->typec_mux = typec_mux_get(dev);
 	if (IS_ERR(retimer->typec_mux)) {
-		ret = dev_err_probe(dev, PTR_ERR(retimer->typec_mux),
-				    "failed to acquire mode-mux\n");
-		goto err_switch_put;
+		retimer->typec_mux = NULL;
 	}
 
 	ret = drm_aux_bridge_register(dev);
@@ -495,9 +525,22 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 		goto err_switch_unregister;
 	}
 
+	mux_desc.fwnode = dev_fwnode(dev);
+	mux_desc.set = ps883x_mux_set;
+	mux_desc.drvdata = retimer;
+
+	retimer->mux_dev = typec_mux_register(dev, &mux_desc);
+	if (IS_ERR(retimer->mux_dev)) {
+		ret = PTR_ERR(retimer->mux_dev);
+		dev_err(dev, "failed to register native mode-switch: %d\n", ret);
+		goto err_retimer_unregister;
+	}
+
 	i2c_set_clientdata(client, retimer);
 	return 0;
 
+err_retimer_unregister:
+	typec_retimer_unregister(retimer->retimer);
 err_switch_unregister:
 	typec_switch_unregister(retimer->sw);
 err_clk_disable:
@@ -507,7 +550,6 @@ err_vregs_disable:
 	ps883x_disable_vregs(retimer);
 err_mux_put:
 	typec_mux_put(retimer->typec_mux);
-err_switch_put:
 	typec_switch_put(retimer->typec_switch);
 
 	return ret;
