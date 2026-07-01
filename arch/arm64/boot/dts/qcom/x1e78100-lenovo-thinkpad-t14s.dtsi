@@ -1164,7 +1164,7 @@
 		pinctrl-names = "default";
 
 		orientation-switch;
-		mode-switch;
+		retimer-switch;
 
 		qcom,disable-usb4;
 
@@ -1296,7 +1296,7 @@
 		pinctrl-names = "default";
 
 		orientation-switch;
-		mode-switch;
+		retimer-switch;
 
 		qcom,disable-usb4;
 
