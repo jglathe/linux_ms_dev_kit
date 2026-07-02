@@ -48,6 +48,12 @@
 #define TRE_SPI_GO_CS		GENMASK(10, 8)
 #define TRE_SPI_GO_FRAG		BIT(26)
 
+/* QSPI GO WD0 - flags field is 12 bits at [31:20] instead of SPI's 8 bits */
+#define TRE_QSPI_GO_FLAGS	GENMASK(31, 20)
+
+/* QSPI Config0 WD0 - dummy clock count */
+#define TRE_SPI_C0_DUMMY_CLK	GENMASK(21, 14)
+
 /* GO WD2 */
 #define TRE_RX_LEN		GENMASK(23, 0)
 
@@ -1275,8 +1281,17 @@ static int gpi_alloc_chan(struct gchan *chan, bool send_alloc_cmd)
 		      upper_32_bits(ring->phys_addr));
 	gpi_write_reg(gpii, chan->ch_cntxt_db_reg + CNTXT_5_RING_RP_MSB - CNTXT_4_RING_RP_LSB,
 		      upper_32_bits(ring->phys_addr));
-	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, chid),
-		      GPII_n_CH_k_SCRATCH_0(pair_chid, chan->protocol, chan->seid));
+	/*
+	 * For QSPI, use the SE's native protocol value (9) in SCRATCH_0.
+	 * The DT binding uses QCOM_GPI_QSPI=4 for channel selection, but
+	 * the GSI firmware expects the actual SE protocol ID.
+	 */
+	{
+		u32 hw_proto = chan->protocol == QCOM_GPI_QSPI ?
+			       9 : chan->protocol;
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, chid),
+			      GPII_n_CH_k_SCRATCH_0(pair_chid, hw_proto, chan->seid));
+	}
 	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, chid), 0);
 	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, chid), 0);
 	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_3_OFFS(id, chid), 0);
@@ -1699,6 +1714,116 @@ static int gpi_create_i2c_tre(struct gchan *chan, struct gpi_desc *desc,
 	return tre_idx;
 }
 
+static void qspi_add_config_tre(struct gpi_spi_config *spi,
+				struct gpi_tre *tre)
+{
+	tre->dword[0] = u32_encode_bits(spi->word_len, TRE_SPI_C0_WORD_SZ);
+	tre->dword[0] |= u32_encode_bits(spi->loopback_en, TRE_SPI_C0_LOOPBACK);
+	tre->dword[0] |= u32_encode_bits(spi->clock_pol_high, TRE_SPI_C0_CPOL);
+	tre->dword[0] |= u32_encode_bits(spi->data_pol_high, TRE_SPI_C0_CPHA);
+	tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_TX_PACK);
+	tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_RX_PACK);
+	tre->dword[0] |= u32_encode_bits(spi->dummy_clk_cnt, TRE_SPI_C0_DUMMY_CLK);
+
+	tre->dword[1] = 0;
+
+	tre->dword[2] = u32_encode_bits(spi->clk_div, TRE_C0_CLK_DIV);
+	tre->dword[2] |= u32_encode_bits(spi->clk_src, TRE_C0_CLK_SRC);
+
+	tre->dword[3] = u32_encode_bits(TRE_TYPE_CONFIG0, TRE_FLAGS_TYPE);
+	tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
+}
+
+static int gpi_create_qspi_tre(struct gchan *chan, struct gpi_desc *desc,
+			       struct scatterlist *sgl,
+			       enum dma_transfer_direction direction)
+{
+	struct gpi_spi_config *spi = chan->config;
+	struct device *dev = chan->gpii->gpi_dev->dev;
+	unsigned int tre_idx = 0;
+	struct gpi_tre *tre;
+	u32 qspi_flags;
+	dma_addr_t address;
+	int len;
+
+	/* Config TRE (TX channel only) */
+	if (direction == DMA_MEM_TO_DEV && spi->set_config) {
+		qspi_add_config_tre(spi, &desc->tre[tre_idx]);
+		tre_idx++;
+	}
+
+	/* Go TRE (TX channel only) */
+	if (direction == DMA_MEM_TO_DEV) {
+		tre = &desc->tre[tre_idx];
+		tre_idx++;
+
+		qspi_flags = spi->qspi_lane_flags;
+		if (spi->fragmentation)
+			qspi_flags |= BIT(6);
+
+		tre->dword[0] = u32_encode_bits(qspi_flags, TRE_QSPI_GO_FLAGS);
+		tre->dword[0] |= u32_encode_bits(spi->cs, TRE_SPI_GO_CS);
+		tre->dword[0] |= u32_encode_bits(spi->cmd, TRE_SPI_GO_CMD);
+
+		tre->dword[1] = 0;
+		tre->dword[2] = u32_encode_bits(spi->rx_len, TRE_RX_LEN);
+
+		tre->dword[3] = u32_encode_bits(TRE_TYPE_GO, TRE_FLAGS_TYPE);
+		if (spi->cmd == SPI_RX) {
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOB);
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
+		} else if (spi->cmd == SPI_TX) {
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
+		} else { /* SPI_TX_RX or SPI_DUPLEX */
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
+			if (spi->rx_len > 0)
+				tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
+		}
+	}
+
+	/* DMA TRE - skip for SPI_RX on TX channel */
+	if (direction == DMA_MEM_TO_DEV && spi->cmd == SPI_RX)
+		goto skip_dma_tre;
+
+	tre = &desc->tre[tre_idx];
+	tre_idx++;
+
+	address = sg_dma_address(sgl);
+	len = sg_dma_len(sgl);
+
+	/*
+	 * For QSPI TX_RX, limit TX DMA to command bytes only.
+	 * The SE parses the TX data as opcode+address and uses rx_len
+	 * from the Go TRE for the receive phase. Sending more TX bytes
+	 * than the command length confuses the SE's QSPI state machine.
+	 */
+	if (direction == DMA_MEM_TO_DEV && spi->cmd == SPI_TX_RX &&
+	    spi->tx_cmd_len > 0 && spi->tx_cmd_len < len)
+		len = spi->tx_cmd_len;
+
+	if (direction == DMA_MEM_TO_DEV && len <= 2 * sizeof(tre->dword[0])) {
+		tre->dword[0] = 0;
+		tre->dword[1] = 0;
+		memcpy(&tre->dword[0], sg_virt(sgl), len);
+		tre->dword[2] = u32_encode_bits(len, TRE_DMA_IMMEDIATE_LEN);
+		tre->dword[3] = u32_encode_bits(TRE_TYPE_IMMEDIATE_DMA, TRE_FLAGS_TYPE);
+	} else {
+		tre->dword[0] = lower_32_bits(address);
+		tre->dword[1] = upper_32_bits(address);
+		tre->dword[2] = u32_encode_bits(len, TRE_DMA_LEN);
+		tre->dword[3] = u32_encode_bits(TRE_TYPE_DMA, TRE_FLAGS_TYPE);
+	}
+	tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOT);
+
+skip_dma_tre:
+	for (len = 0; len < tre_idx; len++)
+		dev_dbg(dev, "QSPI TRE:%d %x:%x:%x:%x\n", len,
+			desc->tre[len].dword[0], desc->tre[len].dword[1],
+			desc->tre[len].dword[2], desc->tre[len].dword[3]);
+
+	return tre_idx;
+}
+
 static int gpi_create_spi_tre(struct gchan *chan, struct gpi_desc *desc,
 			      struct scatterlist *sgl, enum dma_transfer_direction direction)
 {
@@ -1841,7 +1966,9 @@ gpi_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 		return NULL;
 
 	/* create TREs for xfer */
-	if (gchan->protocol == QCOM_GPI_SPI) {
+	if (gchan->protocol == QCOM_GPI_QSPI) {
+		i = gpi_create_qspi_tre(gchan, gpi_desc, sgl, direction);
+	} else if (gchan->protocol == QCOM_GPI_SPI) {
 		i = gpi_create_spi_tre(gchan, gpi_desc, sgl, direction);
 	} else if (gchan->protocol == QCOM_GPI_I2C) {
 		i = gpi_create_i2c_tre(gchan, gpi_desc, sgl, direction, flags);
