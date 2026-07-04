@@ -1,3 +1,12 @@
+linux-qcom-x1e (7.1.2-jg-1) resolute; urgency=medium
+
+  * usb: typec: ps883x: Return -EOPNOTSUPP for USB4 when qcom,disable-usb4 is set
+  * usb: typec: mux: ps883x: add a delay after writing config regs
+  * arm64: dts: qcom: x1-lenovo-thinkpad-t14s: disable ps883x USB4 capapility
+  * arm64: dts: qcom: x1e80100-dell-inspiron-14-plus-7441: hack the backlight
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 04 Jul 2026 09:12:44 +0200
+
 linux-qcom-x1e (7.1.2-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.1.2
