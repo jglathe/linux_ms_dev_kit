@@ -55,3 +55,7 @@
 
 	status = "okay";
 };
+
+&vreg_edp_3p3 {
+	regulator-always-on;
+};
