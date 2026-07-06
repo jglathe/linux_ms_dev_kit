@@ -1092,8 +1092,6 @@
 			compatible = "edp-panel";
 			power-supply = <&vreg_edp_3p3>;
 
-			max-brightness = <2047>;
-
 			port {
 				edp_panel_in: endpoint {
 					remote-endpoint = <&mdss_dp3_out>;
