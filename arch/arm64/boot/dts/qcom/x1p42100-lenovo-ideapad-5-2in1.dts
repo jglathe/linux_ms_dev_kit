@@ -1092,7 +1092,7 @@
 
 			power-supply = <&vreg_edp_3p3>;
 
-			max-brightness = <2045>;
+			max-brightness = <2047>;
 
 			port {
 				edp_panel_in: endpoint {
