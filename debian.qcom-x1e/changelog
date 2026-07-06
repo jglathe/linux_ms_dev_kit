@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.1.2-jg-3) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1p42100-ideapad-5-oled: adjust max-brightness usage
+  * arm64: dts: qcom: x1-lenovo-ideapad-slim3: disable EC node
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 06 Jul 2026 21:57:15 +0200
+
 linux-qcom-x1e (7.1.2-jg-2) resolute; urgency=medium
 
   * arm64: dts: qcom: x1-asus-vivobook-s15: add displayport DAIs
