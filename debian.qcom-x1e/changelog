@@ -1,5 +1,6 @@
 linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
 
+  * arm64: dts: qcom: x1-asus-vivobook-s15: add displayport DAIs
   * usb: typec: ps883x: Return -EOPNOTSUPP for USB4 when qcom,disable-usb4 is set
   * usb: typec: mux: ps883x: add a delay after writing config regs
   * arm64: dts: qcom: x1-lenovo-thinkpad-t14s: disable ps883x USB4 capapility
