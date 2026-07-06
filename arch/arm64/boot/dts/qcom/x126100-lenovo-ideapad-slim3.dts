@@ -883,15 +883,15 @@
 		pinctrl-names = "default";
 	};
 
-	embedded-controller@76 {
-		compatible = "qcom,hamoa-crd-ec";
-		reg = <0x76>;
-
-		interrupts-extended = <&tlmm 66 IRQ_TYPE_EDGE_FALLING>;
-
-		pinctrl-0 = <&ec_int_n_default>;
-		pinctrl-names = "default";
-	};
+//	embedded-controller@76 {
+//		compatible = "qcom,hamoa-crd-ec";
+//		reg = <0x76>;
+//
+//		interrupts-extended = <&tlmm 66 IRQ_TYPE_EDGE_FALLING>;
+//
+//		pinctrl-0 = <&ec_int_n_default>;
+//		pinctrl-names = "default";
+//	};
 };
 
 &i2c7 {
