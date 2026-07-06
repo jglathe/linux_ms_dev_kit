@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.1.2-jg-2) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-asus-vivobook-s15: add displayport DAIs
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 06 Jul 2026 19:30:01 +0200
+
 linux-qcom-x1e (7.1.2-jg-1) resolute; urgency=medium
 
   * usb: typec: ps883x: Return -EOPNOTSUPP for USB4 when qcom,disable-usb4 is set
