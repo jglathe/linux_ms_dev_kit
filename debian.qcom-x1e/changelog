@@ -1,3 +1,12 @@
+linux-qcom-x1e (7.1.3-jg-0) resolute; urgency=medium
+
+  * new stack, based on:
+    - updated sre/thinkpad-t14s-x1e
+    - Ubuntu-Mainline daily config
+    - jg/ubuntu-qcom-x1e-oldconfig-7.1.y
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 08 Jul 2026 16:40:57 +0200
+
 linux-qcom-x1e (7.1.2-jg-3) resolute; urgency=medium
 
   * arm64: dts: qcom: x1p42100-ideapad-5-oled: adjust max-brightness usage
