@@ -7,11 +7,9 @@ if [ "$1" != configure ]; then
     exit 0
 fi
 
-for d in /etc/kernel/header_postinst.d /usr/share/kernel/header_postinst.d; do
-    if [ ! -d $d ]; then
-        continue
-    fi
-    DEB_MAINT_PARAMS="$*" run-parts --report --exit-on-error --arg=$version $d
-done
+if [ -d /etc/kernel/header_postinst.d ]; then
+    DEB_MAINT_PARAMS="$*" run-parts --report --exit-on-error --arg=$version \
+		/etc/kernel/header_postinst.d
+fi
 
 exit 0
