@@ -14,12 +14,9 @@ if [ "$1" = install ]; then
     touch /usr/lib/modules/$version/.fresh-install
 fi
 
-for d in /etc/kernel/preinst.d /usr/share/kernel/preinst.d; do
-    if [ ! -d $d ]; then
-        continue
-    fi
+if [ -d /etc/kernel/preinst.d ]; then
     DEB_MAINT_PARAMS="$*" run-parts --report --exit-on-error --arg=$version \
-        --arg=$image_path $d
-done
+	      --arg=$image_path /etc/kernel/preinst.d
+fi
 
 exit 0
