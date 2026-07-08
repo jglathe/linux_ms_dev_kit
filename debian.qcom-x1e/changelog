@@ -1,5 +1,9 @@
 linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
 
+  * new stack, based on:
+    - updated sre/thinkpad-t14s-x1e
+    - Ubuntu-Mainline daily config
+    - jg/ubuntu-qcom-x1e-oldconfig-7.1.y
   * arm64: dts: qcom: x1p42100-ideapad-5-oled: adjust max-brightness usage
   * arm64: dts: qcom: x1-lenovo-ideapad-slim3: disable EC node
   * arm64: dts: qcom: x1-asus-vivobook-s15: add displayport DAIs
