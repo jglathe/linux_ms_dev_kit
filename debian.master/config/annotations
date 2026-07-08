@@ -142,7 +142,7 @@ CONFIG_DEBUG_INFO_BTF                           policy<{'amd64': 'y', 'arm64': '
 CONFIG_DEBUG_INFO_BTF                           note<'Needs newer pahole for armhf'>
 
 CONFIG_DEBUG_INFO_SPLIT                         policy<{'amd64': 'n', 'arm64': 'n', 'armhf': 'n', 'ppc64el': 'n', 'riscv64': 'n', 's390x': 'n'}>
-CONFIG_DEBUG_INFO_SPLIT                         note<'TODO: update note'>
+CONFIG_DEBUG_INFO_SPLIT                         note<'LP: #1413664'>
 
 CONFIG_DEBUG_KERNEL                             policy<{'amd64': 'y', 'arm64': 'y', 'armhf': 'y', 'ppc64el': 'y', 'riscv64': 'y', 's390x': 'y'}>
 CONFIG_DEBUG_KERNEL                             note<'required debug option'>
