@@ -1016,11 +1016,6 @@
 	status = "okay";
 };
 
-&venus {
-	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
-	status = "okay";
-};
-
 &xo_board_clk {
 	clock-frequency = <38400000>;
 };
