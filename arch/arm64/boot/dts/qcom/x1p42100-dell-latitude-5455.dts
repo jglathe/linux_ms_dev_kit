@@ -1,0 +1,53 @@
+/dts-v1/;
+
+#include "purwa.dtsi"
+#include "x1-dell-thena.dtsi"
+
+/ {
+	model = "Dell Latitude 5455";
+	compatible = "dell,latitude-5455", "lenovo,thinkpad-t14s", "qcom,x1p42100";
+};
+
+/* GPU */
+&gpu {
+	status = "okay";
+};
+
+&gpu_zap_shader {
+	firmware-name = "qcom/x1p42100/dell/latitude-5455/qcdxkmsucpurwa.mbn";
+};
+
+/* Audio DSPs */
+&remoteproc_adsp {
+	firmware-name = "qcom/x1p42100/dell/latitude-5455/qcadsp8380.mbn",
+					"qcom/x1p42100/dell/latitude-5455/adsp_dtbs.elf";
+	status = "okay";
+};
+
+&remoteproc_cdsp {
+	firmware-name = "qcom/x1p42100/dell/latitude-5455/qccdsp8380.mbn",
+					"qcom/x1p42100/dell/latitude-5455/cdsp_dtbs.elf";
+	status = "okay";
+};
+
+/* Audio  */
+&sound {
+	model = "X1E80100-Dell-Latitude-7455";
+};
+
+/* Video Encoder/Decoder (Hardware Video Acceleration) */
+&iris {
+	firmware-name = "qcom/x1p42100/dell/latitude-5455/qcvss8380.mbn";
+	status = "okay";
+};
+
+&i2c8 {
+	status = "okay";
+
+	/* Specifically kill only the phantom touchscreen */
+	/delete-node/ touchscreen@9;
+};
+
+&vreg_edp_3p3 {
+	regulator-always-on;
+};
