@@ -1,5 +1,6 @@
-linux-qcom-x1e (7.3-rc3-jg-1) stonking; urgency=medium
+linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * re-added camera-related patches from Bryan O'Donoghue
   * new stack, based on:
     - updated sre/thinkpad-t14s-x1e
     - Ubuntu-Mainline daily config
