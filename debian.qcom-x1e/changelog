@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.1.3-jg-1) resolute; urgency=medium
+
+  * re-added camera-related patches from Bryan O'Donoghue
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 10 Jul 2026 06:59:09 +0200
+
 linux-qcom-x1e (7.1.3-jg-0) resolute; urgency=medium
 
   * new stack, based on:
