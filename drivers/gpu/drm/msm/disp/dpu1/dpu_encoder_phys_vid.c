@@ -86,7 +86,7 @@ static void drm_mode_to_intf_timing_params(
 	timing->hsync_polarity = (mode->flags & DRM_MODE_FLAG_NHSYNC) ? 1 : 0;
 	timing->vsync_polarity = (mode->flags & DRM_MODE_FLAG_NVSYNC) ? 1 : 0;
 	timing->border_clr = 0;
-	timing->underflow_clr = 0xff;
+	timing->underflow_clr = 0xffc0cb;
 	timing->hsync_skew = mode->hskew;
 
 	/* DSI controller cannot handle active-low sync signals. */
