@@ -11499,6 +11499,9 @@ CONFIG_SPI_FSL_LPSPI                            policy<{'arm64': 'm'}>
 CONFIG_SPI_FSL_QUADSPI                          policy<{'arm64': 'm'}>
 CONFIG_SPI_FSL_SPI                              policy<{'arm64': 'y'}>
 CONFIG_SPI_GPIO                                 policy<{'arm64': 'm'}>
+CONFIG_SPI_HID                                  policy<{'arm64': 'm'}>
+CONFIG_SPI_HID_ACPI                             policy<{'arm64': 'n'}>
+CONFIG_SPI_HID_OF                               policy<{'arm64': 'n'}>
 CONFIG_SPI_HISI_KUNPENG                         policy<{'arm64': 'm'}>
 CONFIG_SPI_HISI_SFC                             policy<{'arm64': 'm'}>
 CONFIG_SPI_HISI_SFC_V3XX                        policy<{'arm64': 'm'}>
