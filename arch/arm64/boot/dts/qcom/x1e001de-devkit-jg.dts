@@ -983,6 +983,8 @@
 		pinctrl-0 = <&rtmr2_default>;
 		pinctrl-names = "default";
 
+		parade,disable-usb4;
+
 		orientation-switch;
 		retimer-switch;
 
@@ -1042,6 +1044,8 @@
 
 		retimer-switch;
 		orientation-switch;
+
+		parade,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
@@ -1133,6 +1137,8 @@
 
 		retimer-switch;
 		orientation-switch;
+
+		parade,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
