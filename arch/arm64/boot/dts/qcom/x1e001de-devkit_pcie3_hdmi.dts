@@ -894,6 +894,8 @@
 		orientation-switch;
 		retimer-switch;
 
+		parade,disable-usb4;
+
 		ps8830,boot-on;
 
 		ports {
@@ -950,6 +952,8 @@
 
 		retimer-switch;
 		orientation-switch;
+
+		parade,disable-usb4;
 
 		ps8830,boot-on;
 
@@ -1041,6 +1045,8 @@
 
 		retimer-switch;
 		orientation-switch;
+
+		parade,disable-usb4;
 
 		ps8830,boot-on;
 
