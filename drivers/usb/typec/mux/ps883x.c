@@ -185,6 +185,8 @@ static int ps883x_configure(struct ps883x_retimer *retimer, int cfg0,
 		return ret;
 	}
 
+	usleep_range(20000, 30000);
+
 	return 0;
 }
 
