@@ -62,6 +62,7 @@ struct ps883x_retimer {
 
 	enum typec_orientation orientation;
 	bool in_reset;
+	bool disable_usb4;
 };
 
 static int ps883x_enable_vregs(struct ps883x_retimer *retimer)
@@ -249,6 +250,13 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 			cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
 			break;
 		case TYPEC_MODE_USB4:
+			if (retimer->disable_usb4) {
+				dev_info(&retimer->client->dev,
+					 "USB4 disabled via DT property, rejecting USB4 mode\n");
+				return -EOPNOTSUPP;
+			}
+
+			/* Normal USB4 handling */
 			eudo_data = state->data;
 
 			cfg2 |= CONN_STATUS_2_USB4_CONNECTED;
@@ -376,6 +384,8 @@ static int ps883x_retimer_probe(struct i2c_client *client)
 		return -ENOMEM;
 
 	retimer->client = client;
+
+	retimer->disable_usb4 = device_property_read_bool(dev, "parade,disable-usb4");
 
 	mutex_init(&retimer->lock);
 
