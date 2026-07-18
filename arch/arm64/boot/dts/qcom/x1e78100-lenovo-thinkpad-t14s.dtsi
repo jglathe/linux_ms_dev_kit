@@ -1166,6 +1166,8 @@
 		orientation-switch;
 		retimer-switch;
 
+		parade,disable-usb4;
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1295,6 +1297,8 @@
 
 		retimer-switch;
 		orientation-switch;
+
+		parade,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
