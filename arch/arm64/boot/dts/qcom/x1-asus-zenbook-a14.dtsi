@@ -975,10 +975,10 @@
 		pinctrl-0 = <&rtmr0_default>;
 		pinctrl-names = "default";
 
-		orientation-switch;
 		retimer-switch;
+		orientation-switch;
 
-		qcom,disable-usb4;
+		parade,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
@@ -1080,7 +1080,7 @@
 		retimer-switch;
 		orientation-switch;
 
-		qcom,disable-usb4;
+		parade,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
