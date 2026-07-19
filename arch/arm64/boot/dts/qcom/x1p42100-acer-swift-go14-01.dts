@@ -20,10 +20,10 @@
 
 &gpu {
 	status = "okay";
+};
 
-	zap-shader {
-		firmware-name = "qcom/x1e80100/ACER/SFG14-01/qcdxkmsuc8380.mbn";
-	};
+&gpu_zap_shader {
+	firmware-name = "qcom/x1e80100/ACER/SFG14-01/qcdxkmsucpurwa.mbn";
 };
 
 &remoteproc_adsp {
