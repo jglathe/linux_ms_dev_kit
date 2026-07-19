@@ -1,6 +1,16 @@
+linux-qcom-x1e (7.1.3-jg-2) resolute; urgency=medium
+
+  * drm/msm/dpu: change BSOD colour for buffer underflow [Stephan Gerhold <stephan.gerhold@linaro.org>]
+  * arm64: dts: qcom: x1: disable ps883x USB4 capapility (whole series) [https://lore.kernel.org/all/20260718-ps883x-disable-usb4-v1-0-cec86d0b909e@oldschoolsolutions.biz/]
+  * arm64: dts: qcom: x1-acer-swift-go-14: correct zap-shader file name
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 19 Jul 2026 11:15:17 +0200
+
 linux-qcom-x1e (7.1.3-jg-1) resolute; urgency=medium
 
-  * re-added camera-related patches from Bryan O'Donoghue
+  * removed mismatched camera-related patches from Bryan O'Donoghue
+  * arm64: dts: qcom: x1p42100-dell-latitude-5455: add Dell 5455 model
+  * arm64: dts: qcom: x1-asus-zenbook-a14: add dp sound DAIs
 
  -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 10 Jul 2026 06:59:09 +0200
 
