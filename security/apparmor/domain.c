@@ -1377,7 +1377,7 @@ fail:
 	fn_for_each_in_scope(label, profile,
 		aa_audit_file(subj_cred, profile, &perms, OP_CHANGE_HAT,
 			      AA_MAY_CHANGEHAT, NULL, NULL, target,
-			      GLOBAL_ROOT_UID, info, error));
+			      GLOBAL_ROOT_UID, info, error, false));
 
 	goto out;
 }
@@ -1401,7 +1401,7 @@ static int change_profile_perms_wrapper(const char *op, const char *name,
 		error = aa_audit_file(subj_cred, profile, perms, op, request,
 				      name,
 				      NULL, target, GLOBAL_ROOT_UID, info,
-				      error);
+				      error, false);
 
 	return error;
 }
