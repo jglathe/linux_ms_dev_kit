@@ -1,5 +1,6 @@
 linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * rebased the whole stack to v7.2-rc4
   * drm/msm/dpu: change BSOD colour for buffer underflow [Stephan Gerhold <stephan.gerhold@linaro.org>]
   * arm64: dts: qcom: x1: disable ps883x USB4 capapility (whole series) [https://lore.kernel.org/all/20260718-ps883x-disable-usb4-v1-0-cec86d0b909e@oldschoolsolutions.biz/]
   * arm64: dts: qcom: x1-acer-swift-go-14: correct zap-shader file name
