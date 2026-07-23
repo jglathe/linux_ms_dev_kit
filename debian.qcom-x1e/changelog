@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.1.4-jg-0) resolute; urgency=medium
+
+  * arm64: dts: qcom: lenovo-ideacentre-mini-x: amend nvme2 vreg config
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 23 Jul 2026 18:18:46 +0200
+
 linux-qcom-x1e (7.1.3-jg-2) resolute; urgency=medium
 
   * drm/msm/dpu: change BSOD colour for buffer underflow [Stephan Gerhold <stephan.gerhold@linaro.org>]
