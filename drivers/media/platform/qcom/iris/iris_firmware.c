@@ -14,7 +14,9 @@
 #include "iris_core.h"
 #include "iris_firmware.h"
 
-#define MAX_FIRMWARE_NAME_SIZE	128
+#define IRIS_PAS_ID			9
+
+#define MAX_FIRMWARE_NAME_SIZE		128
 
 #define WRAPPER_TZ_BASE_OFFS		0x000C0000
 
@@ -57,7 +59,6 @@ static int iris_set_hw_state_no_tz(struct iris_core *core, bool resume)
 
 static int iris_load_fw_to_memory(struct iris_core *core, const char *fw_name)
 {
-	u32 pas_id = core->iris_platform_data->pas_id;
 	const struct firmware *firmware = NULL;
 	struct device *dev = core->dev;
 	struct resource res;
@@ -95,7 +96,7 @@ static int iris_load_fw_to_memory(struct iris_core *core, const char *fw_name)
 
 	if (core->use_tz)
 		ret = qcom_mdt_load(dev, firmware, fw_name,
-				    pas_id, mem_virt, mem_phys, res_size, NULL);
+				    IRIS_PAS_ID, mem_virt, mem_phys, res_size, NULL);
 	else
 		ret = qcom_mdt_load_no_init(dev, firmware, fw_name,
 					    mem_virt, mem_phys, res_size, NULL);
@@ -131,7 +132,7 @@ int iris_fw_load(struct iris_core *core)
 	ret = of_property_read_string_index(core->dev->of_node, "firmware-name", 0,
 					    &fwpath);
 	if (ret)
-		fwpath = core->iris_platform_data->fwname;
+		fwpath = core->iris_firmware_desc->fwname;
 
 	ret = iris_load_fw_to_memory(core, fwpath);
 	if (ret) {
@@ -140,7 +141,7 @@ int iris_fw_load(struct iris_core *core)
 	}
 
 	if (core->use_tz) {
-		ret = qcom_scm_pas_auth_and_reset(core->iris_platform_data->pas_id);
+		ret = qcom_scm_pas_auth_and_reset(IRIS_PAS_ID);
 		if (ret)  {
 			dev_err(core->dev, "auth and reset failed: %d\n", ret);
 			return ret;
@@ -154,7 +155,7 @@ int iris_fw_load(struct iris_core *core)
 							     cp_config->cp_nonpixel_size);
 			if (ret) {
 				dev_err(core->dev, "qcom_scm_mem_protect_video_var failed: %d\n", ret);
-				qcom_scm_pas_shutdown(core->iris_platform_data->pas_id);
+				qcom_scm_pas_shutdown(IRIS_PAS_ID);
 				return ret;
 			}
 		}
@@ -170,7 +171,7 @@ int iris_fw_unload(struct iris_core *core)
 	int ret;
 
 	if (core->use_tz)
-		ret = qcom_scm_pas_shutdown(core->iris_platform_data->pas_id);
+		ret = qcom_scm_pas_shutdown(IRIS_PAS_ID);
 	else
 		ret = iris_set_hw_state_no_tz(core, false);
 
