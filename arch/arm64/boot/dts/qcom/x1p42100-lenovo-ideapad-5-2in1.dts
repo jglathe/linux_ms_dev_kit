@@ -62,9 +62,7 @@
 	};
 
 	hdmi-bridge {
-		compatible = "realtek,rtd2171";
-
-		enable-gpios = <&tlmm 120 GPIO_ACTIVE_HIGH>;
+		compatible = "parade,ps185hdm";
 
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
