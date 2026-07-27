@@ -2,10 +2,8 @@
 /*
  * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2024, Linaro Limited
- * Copyright (c) 2025, Jens Glathe
+ * Copyright (c) 2026 Jens Glathe
  */
-
-/dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/gpio-keys.h>
@@ -20,10 +18,6 @@
 /delete-node/ &pmc8380_6_thermal;
 
 / {
-	model = "Lenovo IdeaPad 5 2in1 14Q8X9";
-	compatible = "lenovo,ideapad-5-2in1", "lenovo,thinkpad-t14s", "qcom,x1p42100";
-	chassis-type = "laptop";
-
 	aliases {
 		serial0 = &uart21;
 		serial1 = &uart14;
@@ -55,11 +49,6 @@
 		#sound-dai-cells = <1>;
 	};
 
-	camera {
-		compatible = "regulator-dummy-consumer";
-
-		vdd-supply = <&vreg_cam_5p0>;
-	};
 
 	hdmi-bridge {
 		compatible = "parade,ps185hdm";
@@ -329,8 +318,8 @@
 	usb-1-ss0-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 167 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 168 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 168 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 167 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss0_sbu_default>;
 		pinctrl-names = "default";
@@ -348,8 +337,8 @@
 	usb-1-ss1-sbu-mux {
 		compatible = "onnn,fsusb42", "gpio-sbu-mux";
 
-		enable-gpios = <&tlmm 178 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 179 GPIO_ACTIVE_HIGH>;
+		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-0 = <&usb_1_ss1_sbu_default>;
 		pinctrl-names = "default";
@@ -362,23 +351,6 @@
 				remote-endpoint = <&pmic_glink_ss1_sbu>;
 			};
 		};
-	};
-
-	vreg_cam_5p0: regulator-cam-5p0 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_CAM_5P0";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-
-		gpio = <&tlmm 44 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&cam_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	vreg_edp_3p3: regulator-edp-3p3 {
@@ -860,87 +832,6 @@
 	status = "okay";
 };
 
-&gpu_zap_shader {
-	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcdxkmsucpurwa.mbn";
-};
-
-&i2c2 {
-	clock-frequency = <400000>;
-
-	pinctrl-0 = <&qup_i2c2_data_clk>, <&tpad_default>, <&kybd_default>;
-	pinctrl-names = "default";
-	status = "okay";
-
-	/* ELAN06FA */
-	touchpad@15 {
-		compatible = "hid-over-i2c";
-		reg = <0x15>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	/* CIRQ1080 or SYNA2BA6 */
-	touchpad@2c {
-		compatible = "hid-over-i2c";
-		reg = <0x2c>;
-
-		hid-descr-addr = <0x20>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	/* FTCS0038 */
-	touchpad@38 {
-		compatible = "hid-over-i2c";
-		reg = <0x38>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	keyboard@3a {
-		compatible = "hid-over-i2c";
-		reg = <0x3a>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-
-	/* GXTP5100 */
-	touchpad@5d {
-		compatible = "hid-over-i2c";
-		reg = <0x5d>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 3 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
-
-		wakeup-source;
-	};
-};
-
 &i2c5 {
 	clock-frequency = <400000>;
 
@@ -953,6 +844,11 @@
 
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
+
+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&eusb5_reset_n>;
+		pinctrl-names = "default";
 	};
 
 	eusb3_repeater: redriver@47 {
@@ -977,7 +873,7 @@
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
 
-		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
 
 		pinctrl-0 = <&eusb9_reset_n>;
 		pinctrl-names = "default";
@@ -998,32 +894,6 @@
 	};
 };
 
-&i2c8 {
-	clock-frequency = <400000>;
-
-	status = "okay";
-
-	/* WACF2200 */
-	touchscreen@a {
-		compatible = "hid-over-i2c";
-		reg = <0x0a>;
-
-		hid-descr-addr = <0x1>;
-		interrupts-extended = <&tlmm 51 IRQ_TYPE_LEVEL_LOW>;
-
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l15b_1p8>;
-
-		pinctrl-0 = <&ts0_default>;
-		pinctrl-names = "default";
-	};
-};
-
-//&iris {
-//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380.mbn";
-//	status = "okay";
-//};
-
 &lpass_tlmm {
 	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
 		pins = "gpio12";
@@ -1035,11 +905,11 @@
 };
 
 &lpass_vamacro {
-	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
+	pinctrl-0 = <&dmic01_default>;
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &mdss {
@@ -1089,8 +959,6 @@
 			compatible = "edp-panel";
 
 			power-supply = <&vreg_edp_3p3>;
-
-			max-brightness = <2047>;
 
 			port {
 				edp_panel_in: endpoint {
@@ -1208,29 +1076,10 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcadsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83GH/adsp_dtbs.elf";
-
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/x1p42100/LENOVO/83GH/qccdsp8380.mbn",
-			"qcom/x1p42100/LENOVO/83GH/cdsp_dtbs.elf";
-
-	status = "okay";
-};
-
-&sdhc_2 {
-	cd-gpios = <&tlmm 71 GPIO_ACTIVE_LOW>;
-	pinctrl-0 = <&sdc2_default &sdc2_card_det_n>;
-	pinctrl-1 = <&sdc2_sleep &sdc2_card_det_n>;
-	pinctrl-names = "default", "sleep";
-	vmmc-supply = <&vreg_l9b_2p9>;
-	vqmmc-supply = <&vreg_l6b_1p8>;
-//	bus-width = <4>;
-//	no-sdio;
-//	no-mmc;
 	status = "okay";
 };
 
@@ -1309,15 +1158,16 @@
 	gpio-reserved-ranges = <34 2>, /* Unused */
 			       <72 2>; /* Secure EC I2C connection (?) */
 
-	cam_reg_en: cam-reg-en-state {
-		pins = "gpio44";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-disable;
-	};
-
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	eusb5_reset_n: eusb5-reset-n-state {
+		pins = "gpio7";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1333,7 +1183,7 @@
 	};
 
 	eusb9_reset_n: eusb9-reset-n-state {
-		pins = "gpio7";
+		pins = "gpio9";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1351,13 +1201,6 @@
 		pins = "gpio92";
 		function = "gpio";
 		bias-disable;
-	};
-
-	hdmi_bridge_en: hdmi-bridge-en-state {
-		pins = "gpio120";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-pull-down;
 	};
 
 	hdmi_hpd_default: hdmi-hpd-default-state {
@@ -1438,31 +1281,16 @@
 		bias-pull-up;
 	};
 
-	ts0_default: ts0-default-state {
-		int-n-pins {
-			pins = "gpio51";
-			function = "gpio";
-			bias-disable;
-		};
-
-		reset-n-pins {
-			pins = "gpio48";
-			function = "gpio";
-			output-high;
-			drive-strength = <16>;
-		};
-	};
-
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
 		oe-n-pins {
-			pins = "gpio167";
+			pins = "gpio168";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio168";
+			pins = "gpio167";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1472,14 +1300,14 @@
 
 	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
 		oe-n-pins {
-			pins = "gpio178";
+			pins = "gpio179";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
-			pins = "gpio179";
+			pins = "gpio178";
 			function = "gpio";
 			bias-pull-up;
 			drive-strength = <2>;
@@ -1600,7 +1428,7 @@
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
 
-	phys = <&eusb5_repeater>;
+	phys = <&eusb9_repeater>;
 
 	status = "okay";
 };
@@ -1624,7 +1452,6 @@
 			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
 				reg = <0>;
 
-				data-lanes = <0 1 2 3>;
 				remote-endpoint = <&hdmi_bridge_dp_in>;
 			};
 		};
@@ -1641,7 +1468,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb9_repeater>;
+	phys = <&eusb5_repeater>;
 
 	status = "okay";
 };
