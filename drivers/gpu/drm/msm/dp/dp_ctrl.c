@@ -1855,6 +1855,15 @@ void msm_dp_ctrl_config_psr(struct msm_dp_ctrl *msm_dp_ctrl)
 	if (!ctrl->panel->psr_cap.version)
 		return;
 
+	/*
+	 * PSR SDPs must be flushed directly. The peripheral flush path can
+	 * complete normally while the sink captures an invalid frame.
+	 */
+	cfg = msm_dp_read_link(ctrl, REG_DP_MAINLINK_CTRL);
+	cfg &= ~DP_MAINLINK_CTRL_FLUSH_MODE_MASK;
+	cfg |= DP_MAINLINK_FLUSH_MODE_UPDATE_SDP;
+	msm_dp_write_link(ctrl, REG_DP_MAINLINK_CTRL, cfg);
+
 	/* enable PSR1 function */
 	cfg = msm_dp_read_link(ctrl, REG_PSR_CONFIG);
 	cfg |= PSR1_SUPPORTED;
