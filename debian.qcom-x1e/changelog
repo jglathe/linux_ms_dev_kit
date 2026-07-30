@@ -1,6 +1,22 @@
+linux-qcom-x1e (7.2-rc5-jg-0) resolute; urgency=medium
+
+  * rebased the whole stack to v7.2-rc5
+  * arm64: qcom: x1p-lenovo-laptops: adjust eUSB2 retimers, HDMI bridge
+  * drm/msm/dpu,dp,dsi: Drop sneaky dev_pm_opp_set_rate(0) whole series [https://lore.kernel.org/all/20260728-topic-dpu_power-v1-0-e7783b859a70@oss.qualcomm.com/]
+  * drm/msm/dp: use direct SDP flush for PSR [Lars Karlslund <8929787+lkarlslund@users.noreply.github.com>]
+  * drm/msm: Attach a driver to GMU whole series  [https://lore.kernel.org/all/20260513-gmu-sync-state-fix-v1-0-6e33e6aa9b4f@oss.qualcomm.com/]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 30 Jul 2026 18:30:54 +0200
+
 linux-qcom-x1e (7.2-rc4-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.2-rc4
+  * kernel: amend strncpy() use with strscpy()
+  * apparmor: fix changed aa_audit_file() API call
+  * media: qcom: iris: fix variable mismatch
+  * media: venus: guard SC8280XP resources when Iris is enabled
+  * ubuntu: igh-ecat: replace strncpy() with strscpy()
+  * Ubuntu: fix ukify paths
 
  -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 22 Jul 2026 12:14:24 +0200
 
