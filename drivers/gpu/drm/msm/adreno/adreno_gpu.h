@@ -642,7 +642,8 @@ int adreno_gpu_state_get(struct msm_gpu *gpu, struct msm_gpu_state *state);
 int adreno_gpu_state_put(struct msm_gpu_state *state);
 void adreno_show_object(struct drm_printer *p, void **ptr, int len,
 		bool *encoded);
-
+void adreno_gmu_register(void);
+void adreno_gmu_unregister(void);
 /*
  * Common helper function to initialize the default address space for arm-smmu
  * attached targets
