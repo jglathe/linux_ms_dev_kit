@@ -1026,7 +1026,7 @@ static const struct of_device_id msm_gpu_match[] = {
 static int add_gpu_components(struct device *dev,
 			      struct component_match **matchptr)
 {
-	struct device_node *np;
+	struct device_node *np, *gmu_np;
 
 	np = of_find_matching_node(NULL, msm_gpu_match);
 	if (!np)
@@ -1035,6 +1035,11 @@ static int add_gpu_components(struct device *dev,
 	if (of_device_is_available(np) && adreno_has_gpu(np))
 		drm_of_component_match_add(dev, matchptr, component_compare_of, np);
 
+	gmu_np = of_parse_phandle(np, "qcom,gmu", 0);
+	if (of_device_is_available(gmu_np))
+		drm_of_component_match_add(dev, matchptr, component_compare_of, gmu_np);
+
+	of_node_put(gmu_np);
 	of_node_put(np);
 
 	return 0;
@@ -1136,13 +1141,9 @@ int msm_gpu_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	/*
-	 * The GPU pdev acts as both the component master and the sole
-	 * component (added by adreno_probe()). Future patches add the
-	 * GMU node as a second component on this same master.
-	 */
-	drm_of_component_match_add(&pdev->dev, &match,
-				   component_compare_of, pdev->dev.of_node);
+	ret = add_gpu_components(&pdev->dev, &match);
+	if (ret)
+		return ret;
 
 	return component_master_add_with_match(&pdev->dev, &msm_gpu_drm_ops,
 					       match);
