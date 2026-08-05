@@ -22,14 +22,15 @@ Support is now "as good as I can manage" for following devices:
 - Asus Vivobook S15 (x1p42100 version)
 - HP Omnibook X AI 14-fe1 (x1p42100 version)
 - **Lenovo Ideapad 5 2-in-1 14Q8X9 (83GH)**
-- Lenovo Ideapad Slim 5x 14Q8X9 (83HL)
+- **Lenovo Ideapad Slim 5x 14Q8X9 (83HL)**
+- **Lenovo Ideapad Slim 3x 15Q8X10 (83N3)**
 - **Lenovo Thinkbook 16 G7 QOY (21NH)** 
 - Microsoft SP12
 
 The config used here is basically the one of Ubuntu Cocept X1E, with only minor additions. 
 
 # **Install media**
-There are a load of dedicated install media for certain devices (and some versions back) which are sort of all outdated now (<= Ubuntu 24.10). Creating them was a lot of manual work, therefore I'm happy that the current Ubuntu Concept 25.04 ISOs can boot all of the X1 devices. But some of the dtbs are missing and need to be added to the ISO before it can boot. That is ongoing work. 
+There are a load of dedicated install media for certain devices (and some versions back) which are sort of all outdated now (<= Ubuntu 24.10). Creating them was a lot of manual work, therefore I'm happy that the current Ubuntu Concept 26.04 ISOs can boot all (well, most) of the X1 devices. But some of the dtbs are missing and need to be added to the ISO before it can boot. That is ongoing work. 
 
 # **Kernel packages**
 Since installing / removing kernels is now only a use of apt and dpkg, pre-built package sets are available [here](https://drive.google.com/drive/folders/1Lps5o3FXroAJFDiKj18vutJbC1uld49s?usp=drive_link). I publish them occasionally, after some testing here.
