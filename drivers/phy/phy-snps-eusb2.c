@@ -11,6 +11,7 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
+#include <linux/clk/clk-conf.h>
 
 #define EXYNOS_USB_PHY_HS_PHY_CTRL_RST	(0x0)
 #define USB_PHY_RST_MASK		GENMASK(1, 0)
@@ -467,6 +468,12 @@ static int snps_eusb2_hsphy_init(struct phy *p)
 		goto disable_vreg;
 	}
 
+	ret = of_clk_set_defaults(dev_of_node(p->dev.parent), false);
+	if (ret) {
+		dev_err(&p->dev, "failed to set clk defaults: %d\n", ret);
+		goto exit_repeater;
+	}
+
 	ret = clk_bulk_prepare_enable(phy->data->num_clks, phy->clks);
 	if (ret) {
 		dev_err(&p->dev, "failed to enable ref clock: %d\n", ret);
@@ -625,6 +632,7 @@ static struct platform_driver snps_eusb2_hsphy_driver = {
 		.name	= "snps-eusb2-hsphy",
 		.of_match_table = snps_eusb2_hsphy_of_match_table,
 	},
+	.driver_managed_clk_defaults = true,
 };
 
 module_platform_driver(snps_eusb2_hsphy_driver);
