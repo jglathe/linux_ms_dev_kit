@@ -1,3 +1,14 @@
+linux-qcom-x1e (7.1.7-jg-0) resolute; urgency=medium
+
+  * arm64: qcom: x1p-lenovo-laptops: adjust eUSB2 retimers, HDMI bridge
+  * drm/msm/dpu,dp,dsi: Drop sneaky dev_pm_opp_set_rate(0) whole series [https://lore.kernel.org/all/20260728-topic-dpu_power-v1-0-e7783b859a70@oss.qualcomm.com/]
+  * drm/msm: Attach a driver to GMU whole series  [https://lore.kernel.org/all/20260513-gmu-sync-state-fix-v1-0-6e33e6aa9b4f@oss.qualcomm.com/]
+  * drm/msm/dp: use direct SDP flush for PSR [Lars Karlslund <8929787+lkarlslund@users.noreply.github.com>]
+  * rebase the stack to v7.1.7
+  * driver core: platform: / drm/msm: dp: Delay applying clock defaults whole seriws [https://lore.kernel.org/all/20250814-platform-delay-clk-defaults-v1-0-4aae5b33512f@linaro.org/]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 09 Aug 2026 09:00:00 +0200
+
 linux-qcom-x1e (7.1.5-jg-0) resolute; urgency=medium
 
   * arm64: qcom: x1p-lenovo-laptops: adjust eUSB2 retimers, HDMI bridge
