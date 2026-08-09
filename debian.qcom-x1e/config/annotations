@@ -2716,7 +2716,6 @@ CONFIG_CRYPTO_DEV_STM32_CRYP                    policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_DEV_STM32_HASH                    policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_DEV_SUN4I_SS                      policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_DEV_SUN4I_SS_DEBUG                policy<{'arm64': 'n'}>
-CONFIG_CRYPTO_DEV_SUN4I_SS_PRNG                 policy<{'arm64': 'y'}>
 CONFIG_CRYPTO_DEV_SUN8I_CE                      policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_DEV_SUN8I_CE_DEBUG                policy<{'arm64': 'n'}>
 CONFIG_CRYPTO_DEV_SUN8I_CE_HASH                 policy<{'arm64': 'y'}>
@@ -2771,7 +2770,7 @@ CONFIG_CRYPTO_KRB5ENC                           policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_KRB5_SELFTESTS                    policy<{'arm64': 'n'}>
 CONFIG_CRYPTO_LIB_AES                           policy<{'arm64': 'y'}>
 CONFIG_CRYPTO_LIB_AES_ARCH                      policy<{'arm64': 'y'}>
-CONFIG_CRYPTO_LIB_AES_CBC_MACS                  policy<{'arm64': 'm'}>
+CONFIG_CRYPTO_LIB_AES_CBC_MACS                  policy<{'arm64': 'y'}>
 CONFIG_CRYPTO_LIB_ARC4                          policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_LIB_BLAKE2B                       policy<{'arm64': 'm'}>
 CONFIG_CRYPTO_LIB_CHACHA                        policy<{'arm64': 'm'}>
@@ -3245,7 +3244,6 @@ CONFIG_DRM_MSM_KMS_FBDEV                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
-CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -9717,12 +9715,15 @@ CONFIG_RTW89_USB                                policy<{'arm64': 'm'}>
 CONFIG_RT_GROUP_SCHED                           policy<{'arm64': 'n'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_FILE_AS_C_STR                  policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_FILE_WITH_NUL                  policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '20'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '200105'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108800'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_MON_DEADLINE                          policy<{'arm64': 'n'}>
@@ -12863,6 +12864,8 @@ CONFIG_VFIO_PLATFORM_AMDXGBE_RESET              policy<{'arm64': 'm'}>
 CONFIG_VFIO_PLATFORM_BASE                       policy<{'arm64': 'm'}>
 CONFIG_VFIO_PLATFORM_CALXEDAXGMAC_RESET         policy<{'arm64': 'm'}>
 CONFIG_VFIO_VIRQFD                              policy<{'arm64': 'y'}>
+CONFIG_VF_TIMER_NONE                            policy<{'arm64': 'y'}>
+CONFIG_VF_USE_PIT_TIMER                         policy<{'arm64': 'n'}>
 CONFIG_VGASTATE                                 policy<{'arm64': 'm'}>
 CONFIG_VGA_ARB                                  policy<{'arm64': 'y'}>
 CONFIG_VGA_ARB_MAX_GPUS                         policy<{'arm64': '16'}>
