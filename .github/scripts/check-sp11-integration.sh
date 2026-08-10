@@ -103,9 +103,10 @@ if [[ "${kernel_changed}" == true ]]; then
 		':(top,glob)Documentation/devicetree/bindings/**/*.yaml'
 	)
 	# File changes are reviewed, but their generic MAINTAINERS reminder is
-	# not a style defect.
+	# not a style defect. --no-tree lets checkpatch run without a full
+	# kernel tree checkout (the workflow uses a sparse checkout).
 	git diff --no-ext-diff "${SP11_RANGE}" -- "${kernel_pathspecs[@]}" |
-		scripts/checkpatch.pl --strict --show-types --ignore FILE_PATH_CHANGES -
+		scripts/checkpatch.pl --no-tree --strict --show-types --ignore FILE_PATH_CHANGES -
 else
 	printf 'No kernel-source changes require checkpatch.pl.\n'
 fi
