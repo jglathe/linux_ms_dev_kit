@@ -19,6 +19,7 @@
 #include <linux/iopoll.h>
 #include <linux/usb/hcd.h>
 #include <linux/usb.h>
+#include <linux/clk/clk-conf.h>
 #include "core.h"
 #include "glue.h"
 
@@ -661,6 +662,12 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	res = *r;
 	res.end = res.start + SDM845_QSCRATCH_BASE_OFFSET;
 
+	ret = of_clk_set_defaults(dev->of_node, false);
+	if (ret) {
+		dev_err(dev, "failed to set clk defaults: %d\n", ret);
+		goto clk_disable;
+	}
+
 	qcom->qscratch_base = devm_ioremap(dev, res.end, SDM845_QSCRATCH_SIZE);
 	if (!qcom->qscratch_base) {
 		dev_err(dev, "failed to map qscratch region\n");
@@ -853,6 +860,7 @@ static struct platform_driver dwc3_qcom_driver = {
 		.pm	= pm_ptr(&dwc3_qcom_dev_pm_ops),
 		.of_match_table	= dwc3_qcom_of_match,
 	},
+	.driver_managed_clk_defaults = true,
 };
 
 module_platform_driver(dwc3_qcom_driver);
