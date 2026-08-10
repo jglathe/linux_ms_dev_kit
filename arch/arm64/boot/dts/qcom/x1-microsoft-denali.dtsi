@@ -1385,3 +1385,24 @@
 &usb_1_ss1_qmpphy_out {
 	remote-endpoint = <&retimer_ss1_ss_in>;
 };
+
+/*
+ * Disable cluster-level PSCI idle states to ensure reliable s2idle
+ * resume. The X1E80100 SoC's deeper cluster sleep (cluster_cl4,
+ * psci-suspend-param 0x01000044) can fail to resume on the Surface
+ * Pro 11, leaving the display or USB subsystem unresponsive after
+ * suspend. Override the cluster power domains to remove the deep
+ * cluster idle state, keeping only architectural WFI (cluster_c4,
+ * psci-suspend-param 0x00000004) at the CPU level.
+ */
+&cluster_pd0 {
+	domain-idle-states = <>;
+};
+
+&cluster_pd1 {
+	domain-idle-states = <>;
+};
+
+&cluster_pd2 {
+	domain-idle-states = <>;
+};
