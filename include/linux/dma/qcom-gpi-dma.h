@@ -16,6 +16,7 @@ enum spi_transfer_cmd {
 	SPI_TX = 1,
 	SPI_RX,
 	SPI_DUPLEX,
+	SPI_TX_RX = 7,	/* QSPI full-duplex (TX opcode+addr, RX data) */
 };
 
 /**
@@ -47,6 +48,11 @@ struct gpi_spi_config {
 	u32 clk_src;
 	enum spi_transfer_cmd cmd;
 	u32 rx_len;
+	/* QSPI extensions */
+	bool qspi_mode;
+	u16 qspi_lane_flags;
+	u8 dummy_clk_cnt;
+	u16 tx_cmd_len;
 };
 
 enum i2c_op {
