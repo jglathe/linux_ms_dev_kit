@@ -20,7 +20,7 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		pinctrl-0 = <&hall_int_n_default>;
+		pinctrl-0 = <&hall_int_n_default>, <&kypd_vol_up_n>;
 		pinctrl-names = "default";
 
 		switch-lid {
@@ -29,6 +29,13 @@
 			linux,code = <SW_LID>;
 			wakeup-source;
 			wakeup-event-action = <EV_ACT_DEASSERTED>;
+		};
+
+		key-vol-up {
+			label = "volume_up";
+			gpios = <&pm8550_gpios 6 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			wakeup-source;
 		};
 	};
 
@@ -1011,6 +1018,14 @@
 		function = "normal";
 		power-source = <1>; /* 1.8V */
 	};
+
+	kypd_vol_up_n: kypd-vol-up-n-state {
+		pins = "gpio6";
+		function = "normal";
+		power-source = <1>; /* 1.8V */
+		bias-pull-up;
+		input-enable;
+	};
 };
 
 &pm8550ve_9_gpios {
@@ -1405,4 +1420,10 @@
 
 &cluster_pd2 {
 	domain-idle-states = <>;
+};
+
+&pon_resin {
+	linux,code = <KEY_VOLUMEDOWN>;
+
+	status = "okay";
 };
