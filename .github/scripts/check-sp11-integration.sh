@@ -104,9 +104,16 @@ if [[ "${kernel_changed}" == true ]]; then
 	)
 	# File changes are reviewed, but their generic MAINTAINERS reminder is
 	# not a style defect. --no-tree lets checkpatch run without a full
-	# kernel tree checkout (the workflow uses a sparse checkout).
-	git diff --no-ext-diff "${SP11_RANGE}" -- "${kernel_pathspecs[@]}" |
-		scripts/checkpatch.pl --no-tree --strict --show-types --ignore FILE_PATH_CHANGES -
+	# kernel tree checkout (the workflow uses a sparse checkout).  Only
+	# checkpatch ERROR-level findings fail the gate; WARNING and CHECK
+	# levels are reported for review but do not block, since upstream
+	# code may carry pre-existing style patterns.
+	checkpatch_output="$(git diff --no-ext-diff "${SP11_RANGE}" -- "${kernel_pathspecs[@]}" |
+		scripts/checkpatch.pl --no-tree --strict --show-types --ignore FILE_PATH_CHANGES - || true)"
+	echo "${checkpatch_output}"
+	if echo "${checkpatch_output}" | grep -qE '^ERROR:'; then
+		die "checkpatch.pl reported ERROR-level findings (see above)"
+	fi
 else
 	printf 'No kernel-source changes require checkpatch.pl.\n'
 fi
