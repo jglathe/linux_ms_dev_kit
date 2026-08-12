@@ -62,44 +62,44 @@
 		power-supply = <&vreg_edp_3p3>;
 	};
 
-//	hdmi-bridge {
-//		compatible = "realtek,rtd2171";
-//
-//		pinctrl-0 = <&hdmi_hpd_default>;
-//		pinctrl-names = "default";
-//
-//		ports {
-//			#address-cells = <1>;
-//			#size-cells = <0>;
-//
-//			port@0 {
-//				reg = <0>;
-//
-//				hdmi_bridge_dp_in: endpoint {
-//					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
-//				};
-//			};
-//
-//			port@1 {
-//				reg = <1>;
-//
-//				hdmi_bridge_tmds_out: endpoint {
-//					remote-endpoint = <&hdmi_con>;
-//				};
-//			};
-//		};
-//	};
-//
-//	hdmi-connector {
-//		compatible = "hdmi-connector";
-//		type = "a";
-//
-//		port {
-//			hdmi_con: endpoint {
-//				remote-endpoint = <&hdmi_bridge_tmds_out>;
-//			};
-//		};
-//	};
+	hdmi-bridge {
+		compatible = "parade,ps185hdm";
+
+		pinctrl-0 = <&hdmi_hpd_default>;
+		pinctrl-names = "default";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hdmi_bridge_dp_in: endpoint {
+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				hdmi_bridge_tmds_out: endpoint {
+					remote-endpoint = <&hdmi_con>;
+				};
+			};
+		};
+	};
+
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con: endpoint {
+				remote-endpoint = <&hdmi_bridge_tmds_out>;
+			};
+		};
+	};
 
 	gpio-keys {
 		compatible = "gpio-keys";
@@ -208,10 +208,10 @@
 				"IN1_HPHL", "HPHL_OUT",
 				"IN2_HPHR", "HPHR_OUT",
 				"AMIC2", "MIC BIAS2",
-				"VA DMIC0", "MIC BIAS3",
-				"VA DMIC1", "MIC BIAS3",
-				"VA DMIC2", "MIC BIAS1",
-				"VA DMIC3", "MIC BIAS1",
+				"VA DMIC0", "MIC BIAS1",
+				"VA DMIC1", "MIC BIAS1",
+				"VA DMIC0", "VA MIC BIAS1",
+				"VA DMIC1", "VA MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
 
 		displayport-0-dai-link {
@@ -246,21 +246,21 @@
 			};
 		};
 
-//		displayport-2-dai-link {
-//			link-name = "DisplayPort2 Playback";
-//
-//			codec {
-//				sound-dai = <&mdss_dp2>;
-//			};
-//
-//			cpu {
-//				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
-//			};
-//
-//			platform {
-//				sound-dai = <&q6apm>;
-//			};
-//		};
+		displayport-2-dai-link {
+			link-name = "DisplayPort2 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp2>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
 
 		wcd-playback-dai-link {
 			link-name = "WCD Playback";
@@ -365,7 +365,6 @@
 		};
 	};
 
-
 	vreg_edp_3p3: regulator-edp-3p3 {
 		compatible = "regulator-fixed";
 
@@ -380,6 +379,7 @@
 		pinctrl-names = "default";
 
 		regulator-boot-on;
+		regulator-always-on;
 	};
 
 	vreg_misc_3p3: regulator-misc-3p3 {
@@ -607,8 +607,8 @@
 
 		vreg_l12b_1p2: ldo12 {
 			regulator-name = "vreg_l12b_1p2";
-			regulator-min-microvolt = <1190000>;
-			regulator-max-microvolt = <1210000>;
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -767,8 +767,8 @@
 
 		vreg_l1i_1p8: ldo1 {
 			regulator-name = "vreg_l1i_1p8";
-			regulator-min-microvolt = <1790000>;
-			regulator-max-microvolt = <1810000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -962,6 +962,11 @@
 
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
+
+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&eusb5_reset_n>;
+		pinctrl-names = "default";
 	};
 
 	eusb3_repeater: redriver@47 {
@@ -986,7 +991,7 @@
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
 
-		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
 
 		pinctrl-0 = <&eusb9_reset_n>;
 		pinctrl-names = "default";
@@ -1039,11 +1044,11 @@
 };
 
 &lpass_vamacro {
-	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
+	pinctrl-0 = <&dmic01_default>;
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &mdss {
@@ -1073,7 +1078,7 @@
 &mdss_dp2 {
 	sound-name-prefix = "DisplayPort2";
 
-	status = "disabled";
+	status = "okay";
 };
 
 &mdss_dp2_out {
@@ -1339,6 +1344,14 @@
 		output-low;
 	};
 
+	eusb5_reset_n: eusb5-reset-n-state {
+		pins = "gpio7";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
 	eusb6_reset_n: eusb6-reset-n-state {
 		pins = "gpio184";
 		function = "gpio";
@@ -1348,7 +1361,7 @@
 	};
 
 	eusb9_reset_n: eusb9-reset-n-state {
-		pins = "gpio7";
+		pins = "gpio9";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1607,7 +1620,7 @@
 	maximum-speed = "high-speed";
 	phys = <&usb_1_ss2_hsphy>;
 	phy-names = "usb2-phy";
-
+	qcom,select-utmi-as-pipe-clk;
 	status = "okay";
 	/delete-property/ port@1;
 };
@@ -1616,34 +1629,36 @@
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
 
-	phys = <&eusb5_repeater>;
+	phys = <&eusb9_repeater>;
 
 	status = "okay";
 };
 
-//&usb_1_ss2_qmpphy {
-//	vdda-phy-supply = <&vreg_l2j_1p2>;
-//	vdda-pll-supply = <&vreg_l2d_0p9>;
-//
-//	/delete-property/ mode-switch;
-//	/delete-property/ orientation-switch;
-//
-//	ports {
-//		port@0 {
-//			#address-cells = <1>;
-//			#size-cells = <0>;
-//
-//			/delete-node/ endpoint;
-//
-//			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
-//				reg = <0>;
-//
-//				data-lanes = <0 1 2 3>;
-//				remote-endpoint = <&hdmi_bridge_dp_in>;
-//			};
-//		};
-//	};
-//};
+&usb_1_ss2_qmpphy {
+	vdda-phy-supply = <&vreg_l2j_1p2>;
+	vdda-pll-supply = <&vreg_l2d_0p9>;
+
+	/delete-property/ mode-switch;
+	/delete-property/ orientation-switch;
+
+	status = "okay";
+
+	ports {
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint;
+
+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
+				reg = <0>;
+
+				data-lanes = <3 2 1 0>;
+				remote-endpoint = <&hdmi_bridge_dp_in>;
+			};
+		};
+	};
+};
 
 &usb_2 {
 	dr_mode = "host";
@@ -1655,7 +1670,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb9_repeater>;
+	phys = <&eusb5_repeater>;
 
 	status = "okay";
 };
