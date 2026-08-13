@@ -1,3 +1,16 @@
+linux-qcom-x1e (7.1.7-jg-1) resolute; urgency=medium
+
+  * phy: snps-eusb2: delay clk defaults until after power-up
+  * usb: dwc3-qcom: delay clk defaults until after power-up
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x-oled: specify usb2-only clock for usb_1_ss2
+  * arm64: dts: qcom: hamoa: Fix swapped USB QMP PHY vdda-phy/vdda-pll supplies [Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>]
+  * arm64: dts: qcom: introduce Purwa variant of the Ideacentre Mini 01q8x10
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x-lcd: sync with working oled variant
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: sync with working slim5x
+  * arm64: dts: qcom: x1p42100-thinkbook-16: sync with working slim5x
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 13 Aug 2026 15:27:17 +0200
+
 linux-qcom-x1e (7.1.7-jg-0) resolute; urgency=medium
 
   * arm64: qcom: x1p-lenovo-laptops: adjust eUSB2 retimers, HDMI bridge
