@@ -832,7 +832,7 @@
 
 	status = "okay";
 
-	eusb5_repeater: redriver@43 {
+	eusb9_repeater: redriver@43 {
 		compatible = "nxp,ptn3222";
 		reg = <0x43>;
 		#phy-cells = <0>;
@@ -855,7 +855,7 @@
 		pinctrl-names = "default";
 	};
 
-	eusb9_repeater: redriver@4b {
+	eusb5_repeater: redriver@4b {
 		compatible = "nxp,ptn3222";
 		reg = <0x4b>;
 		#phy-cells = <0>;
@@ -865,7 +865,7 @@
 
 		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
 
-		pinctrl-0 = <&eusb9_reset_n>;
+		pinctrl-0 = <&eusb5_reset_n>;
 		pinctrl-names = "default";
 	};
 
@@ -1311,16 +1311,16 @@
 		output-low;
 	};
 
-	eusb6_reset_n: eusb6-reset-n-state {
-		pins = "gpio184";
+	eusb5_reset_n: eusb5-reset-n-state {
+		pins = "gpio7";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 		output-low;
 	};
 
-	eusb9_reset_n: eusb9-reset-n-state {
-		pins = "gpio7";
+	eusb6_reset_n: eusb6-reset-n-state {
+		pins = "gpio184";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1557,7 +1557,7 @@
 	vdd-supply = <&vreg_l3j_0p8>;
 	vdda12-supply = <&vreg_l2j_1p2>;
 
-	phys = <&eusb5_repeater>;
+	phys = <&eusb9_repeater>;
 
 	status = "okay";
 };
@@ -1606,7 +1606,7 @@
 	vdd-supply = <&vreg_l2e_0p8>;
 	vdda12-supply = <&vreg_l3e_1p2>;
 
-	phys = <&eusb9_repeater>;
+	phys = <&eusb5_repeater>;
 
 	status = "okay";
 };
