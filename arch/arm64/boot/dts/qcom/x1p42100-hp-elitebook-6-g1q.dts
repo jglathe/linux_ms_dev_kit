@@ -10,7 +10,7 @@
 
 / {
 	model = "HP EliteBook 6 G1q 14 inch Notebook Next Gen AI PC";
-	compatible = "hp,elitebook-6-g1q", "qcom,x1p42100";
+	compatible = "hp,elitebook-6-g1q", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 };
 
