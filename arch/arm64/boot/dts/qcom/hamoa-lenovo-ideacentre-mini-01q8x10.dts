@@ -13,7 +13,7 @@
 
 / {
 	model = "Lenovo IdeaCentre Mini 01Q8X10";
-	compatible = "lenovo,ideacentre-mini-01q8x10", "qcom,x1e80100";
+	compatible = "lenovo,ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
 	chassis-type = "desktop";
 
 	aliases {
