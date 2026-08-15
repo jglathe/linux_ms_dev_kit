@@ -677,7 +677,7 @@
 };
 
 &iris {
-	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcvss8380.mbn";
+	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcvss8380_pa.mbn";
 
 	status = "okay";
 };
@@ -687,7 +687,7 @@
 };
 
 &gpu_zap_shader {
-	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcdxkmsuc8380.mbn";
+	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcdxkmsucpurwa.mbn";
 };
 
 &mdss {
@@ -881,15 +881,15 @@
 };
 
 &remoteproc_adsp {
-	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcadsp8380.mbn",
-			"qcom/x1e80100/LENOVO/91B6/adsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcadsp8380.mbn",
+			"qcom/x1p42100/LENOVO/91B6/adsp_dtbs.elf";
 
 	status = "okay";
 };
 
 &remoteproc_cdsp {
-	firmware-name = "qcom/x1e80100/LENOVO/91B6/qccdsp8380.mbn",
-			"qcom/x1e80100/LENOVO/91B6/cdsp_dtbs.elf";
+	firmware-name = "qcom/x1p42100/LENOVO/91B6/qccdsp8380.mbn",
+			"qcom/x1p42100/LENOVO/91B6/cdsp_dtbs.elf";
 
 	status = "okay";
 };
