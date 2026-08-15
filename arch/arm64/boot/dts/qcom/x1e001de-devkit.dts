@@ -16,7 +16,7 @@
 
 / {
 	model = "Qualcomm Technologies, Inc. X1E001DE Snapdragon Devkit for Windows";
-	compatible = "qcom,x1e001de-devkit", "qcom,x1e001de", "qcom,x1e80100";
+	compatible = "qcom,x1e001de-devkit", "lenovo,thinkpad-t14s", "qcom,x1e001de", "qcom,x1e80100";
 
 	aliases {
 		serial0 = &uart21;

@@ -23,7 +23,7 @@
 
 / {
 	model = "Surface Pro 12in 1st Edition";
-	compatible = "microsoft,surface-pro-12in", "qcom,x1p42100";
+	compatible = "microsoft,surface-pro-12in", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "tablet";
 
 	aliases {
