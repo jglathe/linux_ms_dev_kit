@@ -661,19 +661,19 @@
 		pinctrl-names = "default";
 	};
 
-	eusb6_repeater: redriver@4f {
-		compatible = "nxp,ptn3222";
-		reg = <0x4f>;
-		#phy-cells = <0>;
-
-		vdd3v3-supply = <&vreg_l13b>;
-		vdd1v8-supply = <&vreg_l4b>;
-
-		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
-
-		pinctrl-0 = <&eusb6_reset_n>;
-		pinctrl-names = "default";
-	};
+//	eusb6_repeater: redriver@4f {
+//		compatible = "nxp,ptn3222";
+//		reg = <0x4f>;
+//		#phy-cells = <0>;
+//
+//		vdd3v3-supply = <&vreg_l13b>;
+//		vdd1v8-supply = <&vreg_l4b>;
+//
+//		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
+//
+//		pinctrl-0 = <&eusb6_reset_n>;
+//		pinctrl-names = "default";
+//	};
 };
 
 //&iris {
@@ -1188,6 +1188,9 @@
 
 &usb_mp {
 	status = "okay";
+
+	phys = <&usb_mp_hsphy0>, <&usb_mp_qmpphy0>;
+	phy-names = "usb2-0", "usb3-0";
 };
 
 &usb_mp_hsphy0 {
@@ -1199,14 +1202,14 @@
 	status = "okay";
 };
 
-&usb_mp_hsphy1 {
-	vdd-supply = <&vreg_l2e>;
-	vdda12-supply = <&vreg_l3e>;
-
-	phys = <&eusb6_repeater>;
-
-	status = "okay";
-};
+//&usb_mp_hsphy1 {
+//	vdd-supply = <&vreg_l2e>;
+//	vdda12-supply = <&vreg_l3e>;
+//
+//	phys = <&eusb6_repeater>;
+//
+//	status = "okay";
+//};
 
 &usb_mp_qmpphy0 {
 	vdda-phy-supply = <&vreg_l3c>;
@@ -1215,9 +1218,9 @@
 	status = "okay";
 };
 
-&usb_mp_qmpphy1 {
-	vdda-phy-supply = <&vreg_l3c>;
-	vdda-pll-supply = <&vreg_l3e>;
-
-	status = "okay";
-};
+//&usb_mp_qmpphy1 {
+//	vdda-phy-supply = <&vreg_l3c>;
+//	vdda-pll-supply = <&vreg_l3e>;
+//
+//	status = "okay";
+//};
