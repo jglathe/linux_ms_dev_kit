@@ -37,6 +37,7 @@ enum spi_transfer_cmd {
  */
 struct gpi_spi_config {
 	u8 set_config;
+	u8 qspi;
 	u8 loopback_en;
 	u8 clock_pol_high;
 	u8 data_pol_high;
