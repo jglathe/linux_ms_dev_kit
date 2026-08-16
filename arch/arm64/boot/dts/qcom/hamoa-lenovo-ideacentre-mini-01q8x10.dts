@@ -672,11 +672,11 @@
 	};
 };
 
-&iris {
-	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcvss8380.mbn";
-
-	status = "okay";
-};
+//&iris {
+//	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcvss8380.mbn";
+//
+//	status = "okay";
+//};
 
 &gpu {
 	status = "okay";
