@@ -1020,7 +1020,7 @@
 };
 
 //&iris {
-//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380.mbn";
+//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380_pa.mbn";
 //	status = "okay";
 //};
 
