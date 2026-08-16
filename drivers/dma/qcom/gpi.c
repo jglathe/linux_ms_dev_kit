@@ -14,13 +14,25 @@
 #include <linux/dma/qcom-gpi-dma.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#include <linux/timer.h>
 #include "../dmaengine.h"
 #include "../virt-dma.h"
+
+static bool sp11_qspi_trace;
+module_param_named(sp11_qspi_trace, sp11_qspi_trace, bool, 0644);
+MODULE_PARM_DESC(sp11_qspi_trace,
+		 "enable high-volume SP11 QSPI ring and event diagnostics");
 
 #define TRE_TYPE_DMA		0x10
 #define TRE_TYPE_IMMEDIATE_DMA	0x11
 #define TRE_TYPE_GO		0x20
 #define TRE_TYPE_CONFIG0	0x22
+
+#define TRE_QSPI_GO_FLAG	BIT(29)
+#define TRE_QSPI_CONFIG0_DW0	0x03000004
+#define TRE_QSPI_CONFIG0_DW2	0x00010001
+#define TRE_QSPI_GO_TX_DW0	0x20000001
+#define TRE_QSPI_GO_BIDI_DW0	0x20000007
 
 /* TRE flags */
 #define TRE_FLAGS_CHAIN		BIT(0)
@@ -214,6 +226,9 @@ enum CNTXT_OFFS {
 			     (FIELD_PREP(GPII_n_CH_k_SCRATCH_0_PAIR, pair)	| \
 			      FIELD_PREP(GPII_n_CH_k_SCRATCH_0_PROTO, proto)	| \
 			      FIELD_PREP(GPII_n_CH_k_SCRATCH_0_SEID, seid))
+#define GPII_n_CH_k_SCRATCH_0_QSPI_TX		0x16010092
+#define GPII_n_CH_k_SCRATCH_0_QSPI_RX		0x17000092
+#define GPII_n_CH_k_SCRATCH_2_QSPI		0x00000002
 #define GPII_n_CH_k_SCRATCH_1_OFFS(n, k)	(0x20064 + (0x4000 * (n)) + (0x80 * (k)))
 #define GPII_n_CH_k_SCRATCH_2_OFFS(n, k)	(0x20068 + (0x4000 * (n)) + (0x80 * (k)))
 #define GPII_n_CH_k_SCRATCH_3_OFFS(n, k)	(0x2006C + (0x4000 * (n)) + (0x80 * (k)))
@@ -238,6 +253,25 @@ enum msm_gpi_tce_code {
 #define EV_FACTOR		(2)
 #define REQ_OF_DMA_ARGS		(5) /* # of arguments required from client */
 #define CHAN_TRES		64
+#define SP11_WINDOWS_CHAN_TRES	16
+#define SP11_WINDOWS_EVENT_TRES	32
+
+/* Exact qcspi/qcgpi ring geometry, isolated to the Windows-parity laboratory. */
+static bool sp11_windows_ring_layout;
+module_param(sp11_windows_ring_layout, bool, 0444);
+MODULE_PARM_DESC(sp11_windows_ring_layout,
+		 "Use the captured Windows SP11 QSPI transfer/event ring sizes");
+
+/*
+ * Phase 84 proved that removing LINK together with the Windows ring geometry
+ * leaves Linux's pre-doorbelled RX channel stalled at the first bidirectional
+ * transfer. Keep the captured geometry while allowing the one Linux channel-
+ * coupling adaptation to be selected independently.
+ */
+static bool sp11_qspi_linux_link;
+module_param(sp11_qspi_linux_link, bool, 0444);
+MODULE_PARM_DESC(sp11_qspi_linux_link,
+		 "Add Linux-required LINK to a bidirectional SP11 QSPI GO");
 
 struct __packed xfer_compl_event {
 	u64 ptr;
@@ -516,6 +550,15 @@ struct gpii {
 	enum gpi_cmd gpi_cmd;
 	u32 cntxt_type_irq_msk;
 	bool ieob_set;
+	struct virt_dma_desc *qspi_deferred_vd;
+	struct gchan *qspi_deferred_gchan;
+	struct dmaengine_result qspi_deferred_result;
+	struct timer_list qspi_deferred_timer;
+	bool qspi_deferred_grace_elapsed;
+	u32 qspi_event_seq;
+	u32 qspi_code_count[MAX_CHANNELS_PER_GPII][17];
+	u32 qspi_bytes[MAX_CHANNELS_PER_GPII];
+	phys_addr_t qspi_last_ptr[MAX_CHANNELS_PER_GPII];
 };
 
 #define MAX_TRE 3
@@ -548,6 +591,75 @@ static inline struct gpi_desc *to_gpi_desc(struct virt_dma_desc *vd)
 	return container_of(vd, struct gpi_desc, vd);
 }
 
+static bool gpii_has_active_qspi(struct gpii *gpii)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++)
+		if (gpii->gchan[i].protocol == QCOM_GPI_QSPI &&
+		    gpii->gchan[i].pm_state == ACTIVE_STATE)
+			return true;
+
+	return false;
+}
+
+static const char *gpi_qspi_side_name(u32 chid)
+{
+	if (chid == GPI_TX_CHAN)
+		return "TX";
+	if (chid == GPI_RX_CHAN)
+		return "RX";
+	return "?";
+}
+
+static void gpi_qspi_reset_progress(struct gpii *gpii)
+{
+	memset(gpii->qspi_code_count, 0, sizeof(gpii->qspi_code_count));
+	memset(gpii->qspi_bytes, 0, sizeof(gpii->qspi_bytes));
+	memset(gpii->qspi_last_ptr, 0, sizeof(gpii->qspi_last_ptr));
+	gpii->qspi_event_seq = 0;
+}
+
+static void gpi_qspi_trace_progress(struct gchan *gchan,
+				    struct xfer_compl_event *event,
+				    const char *where)
+{
+	struct gpii *gpii = gchan->gpii;
+	struct gpi_ring *ring = &gchan->ch_ring;
+	phys_addr_t ring_base = ring->phys_addr;
+	phys_addr_t ring_end = ring->phys_addr + ring->len;
+	phys_addr_t ev_ptr = event->ptr;
+	u32 chid = event->chid;
+	u32 code = event->code;
+	u32 slot = U32_MAX;
+
+	if (chid >= MAX_CHANNELS_PER_GPII)
+		chid = gchan->chid;
+
+	if (code < ARRAY_SIZE(gpii->qspi_code_count[chid]))
+		gpii->qspi_code_count[chid][code]++;
+	gpii->qspi_bytes[chid] += event->length;
+	gpii->qspi_last_ptr[chid] = ev_ptr;
+	gpii->qspi_event_seq++;
+
+	if (ev_ptr >= ring_base && ev_ptr < ring_end)
+		slot = div_u64(ev_ptr - ring_base, ring->el_size);
+
+	dev_dbg_ratelimited(gpii->gpi_dev->dev,
+			     "SP11 QSPI %s ev#%u side:%s chid:%u type:%02x code:%u len:%u ptr:%pa slot:%u ring:%pa-%pa tx[c2:%u c4:%u bytes:%u last:%pa] rx[c2:%u c4:%u bytes:%u last:%pa]\n",
+			     where, gpii->qspi_event_seq, gpi_qspi_side_name(chid),
+			     event->chid, event->type, event->code, event->length,
+			     &ev_ptr, slot, &ring_base, &ring_end,
+			     gpii->qspi_code_count[GPI_TX_CHAN][MSM_GPI_TCE_EOT],
+			     gpii->qspi_code_count[GPI_TX_CHAN][MSM_GPI_TCE_EOB],
+			     gpii->qspi_bytes[GPI_TX_CHAN],
+			     &gpii->qspi_last_ptr[GPI_TX_CHAN],
+			     gpii->qspi_code_count[GPI_RX_CHAN][MSM_GPI_TCE_EOT],
+			     gpii->qspi_code_count[GPI_RX_CHAN][MSM_GPI_TCE_EOB],
+			     gpii->qspi_bytes[GPI_RX_CHAN],
+			     &gpii->qspi_last_ptr[GPI_RX_CHAN]);
+}
+
 static inline phys_addr_t to_physical(const struct gpi_ring *const ring,
 				      void *addr)
 {
@@ -559,9 +671,106 @@ static inline void *to_virtual(const struct gpi_ring *const ring, phys_addr_t ad
 	return ring->base + (addr - ring->phys_addr);
 }
 
+static void gpi_qspi_complete_deferred(struct gpii *gpii,
+				       struct qup_notif_event *notif)
+{
+	struct virt_dma_desc *vd = gpii->qspi_deferred_vd;
+	struct gchan *gchan = gpii->qspi_deferred_gchan;
+	struct gpi_desc *gpi_desc;
+	struct dmaengine_result result = gpii->qspi_deferred_result;
+	unsigned long flags;
+
+	if (!vd || !gchan)
+		return;
+
+	gpi_desc = to_gpi_desc(vd);
+	timer_delete(&gpii->qspi_deferred_timer);
+	gpii->qspi_deferred_vd = NULL;
+	gpii->qspi_deferred_gchan = NULL;
+	WRITE_ONCE(gpii->qspi_deferred_grace_elapsed, false);
+
+	if (notif)
+		dev_dbg(gpii->gpi_dev->dev,
+			 "SP11 QSPI completing deferred TX after QUP notification status:%#x count:%u residue:%u\n",
+			 notif->status, notif->count, result.residue);
+	else
+		dev_dbg(gpii->gpi_dev->dev,
+			 "SP11 QSPI completing TX-only descriptor after grace period residue:%u\n",
+			 result.residue);
+
+	dma_cookie_complete(&vd->tx);
+	dmaengine_desc_get_callback_invoke(&vd->tx, &result);
+
+	spin_lock_irqsave(&gchan->vc.lock, flags);
+	list_del(&vd->node);
+	spin_unlock_irqrestore(&gchan->vc.lock, flags);
+	kfree(gpi_desc);
+}
+
 static inline u32 gpi_read_reg(struct gpii *gpii, void __iomem *addr)
 {
 	return readl_relaxed(addr);
+}
+
+static phys_addr_t gpi_read_ev_rp(struct gpii *gpii)
+{
+	u32 lsb = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg);
+	u32 msb = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg + 4);
+
+	return ((phys_addr_t)msb << 32) | lsb;
+}
+
+static void gpi_sp11_dump_state(struct gpii *gpii, struct gchan *gchan,
+				const char *tag, u32 cmd)
+{
+	if (!READ_ONCE(sp11_qspi_trace))
+		return;
+
+	u32 id = gpii->gpii_id;
+	u32 chid = gchan ? gchan->chid : 0;
+	u32 ch0 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 0));
+	u32 ch1 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 1));
+	u32 ev0 = gpi_read_reg(gpii, gpii->regs + GPII_n_EV_CH_k_CNTXT_0_OFFS(id, 0));
+	u32 type = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_TYPE_IRQ_OFFS(id));
+	u32 type_msk = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_TYPE_IRQ_MSK_OFFS(id));
+	u32 ch_irq = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_SRC_GPII_CH_IRQ_OFFS(id));
+	u32 ch_irq_msk = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_SRC_CH_IRQ_MSK_OFFS(id));
+	u32 ev_irq = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_SRC_EV_CH_IRQ_OFFS(id));
+	u32 ev_irq_msk = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_SRC_EV_CH_IRQ_MSK_OFFS(id));
+	u32 glob = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_GLOB_IRQ_STTS_OFFS(id));
+	u32 gpii_sts = gpi_read_reg(gpii, gpii->regs + GPII_n_CNTXT_GPII_IRQ_STTS_OFFS(id));
+	u32 err = gpi_read_reg(gpii, gpii->regs + GPII_n_ERROR_LOG_OFFS(id));
+	u32 tx_rp_l = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 0) + CNTXT_4_RING_RP_LSB);
+	u32 tx_rp_h = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 0) + CNTXT_5_RING_RP_MSB);
+	u32 tx_wp_l = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 0) + CNTXT_6_RING_WP_LSB);
+	u32 tx_wp_h = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 0) + CNTXT_7_RING_WP_MSB);
+	u32 rx_rp_l = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 1) + CNTXT_4_RING_RP_LSB);
+	u32 rx_rp_h = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 1) + CNTXT_5_RING_RP_MSB);
+	u32 rx_wp_l = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 1) + CNTXT_6_RING_WP_LSB);
+	u32 rx_wp_h = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_CNTXT_0_OFFS(id, 1) + CNTXT_7_RING_WP_MSB);
+	u32 tx_s0 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, 0));
+	u32 tx_s1 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, 0));
+	u32 tx_s2 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, 0));
+	u32 tx_s3 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_3_OFFS(id, 0));
+	u32 rx_s0 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, 1));
+	u32 rx_s1 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, 1));
+	u32 rx_s2 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, 1));
+	u32 rx_s3 = gpi_read_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_3_OFFS(id, 1));
+
+	dev_dbg(gpii->gpi_dev->dev,
+		"SP11 diag %s gpii:%u chid:%u irq:%d seid:%u proto:%u pm:%s cmd:0x%08x\n",
+		tag, id, chid, gpii->irq, gchan ? gchan->seid : 0,
+		gchan ? gchan->protocol : 0, TO_GPI_PM_STR(gpii->pm_state), cmd);
+	dev_dbg(gpii->gpi_dev->dev,
+		"SP11 diag gpii:%u ch0:0x%08x ch1:0x%08x ev0:0x%08x type:0x%08x type_msk:0x%08x glob:0x%08x gpii_sts:0x%08x ch_irq:0x%08x ch_msk:0x%08x ev_irq:0x%08x ev_msk:0x%08x err:0x%08x\n",
+		id, ch0, ch1, ev0, type, type_msk, glob, gpii_sts,
+		ch_irq, ch_irq_msk, ev_irq, ev_irq_msk, err);
+	dev_dbg(gpii->gpi_dev->dev,
+		 "SP11 QSPI ctx tx_rp:%08x:%08x tx_wp:%08x:%08x rx_rp:%08x:%08x rx_wp:%08x:%08x scratch tx:%08x/%08x/%08x/%08x rx:%08x/%08x/%08x/%08x\n",
+		 tx_rp_h, tx_rp_l, tx_wp_h, tx_wp_l,
+		 rx_rp_h, rx_rp_l, rx_wp_h, rx_wp_l,
+		 tx_s0, tx_s1, tx_s2, tx_s3,
+		 rx_s0, rx_s1, rx_s2, rx_s3);
 }
 
 static inline void gpi_write_reg(struct gpii *gpii, void __iomem *addr, u32 val)
@@ -695,8 +904,11 @@ static int gpi_send_cmd(struct gpii *gpii, struct gchan *gchan,
 	timeout = wait_for_completion_timeout(&gpii->cmd_completion,
 					      msecs_to_jiffies(CMD_TIMEOUT_MS));
 	if (!timeout) {
-		dev_err(gpii->gpi_dev->dev, "cmd: %s completion timeout:%u\n",
-			TO_GPI_CMD_STR(gpi_cmd), chid);
+		dev_err(gpii->gpi_dev->dev,
+			"cmd: %s completion timeout:%u gpii:%u irq:%d cmd:0x%08x\n",
+			TO_GPI_CMD_STR(gpi_cmd), chid, gpii->gpii_id,
+			gpii->irq, cmd);
+		gpi_sp11_dump_state(gpii, gchan, TO_GPI_CMD_STR(gpi_cmd), cmd);
 		return -EIO;
 	}
 
@@ -721,7 +933,15 @@ static inline void gpi_write_ch_db(struct gchan *gchan,
 	phys_addr_t p_wp;
 
 	p_wp = to_physical(ring, wp);
-	gpi_write_reg(gpii, gchan->ch_cntxt_db_reg, p_wp);
+	if (gchan->protocol == QCOM_GPI_QSPI)
+		dev_dbg(gpii->gpi_dev->dev,
+			 "SP11 QSPI doorbell side:%s chid:%u wp:%pa hi:%08x lo:%08x\n",
+			 gpi_qspi_side_name(gchan->chid), gchan->chid, &p_wp,
+			 upper_32_bits(p_wp), lower_32_bits(p_wp));
+	gpi_write_reg(gpii, gchan->ch_cntxt_db_reg + 4, upper_32_bits(p_wp));
+	/* The high doorbell half must be visible before the low half commits it. */
+	wmb();
+	gpi_write_reg(gpii, gchan->ch_cntxt_db_reg, lower_32_bits(p_wp));
 }
 
 /* program event ring DB register */
@@ -731,7 +951,10 @@ static inline void gpi_write_ev_db(struct gpii *gpii,
 	phys_addr_t p_wp;
 
 	p_wp = ring->phys_addr + (wp - ring->base);
-	gpi_write_reg(gpii, gpii->ev_cntxt_db_reg, p_wp);
+	gpi_write_reg(gpii, gpii->ev_cntxt_db_reg + 4, upper_32_bits(p_wp));
+	/* The high doorbell half must be visible before the low half commits it. */
+	wmb();
+	gpi_write_reg(gpii, gpii->ev_cntxt_db_reg, lower_32_bits(p_wp));
 }
 
 /* process transfer completion interrupt */
@@ -826,6 +1049,7 @@ static irqreturn_t gpi_handle_irq(int irq, void *data)
 	u32 gpii_id = gpii->gpii_id;
 	u32 type, offset;
 	unsigned long flags;
+	bool qspi_drain_events = false;
 
 	read_lock_irqsave(&gpii->pm_lock, flags);
 
@@ -838,6 +1062,7 @@ static irqreturn_t gpi_handle_irq(int irq, void *data)
 			TO_GPI_PM_STR(gpii->pm_state));
 		goto exit_irq;
 	}
+	qspi_drain_events = gpii_has_active_qspi(gpii);
 
 	offset = GPII_n_CNTXT_TYPE_IRQ_OFFS(gpii->gpii_id);
 	type = gpi_read_reg(gpii, gpii->regs + offset);
@@ -903,6 +1128,9 @@ static irqreturn_t gpi_handle_irq(int irq, void *data)
 		offset = GPII_n_CNTXT_TYPE_IRQ_OFFS(gpii->gpii_id);
 		type = gpi_read_reg(gpii, gpii->regs + offset);
 	} while (type);
+
+	if (qspi_drain_events)
+		tasklet_hi_schedule(&gpii->ev_task);
 
 exit_irq:
 	read_unlock_irqrestore(&gpii->pm_lock, flags);
@@ -1003,7 +1231,6 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 	struct gpi_desc *gpi_desc;
 	struct dmaengine_result result;
 	unsigned long flags;
-	u32 chid;
 
 	/* only process events on active channel */
 	if (unlikely(gchan->pm_state != ACTIVE_STATE)) {
@@ -1018,6 +1245,21 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 		struct gpi_ere *gpi_ere;
 
 		spin_unlock_irqrestore(&gchan->vc.lock, flags);
+		/*
+		 * QSPI can deliver a late duplicate EOT after the matching
+		 * descriptor has already been retired by its QUP notification.
+		 * There is no work left to complete, so this is expected ring
+		 * housekeeping rather than a channel error.
+		 */
+		if (gchan->protocol == QCOM_GPI_QSPI &&
+		    compl_event->code == MSM_GPI_TCE_EOT) {
+			dev_dbg_ratelimited(gpii->gpi_dev->dev,
+					    "discarding late QSPI EOT side:%s ptr:%pa len:%u\n",
+					    gpi_qspi_side_name(gchan->chid),
+					    &compl_event->ptr,
+					    compl_event->length);
+			return;
+		}
 		dev_err(gpii->gpi_dev->dev, "Event without a pending descriptor!\n");
 		gpi_ere = (struct gpi_ere *)compl_event;
 		dev_err(gpii->gpi_dev->dev,
@@ -1029,6 +1271,34 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 
 	gpi_desc = to_gpi_desc(vd);
 	spin_unlock_irqrestore(&gchan->vc.lock, flags);
+
+	if (gchan->protocol == QCOM_GPI_QSPI)
+		gpi_qspi_trace_progress(gchan, compl_event, "xfer");
+
+	/*
+	 * TX-only QSPI produces a late duplicate EOT whose pointer is one TRE
+	 * beyond the descriptor's DMA TRE.  If the next descriptor has already
+	 * been queued, that address aliases its first CONFIG TRE.  Never attribute
+	 * such an event to the new descriptor or advance its software ring RP.
+	 */
+	if (gchan->protocol == QCOM_GPI_QSPI &&
+	    compl_event->code == MSM_GPI_TCE_EOT) {
+		void *last_tre = gpi_desc->db;
+		phys_addr_t last_tre_phys;
+
+		if (last_tre == ch_ring->base)
+			last_tre = ch_ring->base + ch_ring->len;
+		last_tre -= ch_ring->el_size;
+		last_tre_phys = to_physical(ch_ring, last_tre);
+		if (compl_event->ptr != last_tre_phys) {
+			dev_dbg_ratelimited(gpii->gpi_dev->dev,
+					    "SP11 QSPI ignoring non-terminal EOT side:%s ptr:%pa expected:%pa len:%u pending_len:%zu\n",
+					    gpi_qspi_side_name(gchan->chid),
+					    &compl_event->ptr, &last_tre_phys,
+					    compl_event->length, gpi_desc->len);
+			return;
+		}
+	}
 
 	/*
 	 * RP pointed by Event is to last TRE processed,
@@ -1042,12 +1312,19 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 	/* update must be visible to other cores */
 	smp_wmb();
 
-	chid = compl_event->chid;
-	if (compl_event->code == MSM_GPI_TCE_EOT && gpii->ieob_set) {
-		if (chid == GPI_RX_CHAN)
-			goto gpi_free_desc;
-		else
-			return;
+	if (gchan->protocol == QCOM_GPI_QSPI &&
+	    compl_event->code == MSM_GPI_TCE_EOB) {
+		gpii->ieob_set = true;
+		dev_dbg(gpii->gpi_dev->dev,
+			"QSPI EOB received before EOT, keeping descriptor pending\n");
+		return;
+	}
+
+	if (gchan->protocol == QCOM_GPI_QSPI &&
+	    compl_event->code == MSM_GPI_TCE_EOT && gpii->ieob_set) {
+		gpii->ieob_set = false;
+		dev_dbg(gpii->gpi_dev->dev,
+			"QSPI EOT after EOB, completing real channel descriptor\n");
 	}
 
 	if (compl_event->code == MSM_GPI_TCE_UNEXP_ERR) {
@@ -1057,13 +1334,40 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 		dev_dbg(gpii->gpi_dev->dev, "Transaction Success\n");
 		result.result = DMA_TRANS_NOERROR;
 	}
-	result.residue = gpi_desc->len - compl_event->length;
+	result.residue = compl_event->length < gpi_desc->len ?
+			 gpi_desc->len - compl_event->length : 0;
 	dev_dbg(gpii->gpi_dev->dev, "Residue %d\n", result.residue);
+
+	/*
+	 * A QSPI TX data EOT precedes the matching QUP command-completion
+	 * notification.  Completing the DMA cookie here lets the SPI client ring
+	 * the next command while the previous command is still retiring, which
+	 * wedges both channels.  The SP11 code already carries a single deferred
+	 * descriptor slot; populate it and let QUP_NOTIF_EV_TYPE retire it.
+	 */
+	if (gchan->protocol == QCOM_GPI_QSPI &&
+	    gchan->chid == GPI_TX_CHAN &&
+	    compl_event->code == MSM_GPI_TCE_EOT) {
+		if (gpii->qspi_deferred_vd) {
+			dev_warn(gpii->gpi_dev->dev,
+				 "SP11 QSPI ignoring duplicate TX EOT while completion is deferred\n");
+			return;
+		}
+
+		gpii->qspi_deferred_vd = vd;
+		gpii->qspi_deferred_gchan = gchan;
+		gpii->qspi_deferred_result = result;
+		WRITE_ONCE(gpii->qspi_deferred_grace_elapsed, false);
+		mod_timer(&gpii->qspi_deferred_timer, jiffies + 1);
+		dev_dbg(gpii->gpi_dev->dev,
+			 "SP11 QSPI deferring TX EOT until QUP notification residue:%u\n",
+			 result.residue);
+		return;
+	}
 
 	dma_cookie_complete(&vd->tx);
 	dmaengine_desc_get_callback_invoke(&vd->tx, &result);
 
-gpi_free_desc:
 	spin_lock_irqsave(&gchan->vc.lock, flags);
 	list_del(&vd->node);
 	spin_unlock_irqrestore(&gchan->vc.lock, flags);
@@ -1081,8 +1385,20 @@ static void gpi_process_events(struct gpii *gpii)
 	struct gchan *gchan;
 	u32 chid, type;
 
-	cntxt_rp = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg);
+	cntxt_rp = gpi_read_ev_rp(gpii);
 	rp = to_virtual(ev_ring, cntxt_rp);
+	if (gpii_has_active_qspi(gpii)) {
+		union gpi_event *raw = ev_ring->rp;
+
+		dev_dbg_ratelimited(gpii->gpi_dev->dev,
+				     "SP11 QSPI EV scan phys:%pa sw_rp:%pa sw_wp:%pa hw_rp:%pa raw:%08x:%08x:%08x:%08x\n",
+				     &ev_ring->phys_addr,
+				     &(phys_addr_t){ to_physical(ev_ring, ev_ring->rp) },
+				     &(phys_addr_t){ to_physical(ev_ring, ev_ring->wp) },
+				     &cntxt_rp,
+				     raw->gpi_ere.dword[0], raw->gpi_ere.dword[1],
+				     raw->gpi_ere.dword[2], raw->gpi_ere.dword[3]);
+	}
 
 	do {
 		while (rp != ev_ring->rp) {
@@ -1095,6 +1411,24 @@ static void gpi_process_events(struct gpii *gpii)
 				chid, type, gpi_event->gpi_ere.dword[0],
 				gpi_event->gpi_ere.dword[1], gpi_event->gpi_ere.dword[2],
 				gpi_event->gpi_ere.dword[3]);
+			if (gpii_has_active_qspi(gpii)) {
+				dev_dbg(gpii->gpi_dev->dev,
+					"SP11 QSPI event chid:%u type:%02x code:%u len:%u ptr:%pa\n",
+					chid, type, gpi_event->xfer_compl_event.code,
+					gpi_event->xfer_compl_event.length,
+					&(phys_addr_t){
+						gpi_event->xfer_compl_event.ptr });
+				dev_dbg(gpii->gpi_dev->dev,
+					"SP11 QSPI raw %08x:%08x:%08x:%08x\n",
+					gpi_event->gpi_ere.dword[0],
+					gpi_event->gpi_ere.dword[1],
+					gpi_event->gpi_ere.dword[2],
+					gpi_event->gpi_ere.dword[3]);
+				gpi_sp11_dump_state(gpii,
+						    chid < MAX_CHANNELS_PER_GPII ?
+						    &gpii->gchan[chid] : NULL,
+						    "event", 0);
+			}
 
 			switch (type) {
 			case XFER_COMPLETE_EV_TYPE:
@@ -1111,7 +1445,23 @@ static void gpi_process_events(struct gpii *gpii)
 							    &gpi_event->immediate_data_event);
 				break;
 			case QUP_NOTIF_EV_TYPE:
-				dev_dbg(gpii->gpi_dev->dev, "QUP_NOTIF_EV_TYPE\n");
+				if (gpii_has_active_qspi(gpii)) {
+					dev_dbg(gpii->gpi_dev->dev,
+						 "SP11 QSPI QUP notif status:%#x time:%#x count:%u chid:%u raw:%08x:%08x:%08x:%08x\n",
+						 gpi_event->qup_notif_event.status,
+						 gpi_event->qup_notif_event.time,
+						 gpi_event->qup_notif_event.count,
+						 gpi_event->qup_notif_event.chid,
+						 gpi_event->gpi_ere.dword[0],
+						 gpi_event->gpi_ere.dword[1],
+						 gpi_event->gpi_ere.dword[2],
+						 gpi_event->gpi_ere.dword[3]);
+					gpi_sp11_dump_state(gpii, NULL, "qup-notif", 0);
+					gpi_qspi_complete_deferred(gpii,
+							&gpi_event->qup_notif_event);
+				} else {
+					dev_dbg(gpii->gpi_dev->dev, "QUP_NOTIF_EV_TYPE\n");
+				}
 				break;
 			default:
 				dev_dbg(gpii->gpi_dev->dev,
@@ -1124,7 +1474,7 @@ static void gpi_process_events(struct gpii *gpii)
 		/* clear pending IEOB events */
 		gpi_write_reg(gpii, gpii->ieob_clr_reg, BIT(0));
 
-		cntxt_rp = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg);
+		cntxt_rp = gpi_read_ev_rp(gpii);
 		rp = to_virtual(ev_ring, cntxt_rp);
 
 	} while (rp != ev_ring->rp);
@@ -1145,10 +1495,26 @@ static void gpi_ev_tasklet(unsigned long data)
 
 	/* process the events */
 	gpi_process_events(gpii);
+	if (READ_ONCE(gpii->qspi_deferred_grace_elapsed) &&
+	    READ_ONCE(gpii->qspi_deferred_vd))
+		gpi_qspi_complete_deferred(gpii, NULL);
 
 	/* enable IEOB, switching back to interrupts */
 	gpi_config_interrupts(gpii, MASK_IEOB_SETTINGS, 1);
 	read_unlock(&gpii->pm_lock);
+}
+
+static void gpi_qspi_deferred_timer(struct timer_list *timer)
+{
+	struct gpii *gpii = timer_container_of(gpii, timer,
+					      qspi_deferred_timer);
+
+	if (READ_ONCE(gpii->qspi_deferred_vd)) {
+		WRITE_ONCE(gpii->qspi_deferred_grace_elapsed, true);
+		dev_dbg(gpii->gpi_dev->dev,
+			 "SP11 QSPI grace period elapsed; rescheduling deferred TX\n");
+		tasklet_schedule(&gpii->ev_task);
+	}
 }
 
 /* marks all pending events for the channel as stale */
@@ -1156,13 +1522,13 @@ static void gpi_mark_stale_events(struct gchan *gchan)
 {
 	struct gpii *gpii = gchan->gpii;
 	struct gpi_ring *ev_ring = &gpii->ev_ring;
-	u32 cntxt_rp, local_rp;
+	phys_addr_t cntxt_rp, local_rp;
 	void *ev_rp;
 
-	cntxt_rp = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg);
+	cntxt_rp = gpi_read_ev_rp(gpii);
 
 	ev_rp = ev_ring->rp;
-	local_rp = (u32)to_physical(ev_ring, ev_rp);
+	local_rp = to_physical(ev_ring, ev_rp);
 	while (local_rp != cntxt_rp) {
 		union gpi_event *gpi_event = ev_rp;
 		u32 chid = gpi_event->xfer_compl_event.chid;
@@ -1172,8 +1538,8 @@ static void gpi_mark_stale_events(struct gchan *gchan)
 		ev_rp += ev_ring->el_size;
 		if (ev_rp >= (ev_ring->base + ev_ring->len))
 			ev_rp = ev_ring->base;
-		cntxt_rp = gpi_read_reg(gpii, gpii->ev_ring_rp_lsb_reg);
-		local_rp = (u32)to_physical(ev_ring, ev_rp);
+		cntxt_rp = gpi_read_ev_rp(gpii);
+		local_rp = to_physical(ev_ring, ev_rp);
 	}
 }
 
@@ -1275,10 +1641,22 @@ static int gpi_alloc_chan(struct gchan *chan, bool send_alloc_cmd)
 		      upper_32_bits(ring->phys_addr));
 	gpi_write_reg(gpii, chan->ch_cntxt_db_reg + CNTXT_5_RING_RP_MSB - CNTXT_4_RING_RP_LSB,
 		      upper_32_bits(ring->phys_addr));
-	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, chid),
-		      GPII_n_CH_k_SCRATCH_0(pair_chid, chan->protocol, chan->seid));
-	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, chid), 0);
-	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, chid), 0);
+	if (chan->protocol == QCOM_GPI_QSPI) {
+		u32 scratch0 = chid == GPI_TX_CHAN ?
+			       GPII_n_CH_k_SCRATCH_0_QSPI_TX :
+			       GPII_n_CH_k_SCRATCH_0_QSPI_RX;
+
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, chid),
+			      scratch0);
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, chid), 0);
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, chid),
+			      GPII_n_CH_k_SCRATCH_2_QSPI);
+	} else {
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_0_OFFS(id, chid),
+			      GPII_n_CH_k_SCRATCH_0(pair_chid, chan->protocol, chan->seid));
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_1_OFFS(id, chid), 0);
+		gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_2_OFFS(id, chid), 0);
+	}
 	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_SCRATCH_3_OFFS(id, chid), 0);
 	gpi_write_reg(gpii, gpii->regs + GPII_n_CH_k_QOS_OFFS(id, chid), 1);
 
@@ -1454,6 +1832,20 @@ static void gpi_queue_xfer(struct gpii *gpii, struct gchan *gchan,
 	*wp = ch_tre;
 }
 
+static void gpi_qspi_clear_deferred(struct gpii *gpii)
+{
+	if (!gpii->qspi_deferred_vd)
+		return;
+	timer_delete_sync(&gpii->qspi_deferred_timer);
+
+	dev_warn(gpii->gpi_dev->dev,
+		 "SP11 QSPI clearing stale deferred TX completion on terminate/reset\n");
+
+	gpii->qspi_deferred_vd = NULL;
+	gpii->qspi_deferred_gchan = NULL;
+	WRITE_ONCE(gpii->qspi_deferred_grace_elapsed, false);
+}
+
 /* reset and restart transfer channel */
 static int gpi_terminate_all(struct dma_chan *chan)
 {
@@ -1463,6 +1855,9 @@ static int gpi_terminate_all(struct dma_chan *chan)
 	int ret = 0;
 
 	mutex_lock(&gpii->ctrl_lock);
+
+	if (gchan->protocol == QCOM_GPI_QSPI)
+		gpi_qspi_clear_deferred(gpii);
 
 	/*
 	 * treat both channels as a group if its protocol is not UART
@@ -1715,44 +2110,83 @@ static int gpi_create_spi_tre(struct gchan *chan, struct gpi_desc *desc,
 		tre = &desc->tre[tre_idx];
 		tre_idx++;
 
-		tre->dword[0] = u32_encode_bits(spi->word_len, TRE_SPI_C0_WORD_SZ);
-		tre->dword[0] |= u32_encode_bits(spi->loopback_en, TRE_SPI_C0_LOOPBACK);
-		tre->dword[0] |= u32_encode_bits(spi->clock_pol_high, TRE_SPI_C0_CPOL);
-		tre->dword[0] |= u32_encode_bits(spi->data_pol_high, TRE_SPI_C0_CPHA);
-		tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_TX_PACK);
-		tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_RX_PACK);
+		if (spi->qspi) {
+			tre->dword[0] = TRE_QSPI_CONFIG0_DW0;
+		} else {
+			tre->dword[0] = u32_encode_bits(spi->word_len, TRE_SPI_C0_WORD_SZ);
+			tre->dword[0] |= u32_encode_bits(spi->loopback_en, TRE_SPI_C0_LOOPBACK);
+			tre->dword[0] |= u32_encode_bits(spi->clock_pol_high, TRE_SPI_C0_CPOL);
+			tre->dword[0] |= u32_encode_bits(spi->data_pol_high, TRE_SPI_C0_CPHA);
+			tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_TX_PACK);
+			tre->dword[0] |= u32_encode_bits(spi->pack_en, TRE_SPI_C0_RX_PACK);
+		}
 
 		tre->dword[1] = 0;
 
-		tre->dword[2] = u32_encode_bits(spi->clk_div, TRE_C0_CLK_DIV);
-		tre->dword[2] |= u32_encode_bits(spi->clk_src, TRE_C0_CLK_SRC);
+		if (spi->qspi) {
+			tre->dword[2] = TRE_QSPI_CONFIG0_DW2;
+		} else {
+			tre->dword[2] = u32_encode_bits(spi->clk_div, TRE_C0_CLK_DIV);
+			tre->dword[2] |= u32_encode_bits(spi->clk_src, TRE_C0_CLK_SRC);
+		}
 
 		tre->dword[3] = u32_encode_bits(TRE_TYPE_CONFIG0, TRE_FLAGS_TYPE);
 		tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
+		if (spi->qspi)
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOB);
 	}
 
-	/* create the GO tre for Tx */
+	/*
+	 * SP11 QSPI Windows ring captures show TX uses CONFIG0/GO/DMA, while
+	 * RX ring entries are DMA-only. Do not synthesize a GO TRE on RX.
+	 */
 	if (direction == DMA_MEM_TO_DEV) {
 		tre = &desc->tre[tre_idx];
 		tre_idx++;
 
-		tre->dword[0] = u32_encode_bits(spi->fragmentation, TRE_SPI_GO_FRAG);
-		tre->dword[0] |= u32_encode_bits(spi->cs, TRE_SPI_GO_CS);
-		tre->dword[0] |= u32_encode_bits(spi->cmd, TRE_SPI_GO_CMD);
+		if (spi->qspi) {
+			/*
+			 * qcspi8380 emits raw QGPI command 1 for QSPI TX-only and
+			 * command 7 when TX and RX both participate.  Command 5 was
+			 * an incorrect interpretation of the Windows builder and is
+			 * rejected before the TX DMA TRE is consumed.
+			 */
+			tre->dword[0] = spi->rx_len ? TRE_QSPI_GO_BIDI_DW0 :
+						      TRE_QSPI_GO_TX_DW0;
+		} else {
+			tre->dword[0] = u32_encode_bits(spi->fragmentation, TRE_SPI_GO_FRAG);
+			tre->dword[0] |= u32_encode_bits(spi->cs, TRE_SPI_GO_CS);
+			tre->dword[0] |= u32_encode_bits(spi->cmd, TRE_SPI_GO_CMD);
+		}
 
 		tre->dword[1] = 0;
 
+		/* qcspi8380 places only the receive length in QSPI GO dword 2. */
 		tre->dword[2] = u32_encode_bits(spi->rx_len, TRE_RX_LEN);
 
 		tre->dword[3] = u32_encode_bits(TRE_TYPE_GO, TRE_FLAGS_TYPE);
-		if (spi->cmd == SPI_RX) {
+		if (spi->qspi) {
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
+			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOB);
+			/*
+			 * Windows QGPI couples its channel contexts implicitly.  The
+			 * Linux GPI context needs LINK on a bidirectional QSPI GO or
+			 * the pre-doorbelled RX ring never advances.
+			 */
+			if (spi->rx_len &&
+			    (!sp11_windows_ring_layout || sp11_qspi_linux_link))
+				tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
+		} else if (spi->cmd == SPI_RX) {
 			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOB);
 			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
 		} else if (spi->cmd == SPI_TX) {
 			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
 		} else { /* SPI_DUPLEX */
 			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_CHAIN);
-			tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
+			if (!spi->rx_len)
+				tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_LINK);
+			else
+				tre->dword[3] |= u32_encode_bits(1, TRE_FLAGS_IEOB);
 		}
 	}
 
@@ -1764,7 +2198,7 @@ static int gpi_create_spi_tre(struct gchan *chan, struct gpi_desc *desc,
 	len = sg_dma_len(sgl);
 
 	/* Support Immediate dma for write transfers for data length up to 8 bytes */
-	if (direction == DMA_MEM_TO_DEV && len <= 2 * sizeof(tre->dword[0])) {
+	if (!spi->qspi && direction == DMA_MEM_TO_DEV && len <= 2 * sizeof(tre->dword[0])) {
 		/*
 		 * For Immediate dma, data length may not always be length of 8 bytes,
 		 * it can be length less than 8, hence initialize both dword's with 0
@@ -1783,12 +2217,20 @@ static int gpi_create_spi_tre(struct gchan *chan, struct gpi_desc *desc,
 		tre->dword[3] = u32_encode_bits(TRE_TYPE_DMA, TRE_FLAGS_TYPE);
 	}
 
-	tre->dword[3] |= u32_encode_bits(direction == DMA_MEM_TO_DEV,
+	tre->dword[3] |= u32_encode_bits(spi->qspi || direction == DMA_MEM_TO_DEV,
 					 TRE_FLAGS_IEOT);
 
 	for (i = 0; i < tre_idx; i++)
-		dev_dbg(dev, "TRE:%d %x:%x:%x:%x\n", i, desc->tre[i].dword[0],
-			desc->tre[i].dword[1], desc->tre[i].dword[2], desc->tre[i].dword[3]);
+		if (spi->qspi)
+			dev_dbg_ratelimited(dev, "SP11 QSPI TRE:%d %08x:%08x:%08x:%08x\n",
+					     i, desc->tre[i].dword[0],
+					     desc->tre[i].dword[1],
+					     desc->tre[i].dword[2],
+					     desc->tre[i].dword[3]);
+		else
+			dev_dbg(dev, "TRE:%d %x:%x:%x:%x\n", i, desc->tre[i].dword[0],
+				desc->tre[i].dword[1], desc->tre[i].dword[2],
+				desc->tre[i].dword[3]);
 
 	return tre_idx;
 }
@@ -1841,7 +2283,7 @@ gpi_prep_slave_sg(struct dma_chan *chan, struct scatterlist *sgl,
 		return NULL;
 
 	/* create TREs for xfer */
-	if (gchan->protocol == QCOM_GPI_SPI) {
+	if (gchan->protocol == QCOM_GPI_SPI || gchan->protocol == QCOM_GPI_QSPI) {
 		i = gpi_create_spi_tre(gchan, gpi_desc, sgl, direction);
 	} else if (gchan->protocol == QCOM_GPI_I2C) {
 		i = gpi_create_i2c_tre(gchan, gpi_desc, sgl, direction, flags);
@@ -1887,13 +2329,37 @@ static void gpi_issue_pending(struct dma_chan *chan)
 	}
 
 	gpi_desc = to_gpi_desc(vd);
+
+	if (gchan->protocol == QCOM_GPI_QSPI && gchan->chid == GPI_RX_CHAN)
+		gpi_qspi_reset_progress(gpii);
+
 	for (i = 0; i < gpi_desc->num_tre; i++) {
+		phys_addr_t tre_phys;
+
 		tre = &gpi_desc->tre[i];
 		gpi_queue_xfer(gpii, gchan, tre, &wp);
+		if (gchan->protocol == QCOM_GPI_QSPI && wp) {
+			tre_phys = to_physical(ch_ring, wp);
+			dev_dbg_ratelimited(gpii->gpi_dev->dev,
+					     "SP11 QSPI submit side:%s chid:%u tre:%d/%u phys:%pa ring_base:%pa rp:%pa wp:%pa d:%08x:%08x:%08x:%08x\n",
+					     gpi_qspi_side_name(gchan->chid),
+					     gchan->chid, i, gpi_desc->num_tre,
+					     &tre_phys, &ch_ring->phys_addr,
+					     &(phys_addr_t){ to_physical(ch_ring, ch_ring->rp) },
+					     &(phys_addr_t){ to_physical(ch_ring, ch_ring->wp) },
+					     gpi_desc->tre[i].dword[0],
+					     gpi_desc->tre[i].dword[1],
+					     gpi_desc->tre[i].dword[2],
+					     gpi_desc->tre[i].dword[3]);
+		}
 	}
 
 	gpi_desc->db = ch_ring->wp;
+	if (gchan->protocol == QCOM_GPI_QSPI)
+		gpi_sp11_dump_state(gpii, gchan, "qspi-before-db", 0);
 	gpi_write_ch_db(gchan, &gchan->ch_ring, gpi_desc->db);
+	if (gchan->protocol == QCOM_GPI_QSPI)
+		gpi_sp11_dump_state(gpii, gchan, "qspi-after-db", 0);
 	read_unlock_irqrestore(&gpii->pm_lock, pm_lock_flags);
 }
 
@@ -1920,7 +2386,11 @@ static int gpi_ch_init(struct gchan *gchan)
 	}
 
 	/* allocate memory for event ring */
-	elements = CHAN_TRES << ev_factor;
+	if (sp11_windows_ring_layout &&
+	    gpii->gchan[0].protocol == QCOM_GPI_QSPI)
+		elements = SP11_WINDOWS_EVENT_TRES;
+	else
+		elements = CHAN_TRES << ev_factor;
 	ret = gpi_alloc_ring(&gpii->ev_ring, elements,
 			     sizeof(union gpi_event), gpii);
 	if (ret)
@@ -2028,6 +2498,7 @@ static void gpi_free_chan_resources(struct dma_chan *chan)
 	write_unlock_irq(&gpii->pm_lock);
 
 	/* wait for threads to complete out */
+	timer_delete_sync(&gpii->qspi_deferred_timer);
 	tasklet_kill(&gpii->ev_task);
 
 	/* send command to de allocate event ring */
@@ -2054,12 +2525,15 @@ static int gpi_alloc_chan_resources(struct dma_chan *chan)
 {
 	struct gchan *gchan = to_gchan(chan);
 	struct gpii *gpii = gchan->gpii;
+	u32 elements = CHAN_TRES;
 	int ret;
 
 	mutex_lock(&gpii->ctrl_lock);
 
 	/* allocate memory for transfer ring */
-	ret = gpi_alloc_ring(&gchan->ch_ring, CHAN_TRES,
+	if (sp11_windows_ring_layout && gchan->protocol == QCOM_GPI_QSPI)
+		elements = SP11_WINDOWS_CHAN_TRES;
+	ret = gpi_alloc_ring(&gchan->ch_ring, elements,
 			     sizeof(struct gpi_tre), gpii);
 	if (ret)
 		goto xfer_alloc_err;
@@ -2155,6 +2629,9 @@ static struct dma_chan *gpi_of_dma_xlate(struct of_phandle_args *args,
 	gchan->seid = seid;
 	gchan->protocol = args->args[2];
 
+	dev_dbg(gpi_dev->dev, "SP11 diag xlate chid:%u seid:%u proto:%u -> gpii:%d\n",
+		 chid, seid, gchan->protocol, gpii);
+
 	return dma_get_slave_channel(&gchan->vc.chan);
 }
 
@@ -2194,6 +2671,11 @@ static int gpi_probe(struct platform_device *pdev)
 
 	gpi_dev->ev_factor = EV_FACTOR;
 
+	dev_dbg(gpi_dev->dev,
+		 "SP11 diag probe max_gpii:%u mask:0x%x ee_offset:0x%x coherent:%d\n",
+		 gpi_dev->max_gpii, gpi_dev->gpii_mask, ee_offset,
+		 device_get_dma_attr(gpi_dev->dev) == DEV_DMA_COHERENT);
+
 	ret = dma_set_mask(gpi_dev->dev, DMA_BIT_MASK(64));
 	if (ret) {
 		dev_err(gpi_dev->dev, "Error setting dma_mask to 64, ret:%d\n", ret);
@@ -2227,6 +2709,9 @@ static int gpi_probe(struct platform_device *pdev)
 			return ret;
 		gpii->irq = ret;
 
+		dev_dbg(gpi_dev->dev, "SP11 diag setup gpii:%u irq:%d\n",
+			 i, gpii->irq);
+
 		/* set up channel specific register info */
 		for (chan = 0; chan < MAX_CHANNELS_PER_GPII; chan++) {
 			struct gchan *gchan = &gpii->gchan[chan];
@@ -2249,6 +2734,8 @@ static int gpi_probe(struct platform_device *pdev)
 		rwlock_init(&gpii->pm_lock);
 		tasklet_init(&gpii->ev_task, gpi_ev_tasklet,
 			     (unsigned long)gpii);
+		timer_setup(&gpii->qspi_deferred_timer,
+			    gpi_qspi_deferred_timer, 0);
 		init_completion(&gpii->cmd_completion);
 		gpii->gpii_id = i;
 		gpii->regs = gpi_dev->ee_base;
@@ -2260,7 +2747,6 @@ static int gpi_probe(struct platform_device *pdev)
 	/* clear and Set capabilities */
 	dma_cap_zero(gpi_dev->dma_device.cap_mask);
 	dma_cap_set(DMA_SLAVE, gpi_dev->dma_device.cap_mask);
-	dma_cap_set(DMA_PRIVATE, gpi_dev->dma_device.cap_mask);
 
 	/* configure dmaengine apis */
 	gpi_dev->dma_device.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);

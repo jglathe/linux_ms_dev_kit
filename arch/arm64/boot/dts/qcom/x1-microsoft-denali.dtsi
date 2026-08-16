@@ -867,7 +867,7 @@
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &mdss {
@@ -1304,4 +1304,51 @@
 
 &usb_1_ss1_qmpphy_out {
 	remote-endpoint = <&retimer_ss1_ss_in>;
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&i2c10 {
+	status = "disabled";
+};
+
+&tlmm {
+	g6ts_qspi_data23: g6ts-qspi-data23-state {
+		pins = "gpio49", "gpio50";
+		function = "qup1_se2";
+
+		drive-strength = <6>;
+		bias-disable;
+	};
+};
+
+&spi10 {
+	status = "okay";
+
+	qcom,biosref-qspi;
+	qcom,enable-gsi-dma;
+
+	dmas = <&gpi_dma1 0 2 4>,
+	       <&gpi_dma1 1 2 4>;
+	dma-names = "tx", "rx";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&qup_spi10_data_clk>,
+		    <&qup_spi10_cs>,
+		    <&g6ts_qspi_data23>;
+
+	touchscreen@0 {
+		compatible = "microsoft,mshw0485";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <51 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
+
+		power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+	};
 };
