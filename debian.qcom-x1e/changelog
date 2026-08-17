@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.2-rc5-jg-0sp11v6) resolute; urgency=medium
+
+  * Surface Pro 11 v6: wsa884x 2S supply + PA fault recovery + 4-ohm profile.
+
+ -- Surface Pro 11 bring-up <noreply@example.invalid>  Mon, 17 Aug 2026 00:00:00 +0100
+
 linux-qcom-x1e (7.2-rc5-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.2-rc5
