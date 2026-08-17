@@ -6,6 +6,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/cleanup.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hwmon.h>
@@ -21,6 +22,7 @@
 #include <linux/soundwire/sdw.h>
 #include <linux/soundwire/sdw_registers.h>
 #include <linux/soundwire/sdw_type.h>
+#include <linux/workqueue.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc-dapm.h>
@@ -155,6 +157,7 @@
 #define WSA884X_BBM_CTL			(WSA884X_ANA_SPK_TOP_BASE + 0x28)
 #define WSA884X_TOP_MISC1		(WSA884X_ANA_SPK_TOP_BASE + 0x29)
 #define WSA884X_DAC_VCM_CTRL_REG7	(WSA884X_ANA_SPK_TOP_BASE + 0x2a)
+#define WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK	0x02
 #define WSA884X_TOP_BIAS_REG5		(WSA884X_ANA_SPK_TOP_BASE + 0x2b)
 #define WSA884X_DRV_LF_MISC_CTL2	(WSA884X_ANA_SPK_TOP_BASE + 0x2c)
 #define WSA884X_SPK_TOP_SPARE_TUNE_2	(WSA884X_ANA_SPK_TOP_BASE + 0x2d)
@@ -437,7 +440,9 @@
 #define WSA884X_CLSH_CTL_0_INPUT_EN_SHIFT		1
 #define WSA884X_CLSH_CTL_0_CLSH_EN_SHIFT		0
 #define WSA884X_CLSH_CTL_1		(WSA884X_DIG_CTRL0_BASE + 0xd1)
+#define WSA884X_CLSH_CTL_1_SLR_MAX_MASK	0xf0
 #define WSA884X_CLSH_V_HD_PA		(WSA884X_DIG_CTRL0_BASE + 0xd2)
+#define WSA884X_CLSH_V_HD_PA_MASK	0x1f
 #define WSA884X_CLSH_V_PA_MIN		(WSA884X_DIG_CTRL0_BASE + 0xd3)
 #define WSA884X_CLSH_OVRD_VAL		(WSA884X_DIG_CTRL0_BASE + 0xd4)
 #define WSA884X_CLSH_HARD_MAX		(WSA884X_DIG_CTRL0_BASE + 0xd5)
@@ -725,6 +730,12 @@
 #define WSA884X_LOW_TEMP_THRESHOLD	5
 #define WSA884X_HIGH_TEMP_THRESHOLD	45
 
+#define WSA884X_PA_FSM_RESET_MASK	BIT(4)
+#define WSA884X_PA_ERROR_MASK		GENMASK(4, 0)
+#define WSA884X_PA_RECOVERY_RETRIES	3
+#define WSA884X_PA_RECOVERY_FAILURES	3
+#define WSA884X_PA_HEALTH_INTERVAL_MS	100
+
 struct wsa884x_priv {
 	struct regmap *regmap;
 	struct device *dev;
@@ -747,6 +758,16 @@ struct wsa884x_priv {
 	struct mutex sp_lock;
 	unsigned int temperature;
 	bool pa_on;
+	struct delayed_work pa_health_work;
+	unsigned int pa_recovery_failures;
+	unsigned int supply_config;
+};
+
+enum wsa884x_supply_config {
+	WSA884X_SUPPLY_EXT_ABOVE_3S,
+	WSA884X_SUPPLY_1S,
+	WSA884X_SUPPLY_2S,
+	WSA884X_SUPPLY_3S,
 };
 
 enum {
@@ -1463,6 +1484,20 @@ static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 	unsigned int min_gain, igain, vgain, comp_offset;
 
 	/*
+	 * Surface Pro 11 ACDB selects a 4 Ohm speaker load.  Qualcomm's
+	 * downstream WSA884x tables pair that load with G_18_DB system gain;
+	 * its 2S configuration keeps compander offset/minimum/aux gain at 0 dB.
+	 */
+	if (wsa884x->supply_config == WSA884X_SUPPLY_2S &&
+	    wsa884x->dev_mode == WSA884X_SPEAKER) {
+		comp_offset = COMP_OFFSET0;
+		min_gain = G_0_DB;
+		igain = ISENSE_6_DB;
+		vgain = VSENSE_M21_DB;
+		goto apply;
+	}
+
+	/*
 	 * Downstream sets gain parameters customized per boards per use-case.
 	 * Choose here some sane values matching knowon users, like QRD8550
 	 * board:.
@@ -1484,6 +1519,7 @@ static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 		vgain = VSENSE_M24_DB;
 	}
 
+apply:
 	regmap_update_bits(regmap, WSA884X_ISENSE2,
 			   WSA884X_ISENSE2_ISENSE_GAIN_CTL_MASK,
 			   FIELD_PREP(WSA884X_ISENSE2_ISENSE_GAIN_CTL_MASK, igain));
@@ -1509,18 +1545,109 @@ static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 	}
 }
 
+/*
+ * Qualcomm's full WSA884x driver has board-specific supply initialization
+ * which is not represented by the upstream driver's QRD8550-oriented 1S
+ * defaults.  VPHX_SYS_EN_STATUS is a hardware strap/status value, so use it
+ * to select the electrically correct initialization without depending on an
+ * incomplete board description.
+ */
+static void wsa884x_apply_supply_config(struct wsa884x_priv *wsa884x)
+{
+	struct regmap *regmap = wsa884x->regmap;
+	static const struct reg_sequence sp11_2s_4ohm_pbr[] = {
+		/*
+		 * Qualcomm downstream G_18_DB / CONFIG_2S / WSA_4_OHMS:
+		 * 808, 839, 894, 925, 973, 996, 1051, 1114, 1184, 1255,
+		 * 1318, 1467, 1616, 1788 and 2000 (millivolts * 100).
+		 */
+		{ WSA884X_CLSH_VTH1, WSA884X_VTH_TO_REG(808) },
+		{ WSA884X_CLSH_VTH2, WSA884X_VTH_TO_REG(839) },
+		{ WSA884X_CLSH_VTH3, WSA884X_VTH_TO_REG(894) },
+		{ WSA884X_CLSH_VTH4, WSA884X_VTH_TO_REG(925) },
+		{ WSA884X_CLSH_VTH5, WSA884X_VTH_TO_REG(973) },
+		{ WSA884X_CLSH_VTH6, WSA884X_VTH_TO_REG(996) },
+		{ WSA884X_CLSH_VTH7, WSA884X_VTH_TO_REG(1051) },
+		{ WSA884X_CLSH_VTH8, WSA884X_VTH_TO_REG(1114) },
+		{ WSA884X_CLSH_VTH9, WSA884X_VTH_TO_REG(1184) },
+		{ WSA884X_CLSH_VTH10, WSA884X_VTH_TO_REG(1255) },
+		{ WSA884X_CLSH_VTH11, WSA884X_VTH_TO_REG(1318) },
+		{ WSA884X_CLSH_VTH12, WSA884X_VTH_TO_REG(1467) },
+		{ WSA884X_CLSH_VTH13, WSA884X_VTH_TO_REG(1616) },
+		{ WSA884X_CLSH_VTH14, WSA884X_VTH_TO_REG(1788) },
+		{ WSA884X_CLSH_VTH15, WSA884X_VTH_TO_REG(2000) },
+	};
+
+	if (wsa884x->supply_config != WSA884X_SUPPLY_2S)
+		return;
+
+	/*
+	 * Exact Surface ACDB 4 Ohm load policy and CONFIG_2S overrides from
+	 * Qualcomm's Windows and downstream Linux drivers.
+	 */
+	regmap_write(regmap, WSA884X_OCP_CTL, 0xf6);
+	regmap_multi_reg_write(regmap, sp11_2s_4ohm_pbr,
+			       ARRAY_SIZE(sp11_2s_4ohm_pbr));
+	regmap_update_bits(regmap, WSA884X_CLSH_CTL_1,
+			   WSA884X_CLSH_CTL_1_SLR_MAX_MASK,
+			   FIELD_PREP(WSA884X_CLSH_CTL_1_SLR_MAX_MASK, 0x2));
+	regmap_update_bits(regmap, WSA884X_CLSH_V_HD_PA,
+			   WSA884X_CLSH_V_HD_PA_MASK,
+			   FIELD_PREP(WSA884X_CLSH_V_HD_PA_MASK, 0x13));
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG2, 0x06);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG3, 0x14);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG4, 0x19);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG5, 0x1b);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG6, 0x1c);
+	regmap_update_bits(regmap, WSA884X_DAC_VCM_CTRL_REG7,
+			   WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK,
+			   WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK);
+
+	/*
+	 * These UVLO values are applied after the 2S overrides in both the
+	 * downstream source and a newer WSA884x module decompilation.
+	 */
+	regmap_write(regmap, WSA884X_UVLO_PROG, 0x77);
+	regmap_write(regmap, WSA884X_PA_FSM_TIMER0, 0xc0);
+	regmap_write(regmap, WSA884X_UVLO_DEGLITCH_CTL, 0x1d);
+	regmap_write(regmap, WSA884X_UVLO_PROG1, 0x40);
+
+	regmap_update_bits(regmap, WSA884X_TOP_CTRL1,
+			   WSA884X_TOP_CTRL1_OCP_LOWVBAT_ITH_EN_MASK, 0);
+}
+
 static void wsa884x_init(struct wsa884x_priv *wsa884x)
 {
 	unsigned int wo_ctl_0;
+	unsigned int supply_config;
 	unsigned int variant = 0;
 
 	if (!regmap_read(wsa884x->regmap, WSA884X_OTP_REG_0, &variant))
 		variant = variant & WSA884X_OTP_REG_0_ID_MASK;
 
+	if (regmap_read(wsa884x->regmap, WSA884X_VPHX_SYS_EN_STATUS,
+			&supply_config)) {
+		wsa884x->supply_config = WSA884X_SUPPLY_1S;
+		dev_warn(wsa884x->dev,
+			 "cannot read VPHX supply configuration; retaining 1S defaults\n");
+	} else {
+		wsa884x->supply_config = supply_config;
+		if (supply_config == WSA884X_SUPPLY_2S)
+			dev_info(wsa884x->dev,
+				 "detected VPHX supply configuration: 2S\n");
+		else if (supply_config != WSA884X_SUPPLY_1S)
+			dev_warn(wsa884x->dev,
+				 "unsupported VPHX supply configuration %#x; retaining upstream defaults\n",
+				 supply_config);
+	}
+
 	regmap_multi_reg_write(wsa884x->regmap, wsa884x_reg_init,
 			       ARRAY_SIZE(wsa884x_reg_init));
+	wsa884x_apply_supply_config(wsa884x);
 
 	wo_ctl_0 = 0xc;
+	if (wsa884x->supply_config == WSA884X_SUPPLY_2S)
+		wo_ctl_0 |= WSA884X_ANA_WO_CTL_0_VPHX_SYS_EN_MASK;
 	wo_ctl_0 |= FIELD_PREP(WSA884X_ANA_WO_CTL_0_DAC_CM_CLAMP_EN_MASK,
 			       WSA884X_ANA_WO_CTL_0_DAC_CM_CLAMP_EN_MODE_SPEAKER);
 	/* Assume that compander is enabled by default unless it is haptics sku */
@@ -1535,6 +1662,111 @@ static void wsa884x_init(struct wsa884x_priv *wsa884x)
 	wsa884x_set_gain_parameters(wsa884x);
 
 	wsa884x->hw_init = true;
+}
+
+static void wsa884x_reset_pa_fsm(struct wsa884x_priv *wsa884x)
+{
+	regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_CTL0,
+			   WSA884X_PA_FSM_RESET_MASK, 0);
+	regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_CTL0,
+			   WSA884X_PA_FSM_RESET_MASK,
+			   WSA884X_PA_FSM_RESET_MASK);
+	regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_CTL0,
+			   WSA884X_PA_FSM_RESET_MASK, 0);
+}
+
+/*
+ * Recover the PA state machine using the sequence from Qualcomm's downstream
+ * WSA884x driver.  Caller serializes this with sp_lock.
+ */
+static int wsa884x_recover_pa(struct wsa884x_priv *wsa884x, bool reenable)
+{
+	unsigned int sta0 = 0, sta1 = 0, err0 = 0, err1 = 0;
+	int ret = -EIO;
+	int retry;
+
+	regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_EN,
+			   WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK, 0);
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA0, &sta0);
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1, &sta1);
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_ERR_COND0, &err0);
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_ERR_COND1, &err1);
+
+	dev_warn_ratelimited(wsa884x->dev,
+			     "PA fault: sta0=%#02x sta1=%#02x err0=%#02x err1=%#02x; resetting FSM\n",
+			     sta0, sta1, err0, err1);
+
+	wsa884x_reset_pa_fsm(wsa884x);
+	regmap_write(wsa884x->regmap, WSA884X_INTR_CLEAR1, BIT(1));
+	if (!reenable)
+		return 0;
+
+	for (retry = 0; retry < WSA884X_PA_RECOVERY_RETRIES; retry++) {
+		regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_EN,
+				   WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
+				   WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK);
+		usleep_range(1000, 1100);
+
+		ret = regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1, &sta1);
+		if (!ret && !(sta1 & WSA884X_PA_ERROR_MASK)) {
+			regmap_write(wsa884x->regmap, WSA884X_INTR_CLEAR1, BIT(1));
+			dev_info(wsa884x->dev,
+				 "PA state machine recovered after %d attempt(s)\n",
+				 retry + 1);
+			return 0;
+		}
+
+		regmap_update_bits(wsa884x->regmap, WSA884X_PA_FSM_EN,
+				   WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK, 0);
+		wsa884x_reset_pa_fsm(wsa884x);
+	}
+
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_ERR_COND0, &err0);
+	regmap_read(wsa884x->regmap, WSA884X_PA_FSM_ERR_COND1, &err1);
+	dev_err_ratelimited(wsa884x->dev,
+			    "PA recovery failed: sta1=%#02x err0=%#02x err1=%#02x; amplifier left disabled\n",
+			    sta1, err0, err1);
+
+	return ret ?: -EIO;
+}
+
+static void wsa884x_pa_health_work(struct work_struct *work)
+{
+	struct wsa884x_priv *wsa884x =
+		container_of(to_delayed_work(work), struct wsa884x_priv,
+			     pa_health_work);
+	unsigned int sta1 = 0;
+	bool rearm;
+	int ret;
+
+	ret = pm_runtime_resume_and_get(wsa884x->dev);
+	if (ret < 0)
+		goto out_rearm;
+
+	mutex_lock(&wsa884x->sp_lock);
+	if (!wsa884x->pa_on)
+		goto out_unlock;
+
+	ret = regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1, &sta1);
+	if (!ret && (sta1 & WSA884X_PA_ERROR_MASK) &&
+	    wsa884x->pa_recovery_failures < WSA884X_PA_RECOVERY_FAILURES) {
+		ret = wsa884x_recover_pa(wsa884x, true);
+		if (ret)
+			wsa884x->pa_recovery_failures++;
+		else
+			wsa884x->pa_recovery_failures = 0;
+	}
+
+out_unlock:
+	mutex_unlock(&wsa884x->sp_lock);
+	pm_runtime_mark_last_busy(wsa884x->dev);
+	pm_runtime_put_autosuspend(wsa884x->dev);
+
+out_rearm:
+	rearm = READ_ONCE(wsa884x->pa_on);
+	if (rearm)
+		schedule_delayed_work(&wsa884x->pa_health_work,
+				      msecs_to_jiffies(WSA884X_PA_HEALTH_INTERVAL_MS));
 }
 
 static int wsa884x_update_status(struct sdw_slave *slave,
@@ -1677,7 +1909,10 @@ static void wsa884x_spkr_post_pmu(struct snd_soc_component *component,
 
 	if (wsa884x->port_enable[WSA884X_PORT_PBR]) {
 		curr_ovrd_en = 0x0;
-		curr_limit = 0x15;
+		if (wsa884x->supply_config == WSA884X_SUPPLY_2S)
+			curr_limit = 0x11;
+		else
+			curr_limit = 0x15;
 	} else {
 		curr_ovrd_en = 0x1;
 		if (wsa884x->dev_mode == WSA884X_RECEIVER)
@@ -1703,6 +1938,7 @@ static int wsa884x_spkr_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMU:
 		mutex_lock(&wsa884x->sp_lock);
 		wsa884x->pa_on = true;
+		wsa884x->pa_recovery_failures = 0;
 		mutex_unlock(&wsa884x->sp_lock);
 
 		wsa884x_spkr_post_pmu(component, wsa884x);
@@ -1711,15 +1947,18 @@ static int wsa884x_spkr_event(struct snd_soc_dapm_widget *w,
 					      WSA884X_PDM_WD_CTL_PDM_WD_EN_MASK,
 					      0x1);
 
+		mod_delayed_work(system_wq, &wsa884x->pa_health_work,
+				 msecs_to_jiffies(WSA884X_PA_HEALTH_INTERVAL_MS));
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		snd_soc_component_write_field(component, WSA884X_PDM_WD_CTL,
-					      WSA884X_PDM_WD_CTL_PDM_WD_EN_MASK,
-					      0x0);
-
 		mutex_lock(&wsa884x->sp_lock);
 		wsa884x->pa_on = false;
 		mutex_unlock(&wsa884x->sp_lock);
+		cancel_delayed_work_sync(&wsa884x->pa_health_work);
+
+		snd_soc_component_write_field(component, WSA884X_PDM_WD_CTL,
+					      WSA884X_PDM_WD_CTL_PDM_WD_EN_MASK,
+					      0x0);
 		break;
 	}
 
@@ -1804,6 +2043,10 @@ static int wsa884x_hw_free(struct snd_pcm_substream *substream,
 static int wsa884x_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
 	struct snd_soc_component *component = dai->component;
+	struct wsa884x_priv *wsa884x = snd_soc_component_get_drvdata(component);
+	unsigned int sta1 = 0;
+
+	guard(mutex)(&wsa884x->sp_lock);
 
 	if (mute) {
 		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
@@ -1814,12 +2057,25 @@ static int wsa884x_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 					      0x0);
 
 	} else {
+		/*
+		 * A PA_ON_ERR can remain latched across a normal graph
+		 * teardown.  Clear it before trying to start the amplifier.
+		 */
+		if (!regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1, &sta1) &&
+		    (sta1 & WSA884X_PA_ERROR_MASK))
+			wsa884x_recover_pa(wsa884x, false);
+
 		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
 					      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
 					      0x1);
 		snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
 					      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
 					      0x1);
+		usleep_range(1000, 1100);
+
+		if (!regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1, &sta1) &&
+		    (sta1 & WSA884X_PA_ERROR_MASK))
+			wsa884x_recover_pa(wsa884x, true);
 	}
 
 	return 0;
@@ -2040,6 +2296,13 @@ static int wsa884x_get_reset(struct device *dev, struct wsa884x_priv *wsa884x)
 	return 0;
 }
 
+static void wsa884x_cancel_pa_health_work(void *data)
+{
+	struct wsa884x_priv *wsa884x = data;
+
+	cancel_delayed_work_sync(&wsa884x->pa_health_work);
+}
+
 static int wsa884x_probe(struct sdw_slave *pdev,
 			 const struct sdw_device_id *id)
 {
@@ -2053,6 +2316,12 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 		return -ENOMEM;
 
 	mutex_init(&wsa884x->sp_lock);
+	INIT_DELAYED_WORK(&wsa884x->pa_health_work, wsa884x_pa_health_work);
+
+	ret = devm_add_action_or_reset(dev, wsa884x_cancel_pa_health_work,
+				       wsa884x);
+	if (ret)
+		return ret;
 
 	for (i = 0; i < WSA884X_SUPPLIES_NUM; i++)
 		wsa884x->supplies[i].supply = wsa884x_supply_name[i];
