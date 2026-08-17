@@ -277,20 +277,6 @@
 		regulator-boot-on;
 	};
 
-	vreg_ts_5p0: ts-5p0-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "vreg_ts_5p0";
-
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-
-		gpio = <&tlmm 64 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&ts_5v_en_default_state>;
-	};
-
 	vreg_wcn_3p3: regulator-wcn-3p3 {
 		compatible = "regulator-fixed";
 
@@ -1241,72 +1227,9 @@
 		drive-strength = <2>;
 		bias-disable;
 	};
-
-	spi10_hid0_reset_deassert: spi10-hid1-reset-deassert {
-		pins = "gpio48";
-		function = "gpio";
-
-		drive-strength = <2>;
-		bias-disable;
-		output-high;
-	};
-
-	spi10_hid0_reset_assert: spi10-hid1-reset-assert {
-		pins = "gpio48";
-		function = "gpio";
-
-		drive-strength = <2>;
-		bias-disable;
-		output-low;
-	};
-
-	spi10_hid0_int_bias: spi10-hid1-int-bias {
-		pins = "gpio51";
-		function = "gpio";
-
-		input-enable;
-		bias-pull-up;
-	};
-
-	spi10_hid0_int_unbias: spi10-hid1-int-unbias {
-		pins = "gpio51";
-		function = "gpio";
-
-		input-enable;
-		bias-disable;
-	};
-
-	ts_5v_en_default_state: ts-5v-en-default-state {
-		pins = "gpio64";
-		function = "gpio";
-
-		drive-strength = <2>;
-		bias-disable;
-	};
 };
 
 
-&spi10 {
-	compatible = "qcom,geni-spi-qspi";
-	dmas = <&gpi_dma1 0 2 QCOM_GPI_QSPI>,
-	       <&gpi_dma1 1 2 QCOM_GPI_QSPI>;
-
-	status = "okay";
-
-	touchscreen@0 {
-		compatible = "hid-over-spi";
-		reg = <0>;
-		spi-max-frequency = <20000000>;
-
-		interrupts-extended = <&tlmm 51 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
-
-		vdd-supply = <&vreg_ts_5p0>;
-		spi-tx-bus-width = <1>;
-		spi-rx-bus-width = <1>;
-		hid-descr-addr = <1>;
-	};
-};
 &uart2 {
 	status = "okay";
 
@@ -1426,4 +1349,51 @@
 	linux,code = <KEY_VOLUMEDOWN>;
 
 	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&i2c10 {
+	status = "disabled";
+};
+
+&tlmm {
+	g6ts_qspi_data23: g6ts-qspi-data23-state {
+		pins = "gpio49", "gpio50";
+		function = "qup1_se2";
+
+		drive-strength = <6>;
+		bias-disable;
+	};
+};
+
+&spi10 {
+	status = "okay";
+
+	qcom,biosref-qspi;
+	qcom,enable-gsi-dma;
+
+	dmas = <&gpi_dma1 0 2 4>,
+	       <&gpi_dma1 1 2 4>;
+	dma-names = "tx", "rx";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&qup_spi10_data_clk>,
+		    <&qup_spi10_cs>,
+		    <&g6ts_qspi_data23>;
+
+	touchscreen@0 {
+		compatible = "microsoft,mshw0485";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <51 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
+
+		power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+	};
 };

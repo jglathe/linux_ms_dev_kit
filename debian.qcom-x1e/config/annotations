@@ -12146,6 +12146,7 @@ CONFIG_TOUCHSCREEN_MC13783                      policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MELFAS_MIP4                  policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MMS114                       policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MSG2638                      policy<{'arm64': 'm'}>
+CONFIG_TOUCHSCREEN_MSHW0485                     policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MTOUCH                       policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_NOVATEK_NVT_TS               policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_PENMOUNT                     policy<{'arm64': 'm'}>
@@ -12882,7 +12883,7 @@ CONFIG_VEML6040                                 policy<{'arm64': 'm'}>
 CONFIG_VEML6046X00                              policy<{'arm64': 'm'}>
 CONFIG_VEML6070                                 policy<{'arm64': 'm'}>
 CONFIG_VEML6075                                 policy<{'arm64': 'm'}>
-CONFIG_VERSION_SIGNATURE                        policy<{'arm64': '""'}>
+CONFIG_VERSION_SIGNATURE                        policy<{'arm64': '"Ubuntu 7.2-rc5-jg-0sp11v6-qcom-x1e 7.2-rc5"'}>
 CONFIG_VETH                                     policy<{'arm64': 'm'}>
 CONFIG_VEXPRESS_CONFIG                          policy<{'arm64': 'y'}>
 CONFIG_VF610_ADC                                policy<{'arm64': 'm'}>
