@@ -24,10 +24,8 @@ struct g6ts_transition_rule {
 	u8 context_extra_history;
 };
 
-static const u16 g6ts_class_point_minimums[G6TS_CLASS_COUNT] =
-	{ 0, 6, 4, 4 };
-static const u16 g6ts_class_point_maximums[G6TS_CLASS_COUNT] =
-	{ 20, 9999, 50, 100 };
+static const u16 g6ts_class_point_minimums[G6TS_CLASS_COUNT] = { 0, 6, 4, 4 };
+static const u16 g6ts_class_point_maximums[G6TS_CLASS_COUNT] = { 20, 9999, 50, 100 };
 
 static const struct g6ts_transition_rule g6ts_transition_rules[] = {
 	/* 0 -> 0 */
