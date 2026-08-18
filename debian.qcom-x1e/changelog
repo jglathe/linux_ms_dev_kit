@@ -4,6 +4,29 @@ linux-qcom-x1e (7.2-rc6-jg-0sp11v6) resolute; urgency=medium
 
  -- Surface Pro 11 bring-up <noreply@example.invalid>  Mon, 17 Aug 2026 00:00:00 +0100
 
+linux-qcom-x1e (7.2.0-jg-0) resolute; urgency=medium
+
+  * phy: snps-eusb2: delay clk defaults until after power-up
+  * usb: dwc3-qcom: delay clk defaults until after power-up
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x-oled: specify usb2-only clock for usb_1_ss2
+  * arm64: dts: qcom: hamoa: Fix swapped USB QMP PHY vdda-phy/vdda-pll supplies [Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>]
+  * arm64: dts: qcom: introduce Purwa variant of the Ideacentre Mini 01q8x10
+  * arm64: dts: qcom: x1p42100-ideapad-slim5x-lcd: sync with working oled variant
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: sync with working slim5x
+  * arm64: dts: qcom: x1p42100-thinkbook-16: sync with working slim5x
+  * rebase the whole stack to 7.2.0
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: amend numbering of eUSB2 repeaters
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: introduce PWM backlight
+  * HACK: add "lenovo,thinkpad-t14s" as compatible to ensure install on Ubuntu Concept ISO
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: correct the firmware path and names
+  * arm64: dts: qcom: x1-el2: disable default iris node
+  * arm64: dts: qcom: lenovo-ideacentre-mini-01q8x10: disable Iris
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: disable Iris
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: correct makefile
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: refine sound setup
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 17 Aug 2026 20:16:16 +0200
+
 linux-qcom-x1e (7.2-rc6-jg-0) resolute; urgency=medium
 
   * rebased the whole stack to v7.2-rc6
