@@ -5,10 +5,10 @@ name: Surface Pro 11 integration checks
 on:
   pull_request:
     branches:
-      - sp11/integration-7.2-rc5
+      - sp11/integration-7.2-rc
   push:
     branches:
-      - sp11/integration-7.2-rc5
+      - sp11/integration-7.2-rc
   workflow_dispatch:
 
 permissions:
