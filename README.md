@@ -21,11 +21,12 @@ Support is now "as good as I can manage" for following devices:
 - Acer Swift Go sfg14-01
 - Asus Vivobook S15 (x1p42100 version)
 - HP Omnibook X AI 14-fe1 (x1p42100 version)
+- **Lenovo IdeaCentre Mini 01Q8X10 (91B6)** 
 - **Lenovo Ideapad 5 2-in-1 14Q8X9 (83GH)**
 - **Lenovo Ideapad Slim 5x 14Q8X9 (83HL)**
 - **Lenovo Ideapad Slim 3x 15Q8X10 (83N3)**
-- **Lenovo Thinkbook 16 G7 QOY (21NH)** 
-- Microsoft SP12
+- **Lenovo Thinkbook 16 G7 QOY (21NH)**
+- Microsoft SP12in
 
 The config used here is basically the one of Ubuntu Cocept X1E, with only minor additions. 
 
