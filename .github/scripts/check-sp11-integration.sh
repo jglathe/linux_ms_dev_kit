@@ -20,6 +20,14 @@ git cat-file -e "${SP11_BASE_COMMIT}^{commit}" 2>/dev/null ||
 git merge-base --is-ancestor "${SP11_BASE_COMMIT}" HEAD ||
 	die "HEAD does not descend from the approved Surface Pro 11 base commit"
 
+# When HEAD is the upstream-sync merge (two parents), the SP11 delta to
+# validate is the first-parent line; the second parent is upstream's own
+# code, which may carry pre-existing style patterns.
+CHECKPATCH_RANGE="${SP11_RANGE}"
+if git rev-parse -q --verify HEAD^2 >/dev/null 2>&1; then
+	CHECKPATCH_RANGE="${SP11_BASE_COMMIT}...HEAD^1"
+fi
+
 git diff --check "${SP11_RANGE}" --
 
 all_changed_paths=()
@@ -108,7 +116,7 @@ if [[ "${kernel_changed}" == true ]]; then
 	# checkpatch ERROR-level findings fail the gate; WARNING and CHECK
 	# levels are reported for review but do not block, since upstream
 	# code may carry pre-existing style patterns.
-	checkpatch_output="$(git diff --no-ext-diff "${SP11_RANGE}" -- "${kernel_pathspecs[@]}" |
+	checkpatch_output="$(git diff --no-ext-diff "${CHECKPATCH_RANGE}" -- "${kernel_pathspecs[@]}" |
 		scripts/checkpatch.pl --no-tree --strict --show-types --ignore FILE_PATH_CHANGES - || true)"
 	echo "${checkpatch_output}"
 	if echo "${checkpatch_output}" | grep -qE '^ERROR:'; then
