@@ -3856,6 +3856,7 @@ CONFIG_EROFS_FS_ZIP                             policy<{'arm64': 'y'}>
 CONFIG_EROFS_FS_ZIP_ACCEL                       policy<{'arm64': 'n'}>
 CONFIG_EROFS_FS_ZIP_DEFLATE                     policy<{'arm64': 'y'}>
 CONFIG_EROFS_FS_ZIP_LZMA                        policy<{'arm64': 'y'}>
+CONFIG_EROFS_FS_ZIP_LZMA_DEFAULT_MAX_STREAMS    policy<{'arm64': '16'}>
 CONFIG_EROFS_FS_ZIP_ZSTD                        policy<{'arm64': 'y'}>
 CONFIG_ET131X                                   policy<{'arm64': 'm'}>
 CONFIG_ETHERNET                                 policy<{'arm64': 'y'}>
@@ -12883,7 +12884,7 @@ CONFIG_VEML6040                                 policy<{'arm64': 'm'}>
 CONFIG_VEML6046X00                              policy<{'arm64': 'm'}>
 CONFIG_VEML6070                                 policy<{'arm64': 'm'}>
 CONFIG_VEML6075                                 policy<{'arm64': 'm'}>
-CONFIG_VERSION_SIGNATURE                        policy<{'arm64': '"Ubuntu 7.2-rc5-jg-0sp11v6-qcom-x1e 7.2-rc5"'}>
+CONFIG_VERSION_SIGNATURE                        policy<{'arm64': '"Ubuntu 7.2-rc6-jg-0sp11v6-qcom-x1e 7.2-rc6"'}>
 CONFIG_VETH                                     policy<{'arm64': 'm'}>
 CONFIG_VEXPRESS_CONFIG                          policy<{'arm64': 'y'}>
 CONFIG_VF610_ADC                                policy<{'arm64': 'm'}>
