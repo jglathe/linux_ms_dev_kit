@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v7) resolute; urgency=medium
+
+  * Surface Pro 11 v7: non-rc 7.2.0 integration line.
+
+ -- Surface Pro 11 bring-up <noreply@example.invalid>  Tue, 18 Aug 2026 00:00:00 +0100
+
 linux-qcom-x1e (7.2-rc6-jg-0sp11v6) resolute; urgency=medium
 
   * Surface Pro 11 v6: wsa884x 2S supply + PA fault recovery + 4-ohm profile.
