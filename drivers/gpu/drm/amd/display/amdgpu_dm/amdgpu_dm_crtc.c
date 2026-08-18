@@ -119,7 +119,11 @@ void amdgpu_dm_crtc_set_static_screen_optimze(
 	struct dc_link *link = stream->link;
 	bool set_vsync_event = !sso_enable;
 
-	if (!allow_sr_entry)
+	/*
+	 * allow_sr_entry gates only entry. A disable request must still set
+	 * the vsync events to force Replay and PSR1 out and keep them blocked.
+	 */
+	if (sso_enable && !allow_sr_entry)
 		return;
 
 	amdgpu_dm_replay_set_event(dm, stream,
@@ -253,7 +257,7 @@ static inline int amdgpu_dm_crtc_set_vblank(struct drm_crtc *crtc, bool enable)
 
 	irq_type = amdgpu_display_crtc_idx_to_irq_type(adev, acrtc->crtc_id);
 
-	if (enable) {
+	if (enable && acrtc_state->stream) {
 		struct dc *dc = adev->dm.dc;
 		struct drm_vblank_crtc *vblank = drm_crtc_vblank_crtc(crtc);
 		struct psr_settings *psr = &acrtc_state->stream->link->psr_settings;
