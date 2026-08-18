@@ -25,8 +25,24 @@ git merge-base --is-ancestor "${SP11_BASE_COMMIT}" HEAD ||
 # code, which may carry pre-existing style patterns.
 CHECKPATCH_RANGE="${SP11_RANGE}"
 if git rev-parse -q --verify HEAD^2 >/dev/null 2>&1; then
-	CHECKPATCH_RANGE="${SP11_BASE_COMMIT}...HEAD^1"
+CHECKPATCH_RANGE="${SP11_BASE_COMMIT}...HEAD^1"
 fi
+
+# The style gate is scoped to the project's own delta.  Upstream trees
+# (jglathe's 7.2-rc line, Linux, Ubuntu) are absorbed through sync merges
+# at any depth and may carry pre-existing style patterns, so checkpatch
+# ERRORs are only actionable on files the SP11 integration authored or
+# modified.  The identities below are the project's integration authors;
+# extend them if new integration identities are introduced.
+readonly SP11_AUTHOR_A='Surface Pro 11 bring-up'
+readonly SP11_AUTHOR_B='Leon Silcott'
+
+sp11_touched_files="$(
+	git log --format= --name-only --diff-filter=ACMRTUXB \
+		--author="${SP11_AUTHOR_A}" --author="${SP11_AUTHOR_B}" \
+		"${SP11_BASE_COMMIT}..HEAD" |
+		sed '/^$/d' | sort -u
+)"
 
 git diff --check "${SP11_RANGE}" --
 
@@ -120,7 +136,25 @@ if [[ "${kernel_changed}" == true ]]; then
 		scripts/checkpatch.pl --no-tree --strict --show-types --ignore FILE_PATH_CHANGES - || true)"
 	echo "${checkpatch_output}"
 	if echo "${checkpatch_output}" | grep -qE '^ERROR:'; then
-		die "checkpatch.pl reported ERROR-level findings (see above)"
+		# Report all ERROR-level findings, but only fail the gate for
+		# files in the SP11-authored delta; upstream-only files carry
+		# pre-existing style patterns and are not actionable here.
+		sp11_errors="$(echo "${checkpatch_output}" |
+			awk -v sp11="${sp11_touched_files}" '
+				BEGIN { n = split(sp11, a, "\n")
+					for (i = 1; i <= n; i++) sp11set[a[i]] = 1 }
+				/^ERROR:/ { pending = $0; next }
+				/^[#0-9]+: FILE: / && pending != "" {
+					file = $0
+					sub(/^[^:]*: FILE: /, "", file)
+					sub(/:.*$/, "", file)
+					if (file in sp11set) print pending " [" file "]"
+					pending = ""
+				}' )"
+		if [[ -n "${sp11_errors}" ]]; then
+			printf 'SP11 delta checkpatch errors:\n%s\n' "${sp11_errors}" >&2
+			die "checkpatch.pl reported ERROR-level findings in the SP11 delta (see above)"
+		fi
 	fi
 else
 	printf 'No kernel-source changes require checkpatch.pl.\n'
