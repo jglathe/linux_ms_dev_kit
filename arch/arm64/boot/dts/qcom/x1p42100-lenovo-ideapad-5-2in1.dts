@@ -979,7 +979,7 @@
 
 		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
 
-		pinctrl-0 = <&eusb9_reset_n>;
+		pinctrl-0 = <&eusb5_reset_n>;
 		pinctrl-names = "default";
 	};
 
@@ -1020,7 +1020,7 @@
 };
 
 //&iris {
-//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380.mbn";
+//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380_pa.mbn";
 //	status = "okay";
 //};
 
@@ -1035,11 +1035,11 @@
 };
 
 &lpass_vamacro {
-	pinctrl-0 = <&dmic01_default>, <&dmic23_default>;
+	pinctrl-0 = <&dmic01_default>;
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &mdss {
@@ -1324,16 +1324,16 @@
 		output-low;
 	};
 
-	eusb6_reset_n: eusb6-reset-n-state {
-		pins = "gpio184";
+	eusb5_reset_n: eusb5-reset-n-state {
+		pins = "gpio7";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
 		output-low;
 	};
 
-	eusb9_reset_n: eusb9-reset-n-state {
-		pins = "gpio7";
+	eusb6_reset_n: eusb6-reset-n-state {
+		pins = "gpio184";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1351,13 +1351,6 @@
 		pins = "gpio92";
 		function = "gpio";
 		bias-disable;
-	};
-
-	hdmi_bridge_en: hdmi-bridge-en-state {
-		pins = "gpio120";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-pull-down;
 	};
 
 	hdmi_hpd_default: hdmi-hpd-default-state {
@@ -1591,7 +1584,7 @@
 	maximum-speed = "high-speed";
 	phys = <&usb_1_ss2_hsphy>;
 	phy-names = "usb2-phy";
-
+	qcom,select-utmi-as-pipe-clk;
 	status = "okay";
 	/delete-property/ port@1;
 };
