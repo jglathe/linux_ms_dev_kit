@@ -6,9 +6,11 @@ on:
   pull_request:
     branches:
       - sp11/integration-7.2-rc
+      - sp11/integration-7.2.x
   push:
     branches:
       - sp11/integration-7.2-rc
+      - sp11/integration-7.2.x
   workflow_dispatch:
 
 permissions:
