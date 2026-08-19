@@ -3015,6 +3015,14 @@ static int g6ts_full_reinitialize_locked(struct g6ts *ts,
 		goto out;
 	}
 
+	/*
+	 * Diagnostic: dump the G6 report descriptor for pen-support analysis.
+	 * The panel declares its collections (touch and/or pen digitizer) here.
+	 */
+	pr_info("g6ts: report descriptor (%u bytes):\n", ts->last_content_len);
+	print_hex_dump(KERN_INFO, "g6ts rdesc: ", DUMP_PREFIX_OFFSET, 16, 1,
+		       ts->body, ts->last_content_len, true);
+
 	if (g6ts_windows_init_parity) {
 		/* A software reset has a different, multi-owner Windows ordering. */
 		if (path != G6TS_RECOVERY_HARDWARE) {
