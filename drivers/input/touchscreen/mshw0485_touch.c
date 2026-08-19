@@ -35,6 +35,20 @@
 #define G6TS_FEATURE_RESPONSE_LIMIT	64U
 #define G6TS_IRQ_DRAIN_LIMIT		128U
 #define G6TS_HEATMAP_REPORT_ID		0x12
+#define G6TS_PEN_REPORT_ID		0x01
+#define G6TS_PEN_REPORT_LEN		15U
+#define G6TS_PEN_X_MAX			9600U
+#define G6TS_PEN_Y_MAX			7200U
+#define G6TS_PEN_PRESSURE_MAX		4096U
+#define G6TS_PEN_TILT_MAX		18000U
+#define G6TS_PEN_X_RESOLUTION		35U
+#define G6TS_PEN_Y_RESOLUTION		39U
+#define G6TS_PEN_TILT_RESOLUTION	5730U
+#define G6TS_PEN_IN_RANGE		BIT(0)
+#define G6TS_PEN_TIP_SWITCH		BIT(1)
+#define G6TS_PEN_BARREL_SWITCH		BIT(2)
+#define G6TS_PEN_INVERT			BIT(3)
+#define G6TS_PEN_ERASER			BIT(4)
 #define G6TS_MODE_ATTEMPT_LIMIT		3U
 #define G6TS_RECOVERY_DELAY_MS		100U
 #define G6TS_RECOVERY_RETRY_MS		500U
@@ -456,7 +470,9 @@ struct g6ts_assignment_workspace {
 struct g6ts {
 	struct spi_device *spi;
 	struct input_dev *input;
+	struct input_dev *pen_input;
 	struct touchscreen_properties prop;
+	struct touchscreen_properties pen_prop;
 	/* Serializes transport, initialization, recovery, and power changes. */
 	struct mutex io_lock;
 	struct gpio_desc *interrupt_gpio;
@@ -2184,6 +2200,53 @@ static void g6ts_release_contacts(struct g6ts *ts)
 	memset(ts->tracks, 0, sizeof(ts->tracks));
 }
 
+static void g6ts_release_pen(struct g6ts *ts)
+{
+	input_report_abs(ts->pen_input, ABS_PRESSURE, 0);
+	input_report_key(ts->pen_input, BTN_TOUCH, false);
+	input_report_key(ts->pen_input, BTN_STYLUS, false);
+	input_report_key(ts->pen_input, BTN_TOOL_PEN, false);
+	input_report_key(ts->pen_input, BTN_TOOL_RUBBER, false);
+	input_sync(ts->pen_input);
+}
+
+static void g6ts_release_inputs(struct g6ts *ts)
+{
+	g6ts_release_contacts(ts);
+	g6ts_release_pen(ts);
+}
+
+static void g6ts_report_pen(struct g6ts *ts, const u8 *content)
+{
+	struct input_dev *input = ts->pen_input;
+	u8 flags = content[0];
+	bool in_range = flags & G6TS_PEN_IN_RANGE;
+	bool touching = flags & (G6TS_PEN_TIP_SWITCH | G6TS_PEN_ERASER);
+	bool barrel = flags & G6TS_PEN_BARREL_SWITCH;
+	bool rubber = flags & (G6TS_PEN_INVERT | G6TS_PEN_ERASER);
+	u16 x, y, pressure, tilt_x, tilt_y;
+
+	/* Layout and logical ranges come from the report-0x01 HID collection. */
+	x = min_t(u16, get_unaligned_le16(&content[1]), G6TS_PEN_X_MAX);
+	y = min_t(u16, get_unaligned_le16(&content[3]), G6TS_PEN_Y_MAX);
+	pressure = min_t(u16, get_unaligned_le16(&content[5]),
+			 G6TS_PEN_PRESSURE_MAX);
+	tilt_x = min_t(u16, get_unaligned_le16(&content[7]),
+		       G6TS_PEN_TILT_MAX);
+	tilt_y = min_t(u16, get_unaligned_le16(&content[9]),
+		       G6TS_PEN_TILT_MAX);
+
+	touchscreen_report_pos(input, &ts->pen_prop, x, y, false);
+	input_report_abs(input, ABS_PRESSURE, pressure);
+	input_report_abs(input, ABS_TILT_X, tilt_x);
+	input_report_abs(input, ABS_TILT_Y, tilt_y);
+	input_report_key(input, BTN_TOUCH, touching);
+	input_report_key(input, BTN_STYLUS, barrel);
+	input_report_key(input, BTN_TOOL_PEN, in_range && !rubber);
+	input_report_key(input, BTN_TOOL_RUBBER, in_range && rubber);
+	input_sync(input);
+}
+
 static void g6ts_handle_data_report(struct g6ts *ts)
 {
 	const u8 *payload = ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE;
@@ -2197,10 +2260,24 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 	 * a finger reaches the glass.  Phase 77 therefore opens the response path
 	 * after the mode handshake, but suppresses every non-Heat input report
 	 * until a complete Heat frame has passed the normal structural parser.
+	 * Pen input is an independent HID collection and remains usable while
+	 * touch readiness is being established.
 	 */
 	if (ts->awaiting_ready_heat &&
-	    ts->last_content_id != G6TS_HEATMAP_REPORT_ID)
+	    ts->last_content_id != G6TS_HEATMAP_REPORT_ID &&
+	    ts->last_content_id != G6TS_PEN_REPORT_ID)
 		return;
+
+	if (ts->last_content_id == G6TS_PEN_REPORT_ID) {
+		if (ts->last_content_len != G6TS_PEN_REPORT_LEN) {
+			dev_warn_ratelimited(&ts->spi->dev,
+					     "malformed pen report length: %u\n",
+					     ts->last_content_len);
+			return;
+		}
+		g6ts_report_pen(ts, payload);
+		return;
+	}
 
 	if (ts->last_content_id == 0x40 && ts->last_content_len == 5) {
 		active = payload[0] & BIT(0);
@@ -2343,7 +2420,7 @@ static void g6ts_note_panel_reset_locked(struct g6ts *ts,
 				 ts->rapid_reset_streak);
 		}
 	}
-	g6ts_release_contacts(ts);
+	g6ts_release_inputs(ts);
 	dev_warn(&ts->spi->dev,
 		 "panel reset notification #%llu interval=%lums\n",
 		 ts->reset_notifications, interval_ms);
@@ -2379,7 +2456,7 @@ static void g6ts_note_host_fault_locked(struct g6ts *ts, int error)
 	ts->recovery_path = G6TS_RECOVERY_HARDWARE;
 	ts->rapid_reset_streak = 0;
 	ts->host_fault_recoveries++;
-	g6ts_release_contacts(ts);
+	g6ts_release_inputs(ts);
 	dev_warn(&ts->spi->dev,
 		 "host HID-SPI fault #%llu ret=%d; scheduling cold recovery\n",
 		 ts->host_fault_recoveries, error);
@@ -3015,14 +3092,6 @@ static int g6ts_full_reinitialize_locked(struct g6ts *ts,
 		goto out;
 	}
 
-	/*
-	 * Diagnostic: dump the G6 report descriptor for pen-support analysis.
-	 * The panel declares its collections (touch and/or pen digitizer) here.
-	 */
-	pr_info("g6ts: report descriptor (%u bytes):\n", ts->last_content_len);
-	print_hex_dump(KERN_INFO, "g6ts rdesc: ", DUMP_PREFIX_OFFSET, 16, 1,
-		       ts->body, ts->last_content_len, true);
-
 	if (g6ts_windows_init_parity) {
 		/* A software reset has a different, multi-owner Windows ordering. */
 		if (path != G6TS_RECOVERY_HARDWARE) {
@@ -3181,7 +3250,7 @@ static void g6ts_recovery_work(struct work_struct *work)
 	}
 
 	ts->mode_enabled = false;
-	g6ts_release_contacts(ts);
+	g6ts_release_inputs(ts);
 	path = ts->recovery_path;
 	ret = g6ts_full_reinitialize_locked(ts, path);
 	if (!ret) {
@@ -3326,6 +3395,39 @@ static int g6ts_probe(struct spi_device *spi)
 		return dev_err_probe(&spi->dev, ret,
 				     "failed to register touch input\n");
 
+	ts->pen_input = devm_input_allocate_device(&spi->dev);
+	if (!ts->pen_input)
+		return -ENOMEM;
+	ts->pen_input->name = "Microsoft Surface G6 Pen";
+	ts->pen_input->id.bustype = BUS_SPI;
+	ts->pen_input->dev.parent = &spi->dev;
+	input_set_capability(ts->pen_input, EV_KEY, BTN_TOUCH);
+	input_set_capability(ts->pen_input, EV_KEY, BTN_TOOL_PEN);
+	input_set_capability(ts->pen_input, EV_KEY, BTN_TOOL_RUBBER);
+	input_set_capability(ts->pen_input, EV_KEY, BTN_STYLUS);
+	input_set_abs_params(ts->pen_input, ABS_X, 0, G6TS_PEN_X_MAX, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_Y, 0, G6TS_PEN_Y_MAX, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_PRESSURE, 0,
+			     G6TS_PEN_PRESSURE_MAX, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_TILT_X, 0,
+			     G6TS_PEN_TILT_MAX, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_TILT_Y, 0,
+			     G6TS_PEN_TILT_MAX, 0, 0);
+	touchscreen_parse_properties(ts->pen_input, false, &ts->pen_prop);
+	input_abs_set_res(ts->pen_input, ABS_X, ts->pen_prop.swap_x_y ?
+			  G6TS_PEN_Y_RESOLUTION : G6TS_PEN_X_RESOLUTION);
+	input_abs_set_res(ts->pen_input, ABS_Y, ts->pen_prop.swap_x_y ?
+			  G6TS_PEN_X_RESOLUTION : G6TS_PEN_Y_RESOLUTION);
+	input_abs_set_res(ts->pen_input, ABS_TILT_X,
+			  G6TS_PEN_TILT_RESOLUTION);
+	input_abs_set_res(ts->pen_input, ABS_TILT_Y,
+			  G6TS_PEN_TILT_RESOLUTION);
+	__set_bit(INPUT_PROP_DIRECT, ts->pen_input->propbit);
+	ret = input_register_device(ts->pen_input);
+	if (ret)
+		return dev_err_probe(&spi->dev, ret,
+				     "failed to register pen input\n");
+
 	ret = g6ts_power_on(ts);
 	if (ret)
 		return ret;
@@ -3347,7 +3449,7 @@ static void g6ts_remove(struct spi_device *spi)
 	WRITE_ONCE(ts->mode_enabled, false);
 	cancel_delayed_work_sync(&ts->recovery_work);
 	mutex_lock(&ts->io_lock);
-	g6ts_release_contacts(ts);
+	g6ts_release_inputs(ts);
 	mutex_unlock(&ts->io_lock);
 	(void)g6ts_power_off(ts);
 }
@@ -3362,7 +3464,7 @@ static int g6ts_suspend(struct device *dev)
 	cancel_delayed_work_sync(&ts->recovery_work);
 
 	mutex_lock(&ts->io_lock);
-	g6ts_release_contacts(ts);
+	g6ts_release_inputs(ts);
 	ret = g6ts_power_off(ts);
 	mutex_unlock(&ts->io_lock);
 
