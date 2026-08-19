@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/pm.h>
+#include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/unaligned.h>
@@ -156,6 +157,8 @@ enum g6ts_initialization_stage {
 	G6TS_INIT_SET_FEATURE56,
 	G6TS_INIT_WAIT_HEAT,
 };
+
+#define G6TS_INIT_STAGE_COUNT		(G6TS_INIT_WAIT_HEAT + 1)
 
 /*
  * Phase 70 keeps the hardware-validated Phase 68 policy as the default.  The
@@ -516,6 +519,7 @@ struct g6ts {
 	u64 cadence_single_response_irqs;
 	u64 ready_heat_frames;
 	u64 ready_verification_failures;
+	u64 report_counts[U8_MAX + 1];
 	u64 heat_frames;
 	u64 heat_errors;
 	u64 component_total;
@@ -551,6 +555,7 @@ struct g6ts {
 	u8 parity_feature06_prefix[16];
 	u8 parity_cfu_version_prefix[12];
 	u8 parity_cfu_offer_response[G6TS_WINDOWS_CFU_OFFER_LEN];
+	bool init_get_feature_dumped[G6TS_INIT_STAGE_COUNT];
 };
 
 static const char *
@@ -756,8 +761,31 @@ static ssize_t behavior_stats_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(behavior_stats);
 
+static ssize_t report_counts_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct g6ts *ts = dev_get_drvdata(dev);
+	ssize_t length = 0;
+	unsigned int report_id;
+
+	mutex_lock(&ts->io_lock);
+	for (report_id = 0; report_id <= U8_MAX; report_id++) {
+		if (!ts->report_counts[report_id])
+			continue;
+		length += sysfs_emit_at(buf, length, "0x%02x %llu\n",
+					report_id, ts->report_counts[report_id]);
+		if (length >= PAGE_SIZE - 1)
+			break;
+	}
+	mutex_unlock(&ts->io_lock);
+
+	return length;
+}
+static DEVICE_ATTR_RO(report_counts);
+
 static struct attribute *g6ts_attributes[] = {
 	&dev_attr_behavior_stats.attr,
+	&dev_attr_report_counts.attr,
 	NULL,
 };
 
@@ -2255,6 +2283,7 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 
 	if (ts->last_class != DATA)
 		return;
+	ts->report_counts[ts->last_content_id]++;
 	/*
 	 * Heat is demand-driven on this panel: the first frame may not exist until
 	 * a finger reaches the glass.  Phase 77 therefore opens the response path
@@ -2512,6 +2541,7 @@ static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
 				     u8 content_id, const u8 *content,
 				     size_t content_len)
 {
+	char dump_prefix[64];
 	u8 expected_class;
 	unsigned int response_index;
 	int ret;
@@ -2542,8 +2572,24 @@ static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
 			return ret;
 
 		if (ts->last_class == expected_class &&
-		    ts->last_content_id == content_id)
+		    ts->last_content_id == content_id) {
+			if (report_type == GET_FEATURE &&
+			    !ts->init_get_feature_dumped[ts->initialization_stage]) {
+				ts->init_get_feature_dumped[ts->initialization_stage] = true;
+				scnprintf(dump_prefix, sizeof(dump_prefix),
+					  "%s init GET_FEATURE 0x%02x: ",
+					  dev_name(&ts->spi->dev), content_id);
+				dev_info(&ts->spi->dev,
+					 "init GET_FEATURE response stage=%s id=0x%02x len=%u\n",
+					 g6ts_initialization_stage_name(ts->initialization_stage),
+					 content_id, ts->last_content_len);
+				print_hex_dump(KERN_INFO, dump_prefix,
+					       DUMP_PREFIX_OFFSET, 16, 1,
+					       ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE,
+					       ts->last_content_len, false);
+			}
 			return 0;
+		}
 		if (ts->last_class == RESET_RESPONSE) {
 			g6ts_note_panel_reset_locked(ts, false);
 			return -EPIPE;
