@@ -22,6 +22,7 @@
 
 		pinctrl-0 = <&hall_int_n_default>, <&kypd_vol_up_n>, <&kypd_vol_down_n>;
 		pinctrl-names = "default";
+		autorepeat;
 
 		switch-lid {
 			gpios = <&tlmm 2 GPIO_ACTIVE_LOW>;
@@ -44,8 +45,6 @@
 			linux,code = <KEY_VOLUMEDOWN>;
 			wakeup-source;
 		};
-
-		autorepeat;
 	};
 
 	pmic-glink {
