@@ -171,6 +171,11 @@ module_param_named(windows_orchestrator, g6ts_windows_orchestrator, bool, 0444);
 MODULE_PARM_DESC(windows_orchestrator,
 		 "Use the experimental recovered Windows frame profile (default: false)");
 
+static bool g6ts_heat_feedback;
+module_param_named(heat_feedback, g6ts_heat_feedback, bool, 0444);
+MODULE_PARM_DESC(heat_feedback,
+		 "Enable the per-heat-cycle Windows V06 feedback stream (report 0x09) driven by TouchPenProcessor (default: false)");
+
 /*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
  * Phase 75 transport and recovery path.  It enables three independently
@@ -520,6 +525,13 @@ struct g6ts {
 	u64 ready_heat_frames;
 	u64 ready_verification_failures;
 	u64 report_counts[U8_MAX + 1];
+	u8 a5_seq;
+	bool a5_cycle_saw_0x0d;
+	u8 pen_identity[4];
+	bool pen_identity_known;
+	u64 heat_feedback_sent;
+	u64 heat_feedback_phase_a;
+	u64 heat_feedback_phase_b;
 	u64 heat_frames;
 	u64 heat_errors;
 	u64 component_total;
@@ -783,9 +795,32 @@ static ssize_t report_counts_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(report_counts);
 
+static ssize_t feedback_state_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct g6ts *ts = dev_get_drvdata(dev);
+	ssize_t length;
+
+	mutex_lock(&ts->io_lock);
+	length = sysfs_emit(buf,
+			    "seq %u\n"
+			    "pen_identity_known %u\n"
+			    "pen_identity %4phN\n"
+			    "sent %llu phase_a %llu phase_b %llu\n",
+			    ts->a5_seq, ts->pen_identity_known,
+			    ts->pen_identity, ts->heat_feedback_sent,
+			    ts->heat_feedback_phase_a,
+			    ts->heat_feedback_phase_b);
+	mutex_unlock(&ts->io_lock);
+
+	return length;
+}
+static DEVICE_ATTR_RO(feedback_state);
+
 static struct attribute *g6ts_attributes[] = {
 	&dev_attr_behavior_stats.attr,
 	&dev_attr_report_counts.attr,
+	&dev_attr_feedback_state.attr,
 	NULL,
 };
 
@@ -2275,6 +2310,9 @@ static void g6ts_report_pen(struct g6ts *ts, const u8 *content)
 	input_sync(input);
 }
 
+static void g6ts_send_heat_feedback_a5(struct g6ts *ts,
+				       bool after_heat_group);
+
 static void g6ts_handle_data_report(struct g6ts *ts)
 {
 	const u8 *payload = ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE;
@@ -2284,6 +2322,35 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 	if (ts->last_class != DATA)
 		return;
 	ts->report_counts[ts->last_content_id]++;
+	switch (ts->last_content_id) {
+	case 0x6e:
+		if (ts->last_content_len >= sizeof(ts->pen_identity) &&
+		    payload[0] == 0xf7 && payload[1] == 0x77 &&
+		    payload[2] == 0xf5 && payload[3] == 0x97) {
+			bool first_identity = !ts->pen_identity_known;
+
+			memcpy(ts->pen_identity, payload,
+			       sizeof(ts->pen_identity));
+			ts->pen_identity_known = true;
+			if (first_identity)
+				dev_info(&ts->spi->dev,
+					 "pen identity announced: %4phN\n",
+					 ts->pen_identity);
+		}
+		break;
+	case 0x1a:
+		g6ts_send_heat_feedback_a5(ts, true);
+		break;
+	case 0x0d:
+		ts->a5_cycle_saw_0x0d = true;
+		break;
+	case 0x0b:
+		if (ts->a5_cycle_saw_0x0d) {
+			ts->a5_cycle_saw_0x0d = false;
+			g6ts_send_heat_feedback_a5(ts, false);
+		}
+		break;
+	}
 	/*
 	 * Heat is demand-driven on this panel: the first frame may not exist until
 	 * a finger reaches the glass.  Phase 77 therefore opens the response path
@@ -2692,6 +2759,50 @@ static void g6ts_build_windows_feedback_a5(u8 content[G6TS_WINDOWS_FEEDBACK_LEN]
 	put_unaligned_le16(g6ts_parity_fast_host_id, &content[39]);
 	/* The V06 sender unconditionally adds validity bit 0x0040. */
 	put_unaligned_le16(0x0040, &content[46]);
+}
+
+static void g6ts_send_heat_feedback_a5(struct g6ts *ts,
+				       bool after_heat_group)
+{
+	u8 content[G6TS_WINDOWS_FEEDBACK_LEN] = { 0 };
+	int ret;
+
+	if (!g6ts_heat_feedback)
+		return;
+
+	content[0] = 0x8e;
+	content[1] = 0xa5;
+	content[2] = ts->a5_seq++;
+	content[3] = 0x02;
+	if (ts->pen_identity_known)
+		memcpy(&content[8], ts->pen_identity, sizeof(ts->pen_identity));
+	put_unaligned_le16(0x1770, &content[12]);
+	content[34] = 0xff;
+	content[35] = 0x4c;
+	put_unaligned_le16(g6ts_parity_fast_host_id, &content[39]);
+	content[41] = 0x01;
+	content[43] = after_heat_group ? 0x04 : 0x02;
+	content[44] = 0xff;
+	content[46] = ts->pen_identity_known ? 0xdb : 0x52;
+	content[47] = 0x43;
+	content[48] = 0xff;
+	content[49] = 0x02;
+	content[50] = 0x01;
+
+	ret = g6ts_dma_hidspi_output(ts, OUTPUT_REPORT, 0x09, content,
+				     sizeof(content));
+	if (ret) {
+		dev_warn_ratelimited(&ts->spi->dev,
+				     "failed to send heat feedback phase %#02x: %d\n",
+				     content[43], ret);
+		return;
+	}
+
+	ts->heat_feedback_sent++;
+	if (after_heat_group)
+		ts->heat_feedback_phase_a++;
+	else
+		ts->heat_feedback_phase_b++;
 }
 
 static bool g6ts_windows_cfu_provider_valid(void)
