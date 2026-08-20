@@ -1,3 +1,19 @@
+linux-qcom-x1e (7.1.9-jg-0) resolute; urgency=medium
+
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: amend numbering of eUSB2 repeaters
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: introduce PWM backlight
+  * HACK: add "lenovo,thinkpad-t14s" as compatible to ensure install on Ubuntu Concept ISO
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: correct the firmware path and names
+  * arm64: dts: qcom: x1-el2: disable default iris node
+  * arm64: dts: qcom: lenovo-ideacentre-mini-01q8x10: disable Iris
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: disable Iris
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: correct makefile
+  * arm64: dts: qcom: purwa-lenovo-ideacentre-mini-x: refine sound setup
+  * arm64: dts: qcom: x1p64100-dell-latitude-5455: add Dell 5455 model
+  * rebase the stack to v7.1.9
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 20 Aug 2026 07:19:40 +0200
+
 linux-qcom-x1e (7.1.7-jg-1) resolute; urgency=medium
 
   * phy: snps-eusb2: delay clk defaults until after power-up
