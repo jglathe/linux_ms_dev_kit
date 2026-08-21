@@ -4,7 +4,10 @@
  */
 
 #include <linux/acpi.h>
+#include <linux/compat.h>
 #include <linux/delay.h>
+#include <linux/fs.h>
+#include <linux/g6ts_heat.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hid-over-spi.h>
 #include <linux/input.h>
@@ -13,16 +16,21 @@
 #include <linux/interrupt.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
+#include <linux/kref.h>
 #include <linux/ktime.h>
 #include <linux/math.h>
 #include <linux/math64.h>
+#include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/pm.h>
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
+#include <linux/poll.h>
 #include <linux/unaligned.h>
+#include <linux/uaccess.h>
+#include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 
 #include "g6ts_classifier_profile.h"
@@ -35,13 +43,21 @@
 #define G6TS_HEADER_VERSION		0x03
 #define G6TS_FEATURE_RESPONSE_LIMIT	64U
 #define G6TS_IRQ_DRAIN_LIMIT		128U
+#define G6TS_HEAT_QUEUE_CAPACITY		64U
 #define G6TS_HEATMAP_REPORT_ID		0x12
+#define G6TS_RAW_SIDEBAND_REPORT_07	0x07
+#define G6TS_RAW_HEAT_REPORT_0B		0x0b
+#define G6TS_RAW_HEAT_REPORT_0C		0x0c
+#define G6TS_RAW_HEAT_REPORT_0D		0x0d
+#define G6TS_RAW_HEAT_REPORT_1A		0x1a
+#define G6TS_RAW_SIDEBAND_REPORT_6E	0x6e
 #define G6TS_PEN_REPORT_ID		0x01
 #define G6TS_PEN_REPORT_LEN		15U
 #define G6TS_PEN_X_MAX			9600U
 #define G6TS_PEN_Y_MAX			7200U
 #define G6TS_PEN_PRESSURE_MAX		4096U
-#define G6TS_PEN_TILT_MAX		18000U
+#define G6TS_PEN_TILT_RAW_MAX		18000U
+#define G6TS_PEN_TILT_CENTER		9000
 #define G6TS_PEN_X_RESOLUTION		35U
 #define G6TS_PEN_Y_RESOLUTION		39U
 #define G6TS_PEN_TILT_RESOLUTION	5730U
@@ -174,7 +190,8 @@ MODULE_PARM_DESC(windows_orchestrator,
 static bool g6ts_heat_feedback;
 module_param_named(heat_feedback, g6ts_heat_feedback, bool, 0444);
 MODULE_PARM_DESC(heat_feedback,
-		 "Enable the per-heat-cycle Windows V06 feedback stream (report 0x09) driven by TouchPenProcessor (default: false)");
+		 "Enable the per-heat-cycle Windows V06 feedback stream (report 0x09); "
+		 "requires parity_fast_host_id=0..65535 (default: false)");
 
 /*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
@@ -322,7 +339,7 @@ MODULE_PARM_DESC(parity_hinge_angle,
 static int g6ts_parity_fast_host_id = -1;
 module_param_named(parity_fast_host_id, g6ts_parity_fast_host_id, int, 0444);
 MODULE_PARM_DESC(parity_fast_host_id,
-		 "Windows persistent FastHostId; required by windows_init_parity (-1: unavailable)");
+		 "Windows feedback FastHostId (0..65535, -1: unavailable)");
 
 /*
  * Report 0x56 carries six bytes of device identity (Usage 0x03) and one
@@ -415,6 +432,43 @@ static const u8 g6ts_nsr_row_to_bin[G6TS_HEAT_ROWS] = {
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 };
 
+struct g6ts_heat_frame {
+	struct g6ts_heat_record_header header;
+	u8 content[G6TS_HEAT_MAX_CONTENT_SIZE];
+};
+
+static_assert(sizeof(struct g6ts_heat_record_header) ==
+	      G6TS_HEAT_RECORD_HEADER_SIZE);
+static_assert(sizeof(struct g6ts_heat_info) == 48);
+static_assert(sizeof(struct g6ts_heat_stats) == 112);
+
+struct g6ts_heat_device {
+	struct miscdevice miscdev;
+	/* Protects queue data and device lifetime state. */
+	struct mutex lock;
+	wait_queue_head_t read_wait;
+	struct kref ref;
+	struct g6ts_heat_frame *frames;
+	unsigned int head;
+	unsigned int count;
+	u32 generation;
+	u32 sequence;
+	u64 records_enqueued;
+	u64 records_dropped;
+	u64 queue_flushes;
+	u64 oversize_drops;
+	u64 report_counts[4];
+	atomic_t opened;
+	bool dead;
+};
+
+struct g6ts_a5_live_state {
+	u16 fast_host_id;
+	u8 sequence;
+	bool fast_host_id_valid;
+	bool cycle_saw_0x0d;
+};
+
 struct g6ts_contact {
 	u64 weighted_x;
 	u64 weighted_y;
@@ -478,6 +532,7 @@ struct g6ts_assignment_workspace {
 struct g6ts {
 	struct spi_device *spi;
 	struct input_dev *input;
+	struct g6ts_heat_device *heat;
 	struct input_dev *pen_input;
 	struct touchscreen_properties prop;
 	struct touchscreen_properties pen_prop;
@@ -525,10 +580,7 @@ struct g6ts {
 	u64 ready_heat_frames;
 	u64 ready_verification_failures;
 	u64 report_counts[U8_MAX + 1];
-	u8 a5_seq;
-	bool a5_cycle_saw_0x0d;
-	u8 pen_identity[4];
-	bool pen_identity_known;
+	struct g6ts_a5_live_state a5;
 	u64 heat_feedback_sent;
 	u64 heat_feedback_phase_a;
 	u64 heat_feedback_phase_b;
@@ -569,6 +621,350 @@ struct g6ts {
 	u8 parity_cfu_offer_response[G6TS_WINDOWS_CFU_OFFER_LEN];
 	bool init_get_feature_dumped[G6TS_INIT_STAGE_COUNT];
 };
+
+static bool g6ts_is_raw_export_report(u8 report_id)
+{
+	switch (report_id) {
+	case G6TS_RAW_SIDEBAND_REPORT_07:
+	case G6TS_RAW_HEAT_REPORT_0B:
+	case G6TS_RAW_HEAT_REPORT_0C:
+	case G6TS_RAW_HEAT_REPORT_0D:
+	case G6TS_RAW_HEAT_REPORT_1A:
+	case G6TS_RAW_SIDEBAND_REPORT_6E:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static void g6ts_heat_device_release(struct kref *ref)
+{
+	struct g6ts_heat_device *heat =
+		container_of(ref, struct g6ts_heat_device, ref);
+
+	kvfree(heat->frames);
+	kfree(heat);
+}
+
+static void g6ts_heat_enqueue_locked(struct g6ts_heat_device *heat,
+				     u8 report_id, u8 flags,
+				     const u8 *content, u16 content_len)
+{
+	struct g6ts_heat_frame *frame;
+	unsigned int tail;
+
+	if (heat->count == G6TS_HEAT_QUEUE_CAPACITY) {
+		heat->head = (heat->head + 1) % G6TS_HEAT_QUEUE_CAPACITY;
+		heat->count--;
+		heat->records_dropped++;
+	}
+
+	tail = (heat->head + heat->count) % G6TS_HEAT_QUEUE_CAPACITY;
+	frame = &heat->frames[tail];
+	frame->header.magic = cpu_to_le32(G6TS_HEAT_RECORD_MAGIC);
+	frame->header.abi_version = cpu_to_le16(G6TS_HEAT_ABI_VERSION);
+	frame->header.header_len = cpu_to_le16(sizeof(frame->header));
+	frame->header.record_len =
+		cpu_to_le32(sizeof(frame->header) + content_len);
+	frame->header.generation = cpu_to_le32(heat->generation);
+	frame->header.timestamp_ns = cpu_to_le64(ktime_get_ns());
+	frame->header.sequence = cpu_to_le32(heat->sequence++);
+	frame->header.content_len = cpu_to_le16(content_len);
+	frame->header.report_id = report_id;
+	frame->header.flags = flags;
+	if (content_len)
+		memcpy(frame->content, content, content_len);
+
+	heat->count++;
+	heat->records_enqueued++;
+	switch (report_id) {
+	case G6TS_RAW_HEAT_REPORT_0B:
+		heat->report_counts[0]++;
+		break;
+	case G6TS_RAW_HEAT_REPORT_0C:
+		heat->report_counts[1]++;
+		break;
+	case G6TS_RAW_HEAT_REPORT_0D:
+		heat->report_counts[2]++;
+		break;
+	case G6TS_RAW_HEAT_REPORT_1A:
+		heat->report_counts[3]++;
+		break;
+	}
+}
+
+static void g6ts_heat_enqueue(struct g6ts *ts, u8 report_id,
+			      const u8 *content, u16 content_len)
+{
+	struct g6ts_heat_device *heat = ts->heat;
+
+	if (!heat)
+		return;
+
+	mutex_lock(&heat->lock);
+	if (heat->dead) {
+		mutex_unlock(&heat->lock);
+		return;
+	}
+	if (content_len > G6TS_HEAT_MAX_CONTENT_SIZE) {
+		heat->oversize_drops++;
+		mutex_unlock(&heat->lock);
+		return;
+	}
+	g6ts_heat_enqueue_locked(heat, report_id, 0, content, content_len);
+	mutex_unlock(&heat->lock);
+	wake_up_interruptible(&heat->read_wait);
+}
+
+static void g6ts_heat_generation_boundary(struct g6ts *ts, u8 flags)
+{
+	struct g6ts_heat_device *heat = ts->heat;
+
+	ts->a5.cycle_saw_0x0d = false;
+	if (!heat)
+		return;
+
+	mutex_lock(&heat->lock);
+	if (heat->dead) {
+		mutex_unlock(&heat->lock);
+		return;
+	}
+	heat->generation++;
+	if (!heat->generation)
+		heat->generation = 1;
+	heat->head = 0;
+	heat->count = 0;
+	heat->queue_flushes++;
+	g6ts_heat_enqueue_locked(heat, 0, flags, NULL, 0);
+	mutex_unlock(&heat->lock);
+	wake_up_interruptible(&heat->read_wait);
+}
+
+static bool g6ts_heat_read_ready(struct g6ts_heat_device *heat)
+{
+	return READ_ONCE(heat->count) || READ_ONCE(heat->dead);
+}
+
+static int g6ts_heat_open(struct inode *inode, struct file *file)
+{
+	struct miscdevice *miscdev = file->private_data;
+	struct g6ts_heat_device *heat =
+		container_of(miscdev, struct g6ts_heat_device, miscdev);
+
+	if (!kref_get_unless_zero(&heat->ref))
+		return -ENODEV;
+	if (atomic_cmpxchg(&heat->opened, 0, 1)) {
+		kref_put(&heat->ref, g6ts_heat_device_release);
+		return -EBUSY;
+	}
+
+	mutex_lock(&heat->lock);
+	if (heat->dead) {
+		mutex_unlock(&heat->lock);
+		atomic_set(&heat->opened, 0);
+		kref_put(&heat->ref, g6ts_heat_device_release);
+		return -ENODEV;
+	}
+	file->private_data = heat;
+	mutex_unlock(&heat->lock);
+	return nonseekable_open(inode, file);
+}
+
+static int g6ts_heat_release(struct inode *inode, struct file *file)
+{
+	struct g6ts_heat_device *heat = file->private_data;
+
+	atomic_set(&heat->opened, 0);
+	kref_put(&heat->ref, g6ts_heat_device_release);
+	return 0;
+}
+
+static ssize_t g6ts_heat_read(struct file *file, char __user *buffer,
+			      size_t size, loff_t *offset)
+{
+	struct g6ts_heat_device *heat = file->private_data;
+	struct g6ts_heat_frame *frame;
+	size_t content_len;
+	size_t record_len;
+	int ret;
+
+	for (;;) {
+		if (!(file->f_flags & O_NONBLOCK)) {
+			ret = wait_event_interruptible(heat->read_wait,
+						       g6ts_heat_read_ready(heat));
+			if (ret)
+				return ret;
+		}
+
+		mutex_lock(&heat->lock);
+		if (heat->count)
+			break;
+		if (heat->dead) {
+			mutex_unlock(&heat->lock);
+			return 0;
+		}
+		mutex_unlock(&heat->lock);
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+	}
+
+	frame = &heat->frames[heat->head];
+	record_len = le32_to_cpu(frame->header.record_len);
+	content_len = le16_to_cpu(frame->header.content_len);
+	if (size < record_len) {
+		ret = -EMSGSIZE;
+		goto out_unlock;
+	}
+	if (copy_to_user(buffer, &frame->header, sizeof(frame->header)) ||
+	    (content_len &&
+	     copy_to_user(buffer + sizeof(frame->header), frame->content,
+			  content_len))) {
+		ret = -EFAULT;
+		goto out_unlock;
+	}
+
+	heat->head = (heat->head + 1) % G6TS_HEAT_QUEUE_CAPACITY;
+	heat->count--;
+	mutex_unlock(&heat->lock);
+	return record_len;
+
+out_unlock:
+	mutex_unlock(&heat->lock);
+	return ret;
+}
+
+static __poll_t g6ts_heat_poll(struct file *file, poll_table *wait)
+{
+	struct g6ts_heat_device *heat = file->private_data;
+	__poll_t mask = 0;
+
+	poll_wait(file, &heat->read_wait, wait);
+	mutex_lock(&heat->lock);
+	if (heat->count)
+		mask |= EPOLLIN | EPOLLRDNORM;
+	if (heat->dead)
+		mask |= EPOLLHUP;
+	mutex_unlock(&heat->lock);
+	return mask;
+}
+
+static long g6ts_heat_ioctl(struct file *file, unsigned int cmd,
+			    unsigned long arg)
+{
+	struct g6ts_heat_device *heat = file->private_data;
+	void __user *argp = (void __user *)arg;
+
+	switch (cmd) {
+	case G6TS_HEAT_IOC_GET_INFO: {
+		struct g6ts_heat_info info = {
+			.abi_version = cpu_to_le16(G6TS_HEAT_ABI_VERSION),
+			.struct_size = cpu_to_le16(sizeof(info)),
+			.record_header_size =
+				cpu_to_le16(sizeof(struct g6ts_heat_record_header)),
+			.max_content_size =
+				cpu_to_le32(G6TS_HEAT_MAX_CONTENT_SIZE),
+			.queue_capacity =
+				cpu_to_le32(G6TS_HEAT_QUEUE_CAPACITY),
+			.supported_record_flags =
+				cpu_to_le64(G6TS_HEAT_RECORD_F_RESET |
+					    G6TS_HEAT_RECORD_F_SUSPEND |
+					    G6TS_HEAT_RECORD_F_TRANSPORT_FAULT),
+		};
+
+		return copy_to_user(argp, &info, sizeof(info)) ? -EFAULT : 0;
+	}
+	case G6TS_HEAT_IOC_GET_STATS: {
+		struct g6ts_heat_stats stats = {
+			.abi_version = cpu_to_le16(G6TS_HEAT_ABI_VERSION),
+			.struct_size = cpu_to_le16(sizeof(stats)),
+			.queue_capacity =
+				cpu_to_le32(G6TS_HEAT_QUEUE_CAPACITY),
+		};
+
+		mutex_lock(&heat->lock);
+		stats.generation = cpu_to_le32(heat->generation);
+		stats.queued_records = cpu_to_le32(heat->count);
+		stats.records_enqueued = cpu_to_le64(heat->records_enqueued);
+		stats.records_dropped = cpu_to_le64(heat->records_dropped);
+		stats.queue_flushes = cpu_to_le64(heat->queue_flushes);
+		stats.oversize_drops = cpu_to_le64(heat->oversize_drops);
+		stats.report_0b = cpu_to_le64(heat->report_counts[0]);
+		stats.report_0c = cpu_to_le64(heat->report_counts[1]);
+		stats.report_0d = cpu_to_le64(heat->report_counts[2]);
+		stats.report_1a = cpu_to_le64(heat->report_counts[3]);
+		mutex_unlock(&heat->lock);
+
+		return copy_to_user(argp, &stats, sizeof(stats)) ? -EFAULT : 0;
+	}
+	default:
+		return -ENOTTY;
+	}
+}
+
+static const struct file_operations g6ts_heat_fops = {
+	.owner = THIS_MODULE,
+	.open = g6ts_heat_open,
+	.release = g6ts_heat_release,
+	.read = g6ts_heat_read,
+	.poll = g6ts_heat_poll,
+	.unlocked_ioctl = g6ts_heat_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = compat_ptr_ioctl,
+#endif
+};
+
+static void g6ts_heat_unregister(void *data)
+{
+	struct g6ts_heat_device *heat = data;
+
+	misc_deregister(&heat->miscdev);
+	mutex_lock(&heat->lock);
+	heat->dead = true;
+	heat->head = 0;
+	heat->count = 0;
+	mutex_unlock(&heat->lock);
+	wake_up_interruptible(&heat->read_wait);
+	kref_put(&heat->ref, g6ts_heat_device_release);
+}
+
+static int g6ts_heat_register(struct g6ts *ts)
+{
+	struct g6ts_heat_device *heat;
+	int ret;
+
+	heat = kzalloc_obj(*heat);
+	if (!heat)
+		return -ENOMEM;
+	heat->frames = kvcalloc(G6TS_HEAT_QUEUE_CAPACITY,
+				sizeof(*heat->frames), GFP_KERNEL);
+	if (!heat->frames) {
+		kfree(heat);
+		return -ENOMEM;
+	}
+
+	mutex_init(&heat->lock);
+	init_waitqueue_head(&heat->read_wait);
+	kref_init(&heat->ref);
+	atomic_set(&heat->opened, 0);
+	heat->generation = 1;
+	heat->sequence = 1;
+	heat->miscdev.minor = MISC_DYNAMIC_MINOR;
+	heat->miscdev.name = "g6ts-heat";
+	heat->miscdev.fops = &g6ts_heat_fops;
+	heat->miscdev.parent = &ts->spi->dev;
+
+	ret = misc_register(&heat->miscdev);
+	if (ret) {
+		kref_put(&heat->ref, g6ts_heat_device_release);
+		return ret;
+	}
+	ts->heat = heat;
+	ret = devm_add_action_or_reset(&ts->spi->dev, g6ts_heat_unregister,
+				       heat);
+	if (ret)
+		ts->heat = NULL;
+	return ret;
+}
 
 static const char *
 g6ts_initialization_stage_name(enum g6ts_initialization_stage stage)
@@ -804,11 +1200,8 @@ static ssize_t feedback_state_show(struct device *dev,
 	mutex_lock(&ts->io_lock);
 	length = sysfs_emit(buf,
 			    "seq %u\n"
-			    "pen_identity_known %u\n"
-			    "pen_identity %4phN\n"
 			    "sent %llu phase_a %llu phase_b %llu\n",
-			    ts->a5_seq, ts->pen_identity_known,
-			    ts->pen_identity, ts->heat_feedback_sent,
+			    ts->a5.sequence, ts->heat_feedback_sent,
 			    ts->heat_feedback_phase_a,
 			    ts->heat_feedback_phase_b);
 	mutex_unlock(&ts->io_lock);
@@ -2287,17 +2680,26 @@ static void g6ts_report_pen(struct g6ts *ts, const u8 *content)
 	bool touching = flags & (G6TS_PEN_TIP_SWITCH | G6TS_PEN_ERASER);
 	bool barrel = flags & G6TS_PEN_BARREL_SWITCH;
 	bool rubber = flags & (G6TS_PEN_INVERT | G6TS_PEN_ERASER);
-	u16 x, y, pressure, tilt_x, tilt_y;
+	u16 x, y, pressure, raw_tilt_x, raw_tilt_y;
+	s16 tilt_x, tilt_y;
 
 	/* Layout and logical ranges come from the report-0x01 HID collection. */
 	x = min_t(u16, get_unaligned_le16(&content[1]), G6TS_PEN_X_MAX);
 	y = min_t(u16, get_unaligned_le16(&content[3]), G6TS_PEN_Y_MAX);
 	pressure = min_t(u16, get_unaligned_le16(&content[5]),
 			 G6TS_PEN_PRESSURE_MAX);
-	tilt_x = min_t(u16, get_unaligned_le16(&content[7]),
-		       G6TS_PEN_TILT_MAX);
-	tilt_y = min_t(u16, get_unaligned_le16(&content[9]),
-		       G6TS_PEN_TILT_MAX);
+	raw_tilt_x = min_t(u16, get_unaligned_le16(&content[7]),
+			   G6TS_PEN_TILT_RAW_MAX);
+	raw_tilt_y = min_t(u16, get_unaligned_le16(&content[9]),
+			   G6TS_PEN_TILT_RAW_MAX);
+	/*
+	 * HID maps logical 0..18000 to physical -9000..9000 at a -2
+	 * degree exponent.  Linux therefore sees signed hundredths of a
+	 * degree, centered at zero, while this dormant native path stays a
+	 * guarded fallback.
+	 */
+	tilt_x = raw_tilt_x - G6TS_PEN_TILT_CENTER;
+	tilt_y = raw_tilt_y - G6TS_PEN_TILT_CENTER;
 
 	touchscreen_report_pos(input, &ts->pen_prop, x, y, false);
 	input_report_abs(input, ABS_PRESSURE, pressure);
@@ -2322,31 +2724,20 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 	if (ts->last_class != DATA)
 		return;
 	ts->report_counts[ts->last_content_id]++;
+	/* Preserve raw pen measurements before touch-readiness can discard them. */
+	if (g6ts_is_raw_export_report(ts->last_content_id))
+		g6ts_heat_enqueue(ts, ts->last_content_id, payload,
+				  ts->last_content_len);
 	switch (ts->last_content_id) {
-	case 0x6e:
-		if (ts->last_content_len >= sizeof(ts->pen_identity) &&
-		    payload[0] == 0xf7 && payload[1] == 0x77 &&
-		    payload[2] == 0xf5 && payload[3] == 0x97) {
-			bool first_identity = !ts->pen_identity_known;
-
-			memcpy(ts->pen_identity, payload,
-			       sizeof(ts->pen_identity));
-			ts->pen_identity_known = true;
-			if (first_identity)
-				dev_info(&ts->spi->dev,
-					 "pen identity announced: %4phN\n",
-					 ts->pen_identity);
-		}
-		break;
 	case 0x1a:
 		g6ts_send_heat_feedback_a5(ts, true);
 		break;
 	case 0x0d:
-		ts->a5_cycle_saw_0x0d = true;
+		ts->a5.cycle_saw_0x0d = true;
 		break;
 	case 0x0b:
-		if (ts->a5_cycle_saw_0x0d) {
-			ts->a5_cycle_saw_0x0d = false;
+		if (ts->a5.cycle_saw_0x0d) {
+			ts->a5.cycle_saw_0x0d = false;
 			g6ts_send_heat_feedback_a5(ts, false);
 		}
 		break;
@@ -2517,6 +2908,7 @@ static void g6ts_note_panel_reset_locked(struct g6ts *ts,
 		}
 	}
 	g6ts_release_inputs(ts);
+	g6ts_heat_generation_boundary(ts, G6TS_HEAT_RECORD_F_RESET);
 	dev_warn(&ts->spi->dev,
 		 "panel reset notification #%llu interval=%lums\n",
 		 ts->reset_notifications, interval_ms);
@@ -2534,6 +2926,8 @@ static void g6ts_note_host_fault_locked(struct g6ts *ts, int error)
 	else
 		ts->irq_transport_errors++;
 	ts->last_host_fault = error;
+	g6ts_heat_generation_boundary(ts,
+				      G6TS_HEAT_RECORD_F_TRANSPORT_FAULT);
 
 	if (!g6ts_host_fault_recovery) {
 		dev_warn_ratelimited(&ts->spi->dev,
@@ -2748,7 +3142,8 @@ static void g6ts_build_windows_feedback_a1(u8 content[G6TS_WINDOWS_FEEDBACK_LEN]
 	put_unaligned_le16(g6ts_parity_fast_host_id, &content[40]);
 }
 
-static void g6ts_build_windows_feedback_a5(u8 content[G6TS_WINDOWS_FEEDBACK_LEN])
+static void g6ts_build_windows_feedback_a5(struct g6ts *ts,
+					   u8 content[G6TS_WINDOWS_FEEDBACK_LEN])
 {
 	memset(content, 0, G6TS_WINDOWS_FEEDBACK_LEN);
 	content[0] = 0x8e;
@@ -2756,7 +3151,7 @@ static void g6ts_build_windows_feedback_a5(u8 content[G6TS_WINDOWS_FEEDBACK_LEN]
 	/* Initial V06 sequence and current-feedback flags with no pen record. */
 	content[2] = 0;
 	content[3] = BIT(1);
-	put_unaligned_le16(g6ts_parity_fast_host_id, &content[39]);
+	put_unaligned_le16(ts->a5.fast_host_id, &content[39]);
 	/* The V06 sender unconditionally adds validity bit 0x0040. */
 	put_unaligned_le16(0x0040, &content[46]);
 }
@@ -2764,26 +3159,36 @@ static void g6ts_build_windows_feedback_a5(u8 content[G6TS_WINDOWS_FEEDBACK_LEN]
 static void g6ts_send_heat_feedback_a5(struct g6ts *ts,
 				       bool after_heat_group)
 {
+	/*
+	 * This bounded encoder preserves the hardware-proven V06 timing and wire
+	 * template; only sequence, cycle phase, and configured FastHostId are
+	 * validated live state.  Offsets 8..38 and the validity maps remain
+	 * unmapped, so never replay a captured body or accept an opaque userspace
+	 * payload in their place.
+	 */
 	u8 content[G6TS_WINDOWS_FEEDBACK_LEN] = { 0 };
 	int ret;
 
 	if (!g6ts_heat_feedback)
 		return;
+	if (!ts->a5.fast_host_id_valid) {
+		dev_warn_once(&ts->spi->dev,
+			      "heat feedback disabled: parity_fast_host_id is unavailable or out of range\n");
+		return;
+	}
 
 	content[0] = 0x8e;
 	content[1] = 0xa5;
-	content[2] = ts->a5_seq++;
+	content[2] = ts->a5.sequence;
 	content[3] = 0x02;
-	if (ts->pen_identity_known)
-		memcpy(&content[8], ts->pen_identity, sizeof(ts->pen_identity));
 	put_unaligned_le16(0x1770, &content[12]);
 	content[34] = 0xff;
 	content[35] = 0x4c;
-	put_unaligned_le16(g6ts_parity_fast_host_id, &content[39]);
+	put_unaligned_le16(ts->a5.fast_host_id, &content[39]);
 	content[41] = 0x01;
 	content[43] = after_heat_group ? 0x04 : 0x02;
 	content[44] = 0xff;
-	content[46] = ts->pen_identity_known ? 0xdb : 0x52;
+	content[46] = 0x52;
 	content[47] = 0x43;
 	content[48] = 0xff;
 	content[49] = 0x02;
@@ -2798,6 +3203,8 @@ static void g6ts_send_heat_feedback_a5(struct g6ts *ts,
 		return;
 	}
 
+	/* Advance only after a successful write; u8 wrap is the wire behavior. */
+	ts->a5.sequence++;
 	ts->heat_feedback_sent++;
 	if (after_heat_group)
 		ts->heat_feedback_phase_a++;
@@ -3042,7 +3449,7 @@ static int g6ts_windows_cold_attach_locked(struct g6ts *ts)
 		return ret ? ret : -EPROTO;
 
 	ts->initialization_stage = G6TS_INIT_WINDOWS_FEEDBACK_A5;
-	g6ts_build_windows_feedback_a5(feedback);
+	g6ts_build_windows_feedback_a5(ts, feedback);
 	ret = g6ts_dma_hidspi_output(ts, OUTPUT_REPORT, 0x09, feedback,
 				     sizeof(feedback));
 	if (ret)
@@ -3486,6 +3893,16 @@ static int g6ts_probe(struct spi_device *spi)
 	if (!ts->body)
 		return -ENOMEM;
 	ts->spi = spi;
+	/*
+	 * Initial attach A5 carries sequence zero.  Streaming starts at one and
+	 * deliberately survives transport boundaries until evidence says otherwise.
+	 */
+	ts->a5.sequence = 1;
+	if (g6ts_parity_fast_host_id >= 0 &&
+	    g6ts_parity_fast_host_id <= U16_MAX) {
+		ts->a5.fast_host_id = g6ts_parity_fast_host_id;
+		ts->a5.fast_host_id_valid = true;
+	}
 	ts->interrupt_gpio = devm_gpiod_get(&spi->dev, "interrupt", GPIOD_IN);
 	if (IS_ERR(ts->interrupt_gpio))
 		return dev_err_probe(&spi->dev, PTR_ERR(ts->interrupt_gpio),
@@ -3494,14 +3911,6 @@ static int g6ts_probe(struct spi_device *spi)
 	if (ts->interrupt_irq < 0)
 		return dev_err_probe(&spi->dev, ts->interrupt_irq,
 				     "failed to map interrupt GPIO\n");
-	ret = devm_request_threaded_irq(&spi->dev, ts->interrupt_irq,
-					g6ts_interrupt_edge,
-					g6ts_interrupt_thread,
-					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-					G6TS_NAME, ts);
-	if (ret)
-		return dev_err_probe(&spi->dev, ret,
-				     "failed to request interrupt\n");
 	ts->power_gpio =
 		devm_gpiod_get_optional(&spi->dev, "power", GPIOD_OUT_LOW);
 	if (IS_ERR(ts->power_gpio))
@@ -3519,6 +3928,18 @@ static int g6ts_probe(struct spi_device *spi)
 	mutex_init(&ts->io_lock);
 	INIT_DELAYED_WORK(&ts->recovery_work, g6ts_recovery_work);
 	spi_set_drvdata(spi, ts);
+	ret = g6ts_heat_register(ts);
+	if (ret)
+		return dev_err_probe(&spi->dev, ret,
+				     "failed to register raw Heat device\n");
+	ret = devm_request_threaded_irq(&spi->dev, ts->interrupt_irq,
+					g6ts_interrupt_edge,
+					g6ts_interrupt_thread,
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					G6TS_NAME, ts);
+	if (ret)
+		return dev_err_probe(&spi->dev, ret,
+				     "failed to request interrupt\n");
 	ret = devm_device_add_group(&spi->dev, &g6ts_attribute_group);
 	if (ret)
 		return dev_err_probe(&spi->dev, ret,
@@ -3566,10 +3987,10 @@ static int g6ts_probe(struct spi_device *spi)
 	input_set_abs_params(ts->pen_input, ABS_Y, 0, G6TS_PEN_Y_MAX, 0, 0);
 	input_set_abs_params(ts->pen_input, ABS_PRESSURE, 0,
 			     G6TS_PEN_PRESSURE_MAX, 0, 0);
-	input_set_abs_params(ts->pen_input, ABS_TILT_X, 0,
-			     G6TS_PEN_TILT_MAX, 0, 0);
-	input_set_abs_params(ts->pen_input, ABS_TILT_Y, 0,
-			     G6TS_PEN_TILT_MAX, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_TILT_X,
+			     -G6TS_PEN_TILT_CENTER, G6TS_PEN_TILT_CENTER, 0, 0);
+	input_set_abs_params(ts->pen_input, ABS_TILT_Y,
+			     -G6TS_PEN_TILT_CENTER, G6TS_PEN_TILT_CENTER, 0, 0);
 	touchscreen_parse_properties(ts->pen_input, false, &ts->pen_prop);
 	input_abs_set_res(ts->pen_input, ABS_X, ts->pen_prop.swap_x_y ?
 			  G6TS_PEN_Y_RESOLUTION : G6TS_PEN_X_RESOLUTION);
@@ -3621,6 +4042,8 @@ static int g6ts_suspend(struct device *dev)
 	cancel_delayed_work_sync(&ts->recovery_work);
 
 	mutex_lock(&ts->io_lock);
+	g6ts_heat_generation_boundary(ts,
+				      G6TS_HEAT_RECORD_F_SUSPEND);
 	g6ts_release_inputs(ts);
 	ret = g6ts_power_off(ts);
 	mutex_unlock(&ts->io_lock);

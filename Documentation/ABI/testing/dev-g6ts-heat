@@ -1,0 +1,55 @@
+What:		/dev/g6ts-heat
+Date:		August 2026
+KernelVersion:	7.2
+Contact:	linux-input@vger.kernel.org
+Description:
+		Binary raw-frame stream for the Microsoft Surface G6 touch/pen
+		processor.  HEAT reports 0x0b, 0x0c, 0x0d, and 0x1a plus optional
+		opaque sideband reports 0x07 and 0x6e are exported in transport
+		order before the touch-readiness filter is applied.  Sideband
+		records are not cycle members or pen-presence notifications.
+
+		Only one reader may open the misc character device at a time.  A
+		blocking read waits for a complete record.  O_NONBLOCK returns
+		-EAGAIN when empty.  Every successful read returns exactly one
+		whole record; a buffer smaller than record_len returns -EMSGSIZE
+		without consuming it.  poll(2) reports POLLIN while records are
+		queued and POLLHUP after device removal.
+
+		The first 32 bytes are struct g6ts_heat_record_header from
+		<linux/g6ts_heat.h>, followed by content_len bytes copied exactly
+		from the HID-over-SPI content (the report ID is not repeated in the
+		payload).  All multibyte fields are little-endian:
+
+		=======  =====  ==================================================
+		Offset   Size   Meaning
+		=======  =====  ==================================================
+		0        4      Magic 0x31483647 (ASCII bytes "G6H1")
+		4        2      ABI version (1)
+		6        2      Header length (32)
+		8        4      Total record length
+		12       4      Transport generation
+		16       8      CLOCK_MONOTONIC timestamp in nanoseconds
+		24       4      Enqueue sequence, including boundary records
+		28       2      Content length (maximum 4349)
+		30       1      HID report ID, or zero for a boundary record
+		31       1      G6TS_HEAT_RECORD_F_* flags
+		=======  =====  ==================================================
+
+		Generation starts at one.  A panel reset, suspend, or transport
+		fault increments it, flushes queued frames, and enqueues a zero-data
+		boundary record.  RESET, SUSPEND, or TRANSPORT_FAULT in that record
+		tells userspace to release pen state immediately.  Queue overflow
+		drops the oldest record so retained records remain ordered and current.
+		Because overflow can drop the boundary record itself, readers must
+		also treat every generation change or sequence gap as a discontinuity,
+		release pen state immediately, and discard any partial measurement
+		cycle.
+
+		G6TS_HEAT_IOC_GET_INFO returns the ABI/header sizes, maximum content
+		length, queue capacity, and supported flags in struct
+		g6ts_heat_info.  G6TS_HEAT_IOC_GET_STATS returns the generation,
+		queue depth, enqueue/drop/flush counters, oversize drops, and the
+		four core HEAT report counts in struct g6ts_heat_stats.  Both ioctl
+		structures begin with ABI version and structure size and reserve
+		zero-filled space for compatible extension.
