@@ -89,6 +89,19 @@ static const struct software_node ssam_node_tmp_perf_profile_with_fan = {
 	.properties = ssam_node_tmp_perf_profile_has_fan,
 };
 
+/* Platform profile device for SP11, with a fan and low-power default. */
+static const struct property_entry ssam_node_tmp_perf_profile_sp11_props[] = {
+	PROPERTY_ENTRY_BOOL("has_fan"),
+	PROPERTY_ENTRY_BOOL("default-low-power"),
+	{ }
+};
+
+static const struct software_node ssam_node_tmp_perf_profile_sp11 = {
+	.name = "ssam:01:03:01:00:01",
+	.parent = &ssam_node_root,
+	.properties = ssam_node_tmp_perf_profile_sp11_props,
+};
+
 /* Thermal sensors. */
 static const struct software_node ssam_node_tmp_sensors = {
 	.name = "ssam:01:03:01:00:02",
@@ -410,7 +423,7 @@ static const struct software_node *ssam_node_group_sp11[] = {
 	&ssam_node_hub_kip,
 	&ssam_node_bat_ac,
 	&ssam_node_bat_main,
-	&ssam_node_tmp_perf_profile_with_fan,
+	&ssam_node_tmp_perf_profile_sp11,
 	&ssam_node_fan_speed,
 	&ssam_node_tmp_sensors,
 	&ssam_node_hid_kip_keyboard,
