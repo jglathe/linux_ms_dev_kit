@@ -5,6 +5,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
@@ -76,6 +77,7 @@
 #define CDC_WSA_TX2_SPKR_PROT_PATH_CFG0		(0x0288)
 #define CDC_WSA_TX3_SPKR_PROT_PATH_CTL		(0x02A4)
 #define CDC_WSA_TX3_SPKR_PROT_PATH_CFG0		(0x02A8)
+#define WSA_MACRO_PROTECTION_PA_COUNT		2
 #define CDC_WSA_INTR_CTRL_CFG			(0x0340)
 #define CDC_WSA_INTR_CTRL_CLR_COMMIT		(0x0344)
 #define CDC_WSA_INTR_CTRL_PIN1_MASK0		(0x0360)
@@ -417,6 +419,10 @@ struct wsa_macro {
 	int is_softclip_on[WSA_MACRO_SOFTCLIP_MAX];
 	int softclip_clk_users[WSA_MACRO_SOFTCLIP_MAX];
 	bool protected_feedback;
+	/* Protects protection_pa_users and protection_clocks_enabled. */
+	struct mutex protection_lock;
+	unsigned int protection_pa_users;
+	bool protection_clocks_enabled;
 	struct regmap *regmap;
 	struct clk *mclk;
 	struct clk *npl;
@@ -426,6 +432,8 @@ struct wsa_macro {
 	struct clk_hw hw;
 };
 #define to_wsa_macro(_hw) container_of(_hw, struct wsa_macro, hw)
+
+static const struct snd_soc_component_driver wsa_macro_component_drv;
 
 static const struct wsa_reg_layout wsa_codec_v2_1 = {
 	.rx_intx_1_mix_inp0_sel_mask		= GENMASK(2, 0),
@@ -1509,6 +1517,63 @@ static void wsa_macro_enable_disable_vi_sense(struct snd_soc_component *componen
 					      CDC_WSA_TX_SPKR_PROT_CLK_DISABLE);
 	}
 }
+
+static void wsa_macro_set_protection_clocks(struct snd_soc_component *component,
+					    bool enable)
+{
+	wsa_macro_enable_disable_vi_sense(component, enable,
+					  CDC_WSA_TX0_SPKR_PROT_PATH_CTL,
+					  CDC_WSA_TX1_SPKR_PROT_PATH_CTL, 0);
+	wsa_macro_enable_disable_vi_sense(component, enable,
+					  CDC_WSA_TX2_SPKR_PROT_PATH_CTL,
+					  CDC_WSA_TX3_SPKR_PROT_PATH_CTL, 0);
+}
+
+bool wsa_macro_protection_pa_event(struct snd_soc_component *source,
+				   bool enable)
+{
+	struct snd_soc_component *component;
+	struct wsa_macro *wsa;
+
+	if (!source || !source->card)
+		return false;
+
+	for_each_card_components(source->card, component) {
+		if (component->driver != &wsa_macro_component_drv)
+			continue;
+
+		wsa = snd_soc_component_get_drvdata(component);
+		if (!wsa->protected_feedback)
+			continue;
+
+		guard(mutex)(&wsa->protection_lock);
+
+		if (enable) {
+			if (wsa->protection_pa_users < WSA_MACRO_PROTECTION_PA_COUNT)
+				wsa->protection_pa_users++;
+
+			if (wsa->protection_pa_users == WSA_MACRO_PROTECTION_PA_COUNT &&
+			    !wsa->protection_clocks_enabled) {
+				wsa_macro_set_protection_clocks(component, true);
+				wsa->protection_clocks_enabled = true;
+			}
+		} else {
+			if (wsa->protection_pa_users == WSA_MACRO_PROTECTION_PA_COUNT &&
+			    wsa->protection_clocks_enabled) {
+				wsa_macro_set_protection_clocks(component, false);
+				wsa->protection_clocks_enabled = false;
+			}
+
+			if (wsa->protection_pa_users)
+				wsa->protection_pa_users--;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(wsa_macro_protection_pa_event);
 
 static void wsa_macro_enable_disable_vi_feedback(struct snd_soc_component *component,
 						 bool enable, u32 rate)
@@ -2737,6 +2802,8 @@ static int wsa_macro_probe(struct platform_device *pdev)
 	wsa = devm_kzalloc(dev, sizeof(*wsa), GFP_KERNEL);
 	if (!wsa)
 		return -ENOMEM;
+
+	mutex_init(&wsa->protection_lock);
 
 	wsa->macro = devm_clk_get_optional(dev, "macro");
 	if (IS_ERR(wsa->macro))

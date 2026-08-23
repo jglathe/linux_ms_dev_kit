@@ -6,6 +6,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/cleanup.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hwmon.h>
@@ -26,6 +27,8 @@
 #include <sound/soc-dapm.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
+
+#include "lpass-wsa-macro.h"
 
 #define WSA884X_BASE			0x3000
 #define WSA884X_ANA_BG_TSADC_BASE       (WSA884X_BASE + 0x0001)
@@ -298,6 +301,7 @@
 #define WSA884X_PA_FSM_TIMER1		(WSA884X_DIG_CTRL0_BASE + 0x34)
 #define WSA884X_PA_FSM_STA0		(WSA884X_DIG_CTRL0_BASE + 0x35)
 #define WSA884X_PA_FSM_STA1		(WSA884X_DIG_CTRL0_BASE + 0x36)
+#define WSA884X_PA_ERROR_MASK		GENMASK(4, 0)
 #define WSA884X_PA_FSM_ERR_CTL		(WSA884X_DIG_CTRL0_BASE + 0x37)
 #define WSA884X_PA_FSM_ERR_COND0	(WSA884X_DIG_CTRL0_BASE + 0x38)
 #define WSA884X_PA_FSM_ERR_COND1	(WSA884X_DIG_CTRL0_BASE + 0x39)
@@ -755,6 +759,7 @@ struct wsa884x_priv {
 	bool pa_on;
 	unsigned int supply_config;
 	unsigned int speaker_load_ohms;
+	bool protection_pa_reported;
 };
 
 enum wsa884x_supply_config {
@@ -1811,6 +1816,16 @@ static int wsa884x_codec_probe(struct snd_soc_component *comp)
 	return 0;
 }
 
+static void wsa884x_codec_remove(struct snd_soc_component *comp)
+{
+	struct wsa884x_priv *wsa884x = snd_soc_component_get_drvdata(comp);
+
+	if (wsa884x->protection_pa_reported) {
+		wsa_macro_protection_pa_event(comp, false);
+		wsa884x->protection_pa_reported = false;
+	}
+}
+
 static void wsa884x_spkr_post_pmu(struct snd_soc_component *component,
 				  struct wsa884x_priv *wsa884x)
 {
@@ -1918,6 +1933,7 @@ static const struct snd_soc_dapm_route wsa884x_audio_map[] = {
 static const struct snd_soc_component_driver wsa884x_component_drv = {
 	.name = "WSA884x",
 	.probe = wsa884x_codec_probe,
+	.remove = wsa884x_codec_remove,
 	.controls = wsa884x_snd_controls,
 	.num_controls = ARRAY_SIZE(wsa884x_snd_controls),
 	.dapm_widgets = wsa884x_dapm_widgets,
@@ -1939,6 +1955,9 @@ static int wsa884x_hw_params(struct snd_pcm_substream *substream,
 	};
 	int active_ports = 0;
 	int i;
+
+	if (dai->id && !wsa884x_uses_2s_4ohm_profile(wsa884x))
+		return -ENODEV;
 
 	if (!wsa884x->protected_feedback) {
 		wsa884x->active_ports = 0;
@@ -2011,28 +2030,75 @@ static int wsa884x_hw_free(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void wsa884x_disable_pa(struct snd_soc_component *component)
+{
+	snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
+				      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK, 0x0);
+	snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
+				      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK, 0x0);
+}
+
 static int wsa884x_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
 	struct snd_soc_component *component = dai->component;
+	struct wsa884x_priv *wsa884x = snd_soc_component_get_drvdata(component);
+	unsigned int pa_status = 0;
+	int ret;
 
 	if (dai->id != 0)
 		return 0;
 
 	if (mute) {
-		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
-					      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
-					      0x0);
-		snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
-					      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
-					      0x0);
+		if (wsa884x->protection_pa_reported) {
+			wsa_macro_protection_pa_event(component, false);
+			wsa884x->protection_pa_reported = false;
+		}
+
+		wsa884x_disable_pa(component);
 
 	} else {
-		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
-					      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
-					      0x1);
-		snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
-					      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
-					      0x1);
+		ret = snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
+						    WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
+						    0x1);
+		if (ret < 0) {
+			wsa884x_disable_pa(component);
+			return ret;
+		}
+
+		ret = snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
+						    WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
+						    0x1);
+		if (ret < 0) {
+			wsa884x_disable_pa(component);
+			return ret;
+		}
+
+		if (!wsa884x->protection_pa_reported &&
+		    wsa884x_uses_2s_4ohm_profile(wsa884x) &&
+		    wsa884x->protected_feedback) {
+			usleep_range(1000, 1100);
+			ret = regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1,
+					  &pa_status);
+			if (ret || (pa_status & WSA884X_PA_ERROR_MASK)) {
+				wsa884x_disable_pa(component);
+				if (ret)
+					dev_err(wsa884x->dev,
+						"cannot read protected PA status: %pe\n",
+						ERR_PTR(ret));
+				else
+					dev_err(wsa884x->dev,
+						"protected PA start failed: status %#x\n",
+						pa_status);
+				return ret ?: -EIO;
+			}
+
+			if (!wsa_macro_protection_pa_event(component, true)) {
+				wsa884x_disable_pa(component);
+				return -ENODEV;
+			}
+
+			wsa884x->protection_pa_reported = true;
+		}
 	}
 
 	return 0;
