@@ -598,6 +598,12 @@
 	remote-endpoint = <&dp1_connector_in>;
 };
 
+&iris {
+	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
+
+	status = "okay";
+};
+
 &mdss0_dp2_phy {
 	compatible = "qcom,sc8280xp-dp-phy";
 
@@ -836,10 +842,6 @@
 	status = "okay";
 };
 
-&rxmacro {
-	status = "okay";
-};
-
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
 	model = "SC8280XP-MICROSOFT-BLACKROCK";
@@ -941,6 +943,7 @@
 	vdda-phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -978,6 +981,7 @@
 	vdda-phy-supply = <&vreg_l4b>;
 	vdda-pll-supply = <&vreg_l3b>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -1015,11 +1019,6 @@
 	vdda-phy-supply = <&vreg_l1b>;
 	vdda-pll-supply = <&vreg_l4d>;
 
-	status = "okay";
-};
-
-&venus {
-	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
 	status = "okay";
 };
 
