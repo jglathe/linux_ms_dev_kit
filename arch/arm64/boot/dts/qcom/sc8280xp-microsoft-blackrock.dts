@@ -536,6 +536,18 @@
 	status = "okay";
 };
 
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
 &gpu {
 	status = "okay";
 };
@@ -586,6 +598,12 @@
 	remote-endpoint = <&dp1_connector_in>;
 };
 
+&iris {
+	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
+
+	status = "okay";
+};
+
 &mdss0_dp2_phy {
 	compatible = "qcom,sc8280xp-dp-phy";
 
@@ -596,9 +614,6 @@
 };
 
 &pcie2a {
-	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
-
 	vddpe-3v3-supply = <&vreg_nvme>;
 
 	pinctrl-0 = <&pcie2a_default>;
@@ -614,11 +629,13 @@
 	status = "okay";
 };
 
+&pcie2a_port0 {
+	reset-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+};
+
 &pcie4 {
 	max-link-speed = <2>;
-
-	perst-gpios = <&tlmm 141 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 139 GPIO_ACTIVE_LOW>;
 
 	vddpe-3v3-supply = <&vreg_wlan>;
 
@@ -629,6 +646,9 @@
 };
 
 &pcie4_port0 {
+	reset-gpios = <&tlmm 141 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 139 GPIO_ACTIVE_LOW>;
+
 	wifi@0 {
 		compatible = "pci17cb,1103";
 		reg = <0x10000 0x0 0x0 0x0 0x0>;
@@ -822,10 +842,6 @@
 	status = "okay";
 };
 
-&rxmacro {
-	status = "okay";
-};
-
 &sound {
 	compatible = "qcom,sc8280xp-sndcard";
 	model = "SC8280XP-MICROSOFT-BLACKROCK";
@@ -895,7 +911,7 @@
 		vddbtcmx-supply = <&vreg_pmu_btcmx_0p8>;
 		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
 		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
-		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
+		vddrfa1p7-supply = <&vreg_pmu_rfa_1p7>;
 
 		max-speed = <3200000>;
 
@@ -927,6 +943,7 @@
 	vdda-phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -964,6 +981,7 @@
 	vdda-phy-supply = <&vreg_l4b>;
 	vdda-pll-supply = <&vreg_l3b>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -1001,11 +1019,6 @@
 	vdda-phy-supply = <&vreg_l1b>;
 	vdda-pll-supply = <&vreg_l4d>;
 
-	status = "okay";
-};
-
-&venus {
-	firmware-name = "qcom/sc8280xp/microsoft/blackrock/qcvss8280.mbn";
 	status = "okay";
 };
 
