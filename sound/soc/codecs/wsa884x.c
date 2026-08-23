@@ -731,8 +731,11 @@ struct wsa884x_priv {
 	struct regulator_bulk_data supplies[WSA884X_SUPPLIES_NUM];
 	struct sdw_slave *slave;
 	struct sdw_stream_config sconfig;
-	struct sdw_stream_runtime *sruntime;
+	struct sdw_stream_runtime *sruntime[3];
 	struct sdw_port_config port_config[WSA884X_MAX_SWR_PORTS];
+	u8 cps_offset1;
+	u8 visense_channel_mask;
+	bool protected_feedback;
 	struct gpio_desc *sd_n;
 	struct reset_control *sd_reset;
 	bool port_prepared[WSA884X_MAX_SWR_PORTS];
@@ -870,6 +873,29 @@ static struct sdw_dpn_prop wsa884x_sink_dpn_prop[WSA884X_MAX_SWR_PORTS] = {
 		.simple_ch_prep_sm = true,
 		.read_only_wordlength = true,
 	}
+};
+
+static struct sdw_dpn_prop wsa884x_source_dpn_prop[] = {
+	{
+		.num = WSA884X_PORT_VISENSE + 1,
+		.type = SDW_DPN_SIMPLE,
+		.min_ch = 1,
+		.max_ch = 1,
+		.simple_ch_prep_sm = true,
+		.read_only_wordlength = true,
+	},
+	{
+		.num = WSA884X_PORT_CPS + 1,
+		.type = SDW_DPN_SIMPLE,
+		.min_ch = 1,
+		.max_ch = 2,
+		.simple_ch_prep_sm = true,
+		.read_only_wordlength = false,
+		.simple_transport_registers =
+			SDW_DPN_SIMPLE_TRANSPORT_BLOCKCTRL3 |
+			SDW_DPN_SIMPLE_TRANSPORT_SAMPLECTRL2 |
+			SDW_DPN_SIMPLE_TRANSPORT_HCTRL,
+	},
 };
 
 static const struct sdw_port_config wsa884x_pconfig[WSA884X_MAX_SWR_PORTS] = {
@@ -1773,22 +1799,74 @@ static int wsa884x_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
+	struct sdw_port_config port_config[WSA884X_MAX_SWR_PORTS];
+	struct sdw_stream_config sconfig = {
+		.ch_count = 1,
+		.bps = 1,
+		.type = SDW_STREAM_PDM,
+	};
+	int active_ports = 0;
 	int i;
 
-	wsa884x->active_ports = 0;
+	if (!wsa884x->protected_feedback) {
+		wsa884x->active_ports = 0;
+		for (i = 0; i < WSA884X_MAX_SWR_PORTS; i++) {
+			if (!wsa884x->port_enable[i])
+				continue;
+
+			wsa884x->port_config[wsa884x->active_ports] =
+				wsa884x_pconfig[i];
+			wsa884x->active_ports++;
+		}
+
+		wsa884x->sconfig.frame_rate = params_rate(params);
+
+		return sdw_stream_add_slave(wsa884x->slave, &wsa884x->sconfig,
+					    wsa884x->port_config,
+					    wsa884x->active_ports,
+					    wsa884x->sruntime[0]);
+	}
+
 	for (i = 0; i < WSA884X_MAX_SWR_PORTS; i++) {
 		if (!wsa884x->port_enable[i])
 			continue;
 
-		wsa884x->port_config[wsa884x->active_ports] = wsa884x_pconfig[i];
-		wsa884x->active_ports++;
+		if (dai->id == 0) {
+			if (i != WSA884X_PORT_DAC &&
+			    i != WSA884X_PORT_COMP &&
+			    i != WSA884X_PORT_BOOST)
+				continue;
+		} else if (dai->id == 1) {
+			if (i != WSA884X_PORT_VISENSE)
+				continue;
+		} else if (dai->id == 2) {
+			if (i != WSA884X_PORT_CPS)
+				continue;
+		} else {
+			continue;
+		}
+
+		port_config[active_ports] = wsa884x_pconfig[i];
+		if (i == WSA884X_PORT_VISENSE)
+			port_config[active_ports].ch_mask =
+				wsa884x->visense_channel_mask;
+		if (i == WSA884X_PORT_CPS) {
+			port_config[active_ports].transport_params_override_mask =
+				SDW_PORT_CONFIG_OVERRIDE_OFFSET1;
+			port_config[active_ports].transport_params_override.offset1 =
+				wsa884x->cps_offset1;
+		}
+		active_ports++;
 	}
 
-	wsa884x->sconfig.frame_rate = params_rate(params);
+	if (!active_ports)
+		return -ENODEV;
 
-	return sdw_stream_add_slave(wsa884x->slave, &wsa884x->sconfig,
-				    wsa884x->port_config, wsa884x->active_ports,
-				    wsa884x->sruntime);
+	sconfig.frame_rate = params_rate(params);
+	sconfig.direction = dai->id == 0 ? SDW_DATA_DIR_RX : SDW_DATA_DIR_TX;
+
+	return sdw_stream_add_slave(wsa884x->slave, &sconfig, port_config,
+				    active_ports, wsa884x->sruntime[dai->id]);
 }
 
 static int wsa884x_hw_free(struct snd_pcm_substream *substream,
@@ -1796,7 +1874,7 @@ static int wsa884x_hw_free(struct snd_pcm_substream *substream,
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
 
-	sdw_stream_remove_slave(wsa884x->slave, wsa884x->sruntime);
+	sdw_stream_remove_slave(wsa884x->slave, wsa884x->sruntime[dai->id]);
 
 	return 0;
 }
@@ -1804,6 +1882,9 @@ static int wsa884x_hw_free(struct snd_pcm_substream *substream,
 static int wsa884x_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
 	struct snd_soc_component *component = dai->component;
+
+	if (dai->id != 0)
+		return 0;
 
 	if (mute) {
 		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
@@ -1830,7 +1911,7 @@ static int wsa884x_set_stream(struct snd_soc_dai *dai,
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
 
-	wsa884x->sruntime = stream;
+	wsa884x->sruntime[dai->id] = stream;
 
 	return 0;
 }
@@ -1846,12 +1927,41 @@ static const struct snd_soc_dai_ops wsa884x_dai_ops = {
 static struct snd_soc_dai_driver wsa884x_dais[] = {
 	{
 		.name = "SPKR",
+		.id = 0,
 		.playback = {
 			.stream_name = "SPKR Playback",
 			.rates = WSA884X_RATES | WSA884X_FRAC_RATES,
 			.formats = WSA884X_FORMATS,
 			.rate_min = 8000,
 			.rate_max = 384000,
+			.channels_min = 1,
+			.channels_max = 1,
+		},
+		.ops = &wsa884x_dai_ops,
+	},
+	{
+		.name = "SPKR_VI",
+		.id = 1,
+		.playback = {
+			.stream_name = "SPKR VI Protection",
+			.rates = SNDRV_PCM_RATE_8000,
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			.rate_min = 8000,
+			.rate_max = 8000,
+			.channels_min = 1,
+			.channels_max = 1,
+		},
+		.ops = &wsa884x_dai_ops,
+	},
+	{
+		.name = "SPKR_CPS",
+		.id = 2,
+		.playback = {
+			.stream_name = "SPKR CPS Protection",
+			.rates = SNDRV_PCM_RATE_24000,
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			.rate_min = 24000,
+			.rate_max = 24000,
 			.channels_min = 1,
 			.channels_max = 1,
 		},
@@ -2046,6 +2156,8 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	struct device *dev = &pdev->dev;
 	struct wsa884x_priv *wsa884x;
 	unsigned int i;
+	u32 cps_offset1;
+	u32 visense_channel_mask;
 	int ret;
 
 	wsa884x = devm_kzalloc(dev, sizeof(*wsa884x), GFP_KERNEL);
@@ -2083,6 +2195,29 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	wsa884x->sconfig.bps = 1;
 	wsa884x->sconfig.direction = SDW_DATA_DIR_RX;
 	wsa884x->sconfig.type = SDW_STREAM_PDM;
+	wsa884x->visense_channel_mask =
+		wsa884x_pconfig[WSA884X_PORT_VISENSE].ch_mask;
+	wsa884x->protected_feedback =
+		of_property_read_bool(dev->of_node, "qcom,enable-cps");
+	if (wsa884x->protected_feedback) {
+		ret = of_property_read_u32(dev->of_node,
+					   "qcom,visense-channel-mask",
+					   &visense_channel_mask);
+		if (!ret) {
+			if (!visense_channel_mask || visense_channel_mask > U8_MAX)
+				return dev_err_probe(dev, -EINVAL,
+						     "invalid qcom,visense-channel-mask\n");
+			wsa884x->visense_channel_mask = visense_channel_mask;
+		}
+
+		ret = of_property_read_u32(dev->of_node, "qcom,cps-offset1",
+					   &cps_offset1);
+		if (ret || cps_offset1 > U8_MAX)
+			return dev_err_probe(dev, ret ?: -ERANGE,
+					     "invalid qcom,cps-offset1\n");
+		wsa884x->cps_offset1 = cps_offset1;
+		wsa884x->port_enable[WSA884X_PORT_CPS] = true;
+	}
 
 	/*
 	 * Port map index starts with 0, however the data port for this codec
@@ -2092,7 +2227,17 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 					WSA884X_MAX_SWR_PORTS))
 		dev_dbg(dev, "Static Port mapping not specified\n");
 
-	pdev->prop.sink_ports = GENMASK(WSA884X_MAX_SWR_PORTS - 1, 0);
+	if (wsa884x->protected_feedback) {
+		pdev->prop.sink_ports = BIT(WSA884X_PORT_DAC + 1) |
+					BIT(WSA884X_PORT_COMP + 1) |
+					BIT(WSA884X_PORT_BOOST + 1) |
+					BIT(WSA884X_PORT_PBR + 1);
+		pdev->prop.source_ports = BIT(WSA884X_PORT_VISENSE + 1) |
+					  BIT(WSA884X_PORT_CPS + 1);
+		pdev->prop.src_dpn_prop = wsa884x_source_dpn_prop;
+	} else {
+		pdev->prop.sink_ports = GENMASK(WSA884X_MAX_SWR_PORTS - 1, 0);
+	}
 	pdev->prop.simple_clk_stop_capable = true;
 	pdev->prop.sink_dpn_prop = wsa884x_sink_dpn_prop;
 	pdev->prop.scp_int1_mask = SDW_SCP_INT1_BUS_CLASH | SDW_SCP_INT1_PARITY;
@@ -2131,7 +2276,8 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	return devm_snd_soc_register_component(dev,
 					       &wsa884x_component_drv,
 					       wsa884x_dais,
-					       ARRAY_SIZE(wsa884x_dais));
+					       wsa884x->protected_feedback ?
+					       ARRAY_SIZE(wsa884x_dais) : 1);
 }
 
 static int wsa884x_runtime_suspend(struct device *dev)
