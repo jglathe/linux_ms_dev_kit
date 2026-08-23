@@ -1191,6 +1191,12 @@
 	status = "okay";
 };
 
+&remoteproc_slpi {
+	firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcslpi8280.mbn";
+
+	status = "okay";
+};
+
 &rxmacro {
 	status = "okay";
 };
@@ -1370,6 +1376,7 @@
 	vdda-phy-supply = <&vreg_l9d>;
 	vdda-pll-supply = <&vreg_l4d>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
@@ -1407,6 +1414,7 @@
 	vdda-phy-supply = <&vreg_l4b>;
 	vdda-pll-supply = <&vreg_l3b>;
 
+	mode-switch;
 	orientation-switch;
 
 	status = "okay";
