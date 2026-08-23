@@ -1217,10 +1217,37 @@ static void qcom_swrm_stream_free_ports(struct qcom_swrm_ctrl *ctrl,
 	mutex_unlock(&ctrl->port_lock);
 }
 
+#define SWRM_DENALI_VI_DAI	9
+#define SWRM_DENALI_CPS_DAI	10
+
+static bool qcom_swrm_is_denali_feedback_dai(struct qcom_swrm_ctrl *ctrl, int dai_id)
+{
+	return of_machine_is_compatible("microsoft,denali") &&
+	       ctrl->bus.controller_id == MASTER_ID_WSA &&
+	       (dai_id == SWRM_DENALI_VI_DAI ||
+		dai_id == SWRM_DENALI_CPS_DAI);
+}
+
+static bool qcom_swrm_merge_port(struct sdw_port_config *pconfig, int nports,
+				 int port, struct sdw_port_runtime *p_rt)
+{
+	int i;
+
+	for (i = 0; i < nports; i++) {
+		if (pconfig[i].num != port)
+			continue;
+
+		pconfig[i].ch_mask |= p_rt->ch_mask;
+		return true;
+	}
+
+	return false;
+}
+
 static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 					struct sdw_stream_runtime *stream,
-				       struct snd_pcm_hw_params *params,
-				       int direction)
+					struct snd_pcm_hw_params *params,
+					int direction, int dai_id)
 {
 	struct sdw_stream_config sconfig;
 	struct sdw_master_runtime *m_rt;
@@ -1235,7 +1262,15 @@ static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 	if (!pconfig)
 		return -ENOMEM;
 
-	if (direction == SNDRV_PCM_STREAM_CAPTURE)
+	/*
+	 * Direction is a property of the controller data port.  A speaker VI
+	 * sidechain is intentionally exposed as a companion playback BE so
+	 * DPCM starts it with render, while the physical DIN port still carries
+	 * data from the SoundWire slaves into the master.
+	 */
+	if (qcom_swrm_is_denali_feedback_dai(ctrl, dai_id))
+		sconfig.direction = SDW_DATA_DIR_TX;
+	else if (direction == SNDRV_PCM_STREAM_CAPTURE)
 		sconfig.direction = SDW_DATA_DIR_TX;
 	else
 		sconfig.direction = SDW_DATA_DIR_RX;
@@ -1275,6 +1310,12 @@ static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 					dev_err(ctrl->dev, "All ports busy\n");
 					return -EBUSY;
 				}
+
+				/* Both Denali amplifiers use one master CPS port. */
+				if (qcom_swrm_is_denali_feedback_dai(ctrl, dai_id) &&
+				    qcom_swrm_merge_port(pconfig, nports, pn, p_rt))
+					continue;
+
 				set_bit(pn, port_mask);
 				pconfig[nports].num = pn;
 				pconfig[nports].ch_mask = p_rt->ch_mask;
@@ -1298,7 +1339,7 @@ static int qcom_swrm_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 
 	ret = qcom_swrm_stream_alloc_ports(ctrl, sruntime, params,
-					   substream->stream);
+					   substream->stream, dai->id);
 	if (ret)
 		qcom_swrm_stream_free_ports(ctrl, sruntime);
 
@@ -1403,6 +1444,20 @@ static int qcom_swrm_register_dais(struct qcom_swrm_ctrl *ctrl)
 		stream->channels_max = 1;
 		stream->rates = SNDRV_PCM_RATE_48000;
 		stream->formats = SNDRV_PCM_FMTBIT_S16_LE;
+
+		if (qcom_swrm_is_denali_feedback_dai(ctrl, i)) {
+			dais[i].playback = (struct snd_soc_pcm_stream) {
+				.channels_min = 1,
+				.channels_max = 1,
+				.rates = i == SWRM_DENALI_VI_DAI ?
+					 SNDRV_PCM_RATE_8000 : SNDRV_PCM_RATE_24000,
+				.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			};
+			dais[i].playback.stream_name =
+				devm_kasprintf(dev, GFP_KERNEL, "SoundWire Feedback%d", i);
+			if (!dais[i].playback.stream_name)
+				return -ENOMEM;
+		}
 
 		dais[i].ops = &qcom_swrm_pdm_dai_ops;
 		dais[i].id = i;
