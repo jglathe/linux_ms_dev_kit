@@ -3,6 +3,7 @@
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/unaligned.h>
 #include <linux/soc/qcom/apr.h>
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
@@ -59,13 +60,19 @@ struct apm_container_obj  {
 	struct apm_cont_prop_id_domain domain;
 } __packed;
 
+struct apm_container_extended_obj {
+	struct apm_container_obj common;
+	struct apm_prop_data parent_data;
+	struct apm_cont_prop_id_parent_container parent;
+	struct apm_prop_data heap_data;
+	struct apm_cont_prop_id_headp_id heap;
+} __packed;
+
 struct apm_container_params  {
 	struct apm_module_param_data param_data;
 	uint32_t num_containers;
-	struct apm_container_obj cont_obj[];
+	u8 cont_obj[];
 } __packed;
-
-#define APM_CONTAINER_PSIZE(p, n) ALIGN(struct_size(p, cont_obj, n), 8)
 
 /* Module List config */
 struct apm_mod_list_obj {
@@ -113,6 +120,15 @@ struct apm_mod_conn_list_params {
 
 #define APM_MOD_CONN_PSIZE(p, n) ALIGN(struct_size(p, conn_obj, n), 8)
 
+struct apm_mod_ctrl_link_list_params {
+	struct apm_module_param_data param_data;
+	u32 num_ctrl_links;
+	u8 ctrl_link_cfg[];
+} __packed;
+
+#define APM_MOD_CTRL_LINK_PSIZE(p, n) \
+	ALIGN(struct_size(p, ctrl_link_cfg, n), 8)
+
 struct apm_graph_open_params {
 	struct apm_cmd_header *cmd_header;
 	struct apm_sub_graph_params *sg_data;
@@ -120,6 +136,7 @@ struct apm_graph_open_params {
 	struct apm_module_list_params *mod_list_data;
 	struct apm_prop_list_params *mod_prop_data;
 	struct apm_mod_conn_list_params *mod_conn_list_data;
+	struct apm_mod_ctrl_link_list_params *mod_ctrl_link_data;
 } __packed;
 
 struct apm_pcm_module_media_fmt_cmd {
@@ -296,6 +313,32 @@ void *audioreach_alloc_apm_cmd_pkt(int pkt_size, uint32_t opcode, uint32_t token
 }
 EXPORT_SYMBOL_GPL(audioreach_alloc_apm_cmd_pkt);
 
+static int audioreach_size_add(size_t *total, size_t value)
+{
+	return check_add_overflow(*total, value, total) ? -EOVERFLOW : 0;
+}
+
+static int audioreach_flex_size(size_t base, size_t count, size_t element,
+				size_t *size)
+{
+	size_t elements;
+
+	if (check_mul_overflow(count, element, &elements) ||
+	    check_add_overflow(base, elements, size))
+		return -EOVERFLOW;
+
+	return 0;
+}
+
+static int audioreach_align_size(size_t *size)
+{
+	if (*size > SIZE_MAX - 7)
+		return -EOVERFLOW;
+
+	*size = ALIGN(*size, 8);
+	return 0;
+}
+
 void audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels)
 {
 	if (num_channels == 1) {
@@ -312,13 +355,21 @@ void audioreach_set_default_channel_mapping(u8 *ch_map, int num_channels)
 }
 EXPORT_SYMBOL_GPL(audioreach_set_default_channel_mapping);
 
-static void apm_populate_container_config(struct apm_container_obj *cfg,
+static size_t apm_container_obj_size(const struct audioreach_container *cont)
+{
+	return cont->has_extended_properties ?
+		sizeof(struct apm_container_extended_obj) :
+		sizeof(struct apm_container_obj);
+}
+
+static void apm_populate_container_config(void *data,
 					  const struct audioreach_container *cont)
 {
+	struct apm_container_obj *cfg = data;
 
 	/* Container Config */
 	cfg->container_cfg.container_id = cont->container_id;
-	cfg->container_cfg.num_prop = 4;
+	cfg->container_cfg.num_prop = cont->has_extended_properties ? 6 : 4;
 
 	/* Capability list */
 	cfg->cap_data.prop_id = APM_CONTAINER_PROP_ID_CAPABILITY_LIST;
@@ -340,6 +391,19 @@ static void apm_populate_container_config(struct apm_container_obj *cfg,
 	cfg->domain_data.prop_id = APM_CONTAINER_PROP_ID_PROC_DOMAIN;
 	cfg->domain_data.prop_size = sizeof(struct apm_cont_prop_id_domain);
 	cfg->domain.proc_domain = cont->proc_domain;
+
+	if (cont->has_extended_properties) {
+		struct apm_container_extended_obj *ext = data;
+
+		ext->parent_data.prop_id =
+			APM_CONTAINER_PROP_ID_PARENT_CONTAINER_ID;
+		ext->parent_data.prop_size = sizeof(ext->parent);
+		ext->parent.parent_container_id = cont->parent_container_id;
+
+		ext->heap_data.prop_id = APM_CONTAINER_PROP_ID_HEAP_ID;
+		ext->heap_data.prop_size = sizeof(ext->heap);
+		ext->heap.heap_id = cont->heap_id;
+	}
 }
 
 static void apm_populate_sub_graph_config(struct apm_sub_graph_data *cfg,
@@ -402,23 +466,26 @@ static void audioreach_populate_graph(struct q6apm *apm,
 {
 	struct apm_mod_conn_list_params *mc_data = open->mod_conn_list_data;
 	struct apm_module_list_params *ml_data = open->mod_list_data;
+	struct apm_mod_ctrl_link_list_params *cl_data = open->mod_ctrl_link_data;
+	u8 *ctrl_link_cfg = cl_data ? cl_data->ctrl_link_cfg : NULL;
 	struct apm_prop_list_params *mp_data = open->mod_prop_data;
 	struct apm_container_params *c_data = open->cont_data;
 	struct apm_sub_graph_params *sg_data = open->sg_data;
-	int ncontainer = 0, nmodule = 0, nconn = 0;
+	int nmodule = 0, nconn = 0;
 	struct apm_mod_prop_obj *module_prop_obj;
 	struct audioreach_container *container;
 	struct apm_module_conn_obj *conn_obj;
 	struct audioreach_module *module;
 	struct audioreach_sub_graph *sg;
-	struct apm_container_obj *cobj;
+	u8 *cobj = c_data->cont_obj;
 	struct apm_mod_list_obj *mlobj;
 	int i = 0;
 
 	mlobj = &ml_data->mod_list_obj[0];
 
 
-	if (info->dst_mod_inst_id && info->src_mod_inst_id) {
+	if (!info->internal_vmixer_connection &&
+	    info->dst_mod_inst_id && info->src_mod_inst_id) {
 		conn_obj = &mc_data->conn_obj[nconn];
 		conn_obj->src_mod_inst_id = info->src_mod_inst_id;
 		conn_obj->src_mod_op_port_id = info->src_mod_op_port_id;
@@ -433,8 +500,6 @@ static void audioreach_populate_graph(struct q6apm *apm,
 		apm_populate_sub_graph_config(sg_cfg, sg);
 
 		list_for_each_entry(container, &sg->container_list, node) {
-			cobj = &c_data->cont_obj[ncontainer];
-
 			apm_populate_container_config(cobj, container);
 			apm_populate_module_list_obj(mlobj, container, sg->sub_graph_id);
 
@@ -443,6 +508,16 @@ static void audioreach_populate_graph(struct q6apm *apm,
 
 				module_prop_obj = &mp_data->mod_prop_obj[nmodule++];
 				apm_populate_module_prop_obj(module_prop_obj, module);
+
+				if (module->ctrl_link_data) {
+					u32 size = le32_to_cpu(module->ctrl_link_data->size);
+
+					memcpy(ctrl_link_cfg,
+					       (u8 *)module->ctrl_link_data->data +
+						       sizeof(u32),
+					       size - sizeof(u32));
+					ctrl_link_cfg += size - sizeof(u32);
+				}
 
 				if (!module->max_op_port)
 					continue;
@@ -463,8 +538,7 @@ static void audioreach_populate_graph(struct q6apm *apm,
 			}
 			mlobj = (void *) mlobj + APM_MOD_LIST_OBJ_PSIZE(mlobj,
 									container->num_modules);
-
-			ncontainer++;
+			cobj += apm_container_obj_size(container);
 		}
 	}
 }
@@ -472,58 +546,115 @@ static void audioreach_populate_graph(struct q6apm *apm,
 void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 				 const struct audioreach_graph_info *info)
 {
-	int payload_size, sg_sz, cont_sz, ml_sz, mp_sz, mc_sz;
+	size_t payload_size = 0, sg_sz, cont_sz, ml_sz = 0;
+	size_t mp_sz, mc_sz, cl_sz = 0, object_size;
 	struct apm_module_param_data  *param_data;
-	struct apm_container_params *cont_params;
 	struct audioreach_container *container;
 	struct apm_sub_graph_params *sg_params;
 	struct apm_mod_conn_list_params *mcon;
 	struct apm_graph_open_params params;
 	struct apm_prop_list_params *mprop;
+	struct apm_mod_ctrl_link_list_params *mctrl;
 	struct audioreach_module *module;
 	struct audioreach_sub_graph *sgs;
 	struct apm_mod_list_obj *mlobj;
 	const struct list_head *sg_list;
-	int num_connections = 0;
-	int num_containers = 0;
-	int num_sub_graphs = 0;
-	int num_modules = 0;
-	int num_modules_list;
+	size_t num_connections = 0;
+	size_t num_containers = 0;
+	size_t num_sub_graphs = 0;
+	size_t num_ctrl_links = 0;
+	size_t ctrl_link_cfg_size = 0;
+	size_t num_modules = 0;
+	size_t num_modules_list;
 	struct gpr_pkt *pkt;
 	void *p;
+	int ret;
 
 	sg_list = &info->sg_list;
-	ml_sz = 0;
+	cont_sz = sizeof(struct apm_container_params);
 
 	/* add FE-BE connections */
-	if (info->dst_mod_inst_id && info->src_mod_inst_id)
-		num_connections++;
+	if (!info->internal_vmixer_connection &&
+	    info->dst_mod_inst_id && info->src_mod_inst_id)
+		num_connections = 1;
 
 	list_for_each_entry(sgs, sg_list, node) {
-		num_sub_graphs++;
+		if (check_add_overflow(num_sub_graphs, 1UL, &num_sub_graphs))
+			return ERR_PTR(-EOVERFLOW);
 		list_for_each_entry(container, &sgs->container_list, node) {
-			num_containers++;
-			num_modules += container->num_modules;
-			ml_sz = ml_sz + sizeof(struct apm_module_list_params) +
-				APM_MOD_LIST_OBJ_PSIZE(mlobj, container->num_modules);
+			if (check_add_overflow(num_containers, 1UL,
+					       &num_containers) ||
+			    check_add_overflow(num_modules,
+					       (size_t)container->num_modules,
+					       &num_modules) ||
+			    audioreach_size_add(&cont_sz,
+						apm_container_obj_size(container)))
+				return ERR_PTR(-EOVERFLOW);
+
+			ret = audioreach_flex_size(sizeof(*mlobj),
+						   container->num_modules,
+						   sizeof(mlobj->mod_cfg[0]),
+						   &object_size);
+			if (ret ||
+			    audioreach_size_add(&ml_sz,
+						sizeof(struct apm_module_list_params)) ||
+			    audioreach_size_add(&ml_sz, object_size))
+				return ERR_PTR(-EOVERFLOW);
 
 			list_for_each_entry(module, &container->modules_list, node) {
-				num_connections += module->num_connections;
+				if (check_add_overflow(num_connections,
+						       (size_t)module->num_connections,
+						       &num_connections))
+					return ERR_PTR(-EOVERFLOW);
+				if (module->ctrl_link_data) {
+					u32 size = le32_to_cpu(module->ctrl_link_data->size);
+					u32 links;
+
+					links = get_unaligned_le32(module->ctrl_link_data->data);
+					if (check_add_overflow(num_ctrl_links,
+							       (size_t)links,
+							       &num_ctrl_links) ||
+					    audioreach_size_add(&ctrl_link_cfg_size,
+								size - sizeof(u32)))
+						return ERR_PTR(-EOVERFLOW);
+				}
 			}
 		}
 	}
 
+	if (num_sub_graphs > U32_MAX || num_containers > U32_MAX ||
+	    num_modules > U32_MAX || num_connections > U32_MAX ||
+	    num_ctrl_links > U32_MAX)
+		return ERR_PTR(-EOVERFLOW);
+
 	num_modules_list = num_containers;
-	sg_sz = APM_SUB_GRAPH_PSIZE(sg_params, num_sub_graphs);
-	cont_sz = APM_CONTAINER_PSIZE(cont_params, num_containers);
+	ret = audioreach_flex_size(sizeof(*sg_params), num_sub_graphs,
+				   sizeof(sg_params->sg_cfg[0]), &sg_sz);
+	ret = ret ?: audioreach_flex_size(sizeof(*mprop), num_modules,
+					  sizeof(mprop->mod_prop_obj[0]), &mp_sz);
+	ret = ret ?: audioreach_flex_size(sizeof(*mcon), num_connections,
+					  sizeof(mcon->conn_obj[0]), &mc_sz);
+	if (num_ctrl_links)
+		ret = ret ?: audioreach_flex_size(sizeof(*mctrl),
+						  ctrl_link_cfg_size, 1, &cl_sz);
+	ret = ret ?: audioreach_align_size(&sg_sz);
+	ret = ret ?: audioreach_align_size(&cont_sz);
+	ret = ret ?: audioreach_align_size(&ml_sz);
+	ret = ret ?: audioreach_align_size(&mp_sz);
+	ret = ret ?: audioreach_align_size(&mc_sz);
+	if (num_ctrl_links)
+		ret = ret ?: audioreach_align_size(&cl_sz);
+	if (ret || audioreach_size_add(&payload_size, sg_sz) ||
+	    audioreach_size_add(&payload_size, cont_sz) ||
+	    audioreach_size_add(&payload_size, ml_sz) ||
+	    audioreach_size_add(&payload_size, mp_sz) ||
+	    audioreach_size_add(&payload_size, mc_sz) ||
+	    audioreach_size_add(&payload_size, cl_sz) ||
+	    payload_size > INT_MAX - GPR_HDR_SIZE - APM_CMD_HDR_SIZE)
+		return ERR_PTR(-EOVERFLOW);
 
-	ml_sz = ALIGN(ml_sz, 8);
-
-	mp_sz = APM_MOD_PROP_PSIZE(mprop, num_modules);
-	mc_sz =	APM_MOD_CONN_PSIZE(mcon, num_connections);
-
-	payload_size = sg_sz + cont_sz + ml_sz + mp_sz + mc_sz;
-	pkt = audioreach_alloc_apm_cmd_pkt(payload_size, APM_CMD_GRAPH_OPEN, 0);
+	pkt = audioreach_alloc_apm_cmd_pkt((int)payload_size,
+					   APM_CMD_GRAPH_OPEN, 0);
 	if (IS_ERR(pkt))
 		return pkt;
 
@@ -573,6 +704,17 @@ void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 	param_data->param_size = mc_sz - APM_MODULE_PARAM_DATA_SIZE;
 	params.mod_conn_list_data->num_connections = num_connections;
 	p += mc_sz;
+
+	if (num_ctrl_links) {
+		params.mod_ctrl_link_data = p;
+		param_data = &params.mod_ctrl_link_data->param_data;
+		param_data->module_instance_id = APM_MODULE_INSTANCE_ID;
+		param_data->param_id = APM_PARAM_ID_MODULE_CTRL_LINK_CFG;
+		param_data->param_size = sizeof(u32) + ctrl_link_cfg_size;
+		params.mod_ctrl_link_data->num_ctrl_links = num_ctrl_links;
+	} else {
+		params.mod_ctrl_link_data = NULL;
+	}
 
 	audioreach_populate_graph(apm, info, &params, sg_list, num_sub_graphs);
 

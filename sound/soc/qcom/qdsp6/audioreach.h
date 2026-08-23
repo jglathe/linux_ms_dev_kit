@@ -157,6 +157,7 @@ struct apm_module_prop_cfg {
 } __packed;
 
 #define APM_PARAM_ID_MODULE_CONN		0x08001004
+#define APM_PARAM_ID_MODULE_CTRL_LINK_CFG	0x08001061
 
 struct apm_param_id_module_conn {
 	uint32_t num_connections;
@@ -821,6 +822,7 @@ struct audioreach_graph_info {
 	uint32_t src_mod_op_port_id;
 	uint32_t dst_mod_inst_id;
 	uint32_t dst_mod_ip_port_id;
+	bool internal_vmixer_connection;
 };
 
 struct audioreach_sub_graph {
@@ -841,6 +843,9 @@ struct audioreach_container {
 	uint32_t graph_pos;
 	uint32_t stack_size;
 	uint32_t proc_domain;
+	u32 parent_container_id;
+	u32 heap_id;
+	bool has_extended_properties;
 	struct list_head node;
 
 	uint32_t num_modules;
@@ -887,12 +892,25 @@ struct audioreach_module {
 	uint32_t log_code;
 	uint32_t log_tap_point_id;
 	uint32_t log_mode;
+	bool speaker_protection_bypass;
+	u32 integrated_backend_id;
 
 	/* bookkeeping */
 	struct list_head node;
 	struct audioreach_container *container;
 	struct snd_soc_dapm_widget *widget;
 	struct audioreach_module_priv_data *data;
+	struct audioreach_module_priv_data *ctrl_link_data;
+	struct audioreach_module_priv_data *graph_cal_data;
+	struct audioreach_module_priv_data *render_ep_data;
+	struct audioreach_module_priv_data *sp_tag_data;
+	struct audioreach_module_priv_data *spvi_tag_data;
+	struct audioreach_module_priv_data *vi_ep_data;
+	struct audioreach_module_priv_data *protection_dynamic_data;
+	struct audioreach_module_priv_data *volume_gain_data;
+	struct audioreach_module_priv_data *volume_filter_data;
+	struct audioreach_module_priv_data *volume_mute_data;
+	struct audioreach_module_priv_data *channel_mixer_data;
 };
 
 struct audioreach_module_config {
