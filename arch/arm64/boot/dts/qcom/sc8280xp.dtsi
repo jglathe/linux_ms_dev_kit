@@ -2173,7 +2173,6 @@
 				 <0x02000000 0x0 0x30300000 0x0 0x30300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommu-map = <0 &pcie_smmu 0x60000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <6>;
@@ -2286,7 +2285,6 @@
 				 <0x02000000 0x0 0x32300000 0x0 0x32300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommu-map = <0 &pcie_smmu 0x50000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <5>;
@@ -2397,7 +2395,6 @@
 				 <0x02000000 0x0 0x34300000 0x0 0x34300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommu-map = <0 &pcie_smmu 0x40000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <4>;
@@ -2511,7 +2508,6 @@
 				 <0x02000000 0x0 0x38300000 0x0 0x38300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommu-map = <0 &pcie_smmu 0x30000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <3>;
@@ -2622,7 +2618,6 @@
 				 <0x02000000 0x0 0x3c300000 0x0 0x3c300000 0x0 0x1d00000>;
 			bus-range = <0x00 0xff>;
 
-			iommu-map = <0 &pcie_smmu 0x20000 0x10000>;
 			dma-coherent;
 
 			linux,pci-domain = <2>;
@@ -3697,8 +3692,6 @@
 			#clock-cells = <1>;
 			#phy-cells = <1>;
 
-			mode-switch;			
-
 			status = "disabled";
 
 			ports {
@@ -3813,8 +3806,6 @@
 
 			#clock-cells = <1>;
 			#phy-cells = <1>;
-
-			mode-switch;
 
 			status = "disabled";
 
