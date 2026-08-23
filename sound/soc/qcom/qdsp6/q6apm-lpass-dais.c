@@ -316,6 +316,8 @@ static int q6apm_lpass_dai_dev_probe(struct platform_device *pdev)
 	cfg.q6dma_ops = &q6dma_ops;
 	cfg.q6hdmi_ops = &q6hdmi_ops;
 	dais = q6dsp_audio_ports_set_config(dev, &cfg, &num_dais);
+	if (IS_ERR(dais))
+		return PTR_ERR(dais);
 
 	return devm_snd_soc_register_component(dev, &q6apm_lpass_dai_component, dais, num_dais);
 }
