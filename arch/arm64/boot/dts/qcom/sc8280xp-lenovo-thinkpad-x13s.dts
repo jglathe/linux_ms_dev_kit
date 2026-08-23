@@ -704,6 +704,18 @@
 	status = "okay";
 };
 
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
 &gpu {
 	status = "okay";
 };
@@ -1179,6 +1191,12 @@
 	status = "okay";
 };
 
+&remoteproc_slpi {
+	firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcslpi8280.mbn";
+
+	status = "okay";
+};
+
 &rxmacro {
 	status = "okay";
 };
@@ -1466,11 +1484,6 @@
 
 	qcom,dmic-sample-rate = <4800000>;
 
-	status = "okay";
-};
-
-&venus {
-	firmware-name = "qcom/sc8280xp/LENOVO/21BX/qcvss8280.mbn";
 	status = "okay";
 };
 
