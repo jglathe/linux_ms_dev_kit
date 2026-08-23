@@ -113,6 +113,22 @@ struct audioreach_graph {
 	u32 oob_token;
 	/* Serialize use of the graph's shared OOB buffer. */
 	struct mutex oob_lock;
+	/* Serialize topology-derived protection state for this graph only. */
+	struct mutex protection_lock;
+	bool protection_profile;
+	bool protection_malformed;
+	bool protection_runtime;
+	bool protection_available;
+	bool protection_configured;
+	bool protection_bypass_confirmed;
+	bool protection_vi_ready;
+	bool protection_cps_ready;
+	bool protection_faulted;
+	bool prepared;
+	bool prepare_uncertain;
+	bool close_confirmed;
+	bool execution_uncertain;
+	bool dma_quarantined;
 	bool oob_map_uncertain;
 	bool oob_transfer_uncertain;
 	/* Cached Graph data */
@@ -131,9 +147,13 @@ struct q6apm_graph {
 	struct device *dev;
 	struct q6apm *apm;
 	struct list_head node;
+	bool retained;
+	bool protection_profile;
+	bool protection_runtime;
 	bool is_push_pull_mode;
 	bool dying;
 	bool detached;
+	bool retain_dma_on_detach;
 	unsigned int active_users;
 	/* Protect admission and detach state for graph API users. */
 	spinlock_t lifecycle_lock;
@@ -161,7 +181,8 @@ struct q6apm_graph {
 
 /* Graph Operations */
 struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
-				     void *priv, int graph_id, int dir);
+				     void *priv, int graph_id, int dir,
+				     bool enable_protection);
 bool q6apm_graph_user_get(struct q6apm_graph *graph);
 void q6apm_graph_user_put(struct q6apm_graph *graph);
 int q6apm_graph_close(struct q6apm_graph *graph);
@@ -169,6 +190,10 @@ int q6apm_graph_prepare(struct q6apm_graph *graph);
 int q6apm_graph_start(struct q6apm_graph *graph);
 int q6apm_graph_stop(struct q6apm_graph *graph);
 int q6apm_graph_flush(struct q6apm_graph *graph);
+bool q6apm_graph_execution_uncertain(struct q6apm_graph *graph);
+void q6apm_graph_quarantine_dma(struct q6apm_graph *graph);
+bool q6apm_graph_dma_quarantined(struct device *dev, unsigned int graph_id);
+bool q6apm_graph_id_has_protection(struct device *dev, unsigned int graph_id);
 
 /* Media Format */
 int q6apm_graph_media_format_pcm(struct q6apm_graph *graph,
@@ -202,6 +227,8 @@ int q6apm_send_oob_config(struct audioreach_graph *graph,
 			  const void *data, size_t size);
 int q6apm_send_graph_oob_config(struct q6apm_graph *graph,
 				const void *data, size_t size);
+bool q6apm_graph_has_protection(const struct q6apm_graph *graph);
+int q6apm_graph_configure_protection(struct q6apm_graph *graph);
 
 /* Callback for graph specific */
 struct audioreach_module *q6apm_find_module_by_mid(struct q6apm_graph *graph,

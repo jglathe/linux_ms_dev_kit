@@ -184,10 +184,24 @@ static int q6apm_lpass_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (!dai_data->is_port_started[dai->id]) {
 			ret = q6apm_graph_start(dai_data->graph[dai->id]);
-			if (ret < 0)
+			if (ret < 0) {
+				if (q6apm_graph_execution_uncertain(dai_data->graph[dai->id]))
+					dai_data->is_port_started[dai->id] = true;
 				dev_err(dai->dev, "Failed to start APM port %d\n", dai->id);
-			else
+			} else {
 				dai_data->is_port_started[dai->id] = true;
+			}
+		}
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		if (dai_data->is_port_started[dai->id] &&
+		    q6apm_graph_has_protection(dai_data->graph[dai->id])) {
+			ret = q6apm_graph_stop(dai_data->graph[dai->id]);
+			if (ret < 0)
+				dev_err(dai->dev, "Failed to stop APM port %d\n",
+					dai->id);
+			else
+				dai_data->is_port_started[dai->id] = false;
 		}
 		break;
 	default:
@@ -219,7 +233,8 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	 * graph, so sequence for playback and capture will be different
 	 */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai_data->graph[dai->id] == NULL) {
-		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id, substream->stream);
+		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id,
+					 substream->stream, false);
 		if (IS_ERR(graph)) {
 			dev_err(dai->dev, "Failed to open graph (%d)\n", graph_id);
 			rc = PTR_ERR(graph);
@@ -259,7 +274,8 @@ static int q6apm_lpass_dai_startup(struct snd_pcm_substream *substream, struct s
 	int graph_id = dai->id;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id, substream->stream);
+		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id,
+					 substream->stream, false);
 		if (IS_ERR(graph)) {
 			dev_err(dai->dev, "Failed to open graph (%d)\n", graph_id);
 			return PTR_ERR(graph);

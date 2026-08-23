@@ -946,8 +946,13 @@ void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 				 const struct audioreach_graph_info *info);
 const struct audioreach_module_priv_data *
 audioreach_graph_find_data(const struct audioreach_graph_info *info, u32 type);
+const struct audioreach_module *
+audioreach_graph_find_module(const struct audioreach_graph_info *info, u32 mid);
+int audioreach_graph_protection_profile(const struct audioreach_graph_info *info);
 int audioreach_graph_protection_oob_size(const struct audioreach_graph_info *info,
 					 size_t *size);
+int audioreach_send_protected_graph_calibration(struct audioreach_graph *graph);
+int audioreach_configure_protection(struct q6apm_graph *graph);
 /* Topology specific */
 int audioreach_tplg_init(struct snd_soc_component *component);
 
