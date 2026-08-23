@@ -1017,27 +1017,62 @@ static const struct snd_soc_component_driver q6apm_fe_dai_component = {
 	.remove_order   = SND_SOC_COMP_ORDER_EARLY,
 };
 
+static void q6apm_dai_release_dma_dev(void *data)
+{
+	struct device *dev = data;
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+
+	if (apm) {
+		mutex_lock(&apm->lock);
+		if (apm->dma_dev == dev)
+			apm->dma_dev = NULL;
+		mutex_unlock(&apm->lock);
+	}
+	put_device(dev);
+}
+
 static int q6apm_dai_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
 	struct q6apm_dai_data *pdata;
+	struct q6apm *apm;
 	struct of_phandle_args args;
 	int rc;
+
+	apm = dev_get_drvdata(dev->parent);
+	if (!apm)
+		return -EPROBE_DEFER;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
 	rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
-	if (rc < 0)
+	if (rc < 0) {
 		pdata->sid = -1;
-	else
+	} else {
 		pdata->sid = args.args[0] & SID_MASK_DEFAULT;
+		of_node_put(args.np);
+	}
 
 	dev_set_drvdata(dev, pdata);
+	rc = 0;
+	mutex_lock(&apm->lock);
+	if (apm->dma_dev)
+		rc = -EBUSY;
+	else
+		apm->dma_dev = get_device(dev);
+	mutex_unlock(&apm->lock);
+	if (rc)
+		return rc;
 
-	return devm_snd_soc_register_component(dev, &q6apm_fe_dai_component, NULL, 0);
+	rc = devm_add_action_or_reset(dev, q6apm_dai_release_dma_dev, dev);
+	if (rc)
+		return rc;
+
+	return devm_snd_soc_register_component(dev, &q6apm_fe_dai_component,
+					       NULL, 0);
 }
 
 #ifdef CONFIG_OF

@@ -722,6 +722,99 @@ void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 }
 EXPORT_SYMBOL_GPL(audioreach_alloc_graph_pkt);
 
+static struct audioreach_module_priv_data *
+audioreach_module_data(const struct audioreach_module *module, u32 type)
+{
+	switch (type) {
+	case SND_SOC_AR_TPLG_GRAPH_CAL_CFG_TYPE:
+		return module->graph_cal_data;
+	case SND_SOC_AR_TPLG_RENDER_EP_CFG_TYPE:
+		return module->render_ep_data;
+	case SND_SOC_AR_TPLG_SP_TAG_CFG_TYPE:
+		return module->sp_tag_data;
+	case SND_SOC_AR_TPLG_SPVI_TAG_CFG_TYPE:
+		return module->spvi_tag_data;
+	case SND_SOC_AR_TPLG_VI_EP_CFG_TYPE:
+		return module->vi_ep_data;
+	case SND_SOC_AR_TPLG_PROTECTION_DYNAMIC_CFG_TYPE:
+		return module->protection_dynamic_data;
+	case SND_SOC_AR_TPLG_VOLUME_GAIN_CFG_TYPE:
+		return module->volume_gain_data;
+	case SND_SOC_AR_TPLG_VOLUME_FILTER_CFG_TYPE:
+		return module->volume_filter_data;
+	case SND_SOC_AR_TPLG_VOLUME_MUTE_CFG_TYPE:
+		return module->volume_mute_data;
+	case SND_SOC_AR_TPLG_CHANNEL_MIXER_CFG_TYPE:
+		return module->channel_mixer_data;
+	default:
+		return NULL;
+	}
+}
+
+const struct audioreach_module_priv_data *
+audioreach_graph_find_data(const struct audioreach_graph_info *info, u32 type)
+{
+	const struct audioreach_module_priv_data *found = NULL;
+	struct audioreach_container *container;
+	struct audioreach_sub_graph *sg;
+	struct audioreach_module *module;
+
+	list_for_each_entry(sg, &info->sg_list, node) {
+		list_for_each_entry(container, &sg->container_list, node) {
+			list_for_each_entry(module, &container->modules_list, node) {
+				struct audioreach_module_priv_data *candidate;
+
+				candidate = audioreach_module_data(module, type);
+				if (!candidate)
+					continue;
+				if (found)
+					return ERR_PTR(-EEXIST);
+				found = candidate;
+			}
+		}
+	}
+
+	return found;
+}
+
+int audioreach_graph_protection_oob_size(const struct audioreach_graph_info *info,
+					 size_t *size)
+{
+	static const u32 oob_types[] = {
+		SND_SOC_AR_TPLG_GRAPH_CAL_CFG_TYPE,
+		SND_SOC_AR_TPLG_RENDER_EP_CFG_TYPE,
+		SND_SOC_AR_TPLG_SP_TAG_CFG_TYPE,
+		SND_SOC_AR_TPLG_SPVI_TAG_CFG_TYPE,
+		SND_SOC_AR_TPLG_VI_EP_CFG_TYPE,
+		SND_SOC_AR_TPLG_VOLUME_FILTER_CFG_TYPE,
+		SND_SOC_AR_TPLG_CHANNEL_MIXER_CFG_TYPE,
+	};
+	const struct audioreach_module_priv_data *data;
+	size_t max_size = 0;
+	int i;
+
+	data = audioreach_graph_find_data(info,
+					  SND_SOC_AR_TPLG_GRAPH_CAL_CFG_TYPE);
+	if (IS_ERR(data))
+		return PTR_ERR(data);
+	if (!data) {
+		*size = 0;
+		return 0;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(oob_types); i++) {
+		data = audioreach_graph_find_data(info, oob_types[i]);
+		if (IS_ERR(data))
+			return PTR_ERR(data);
+		if (data)
+			max_size = max(max_size,
+				       (size_t)le32_to_cpu(data->size));
+	}
+
+	*size = max_size;
+	return 0;
+}
+
 int audioreach_send_cmd_sync(struct device *dev, gpr_device_t *gdev,
 			     struct gpr_ibasic_rsp_result_t *result, struct mutex *cmd_lock,
 			     gpr_port_t *port, wait_queue_head_t *cmd_wait,

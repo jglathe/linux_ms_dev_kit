@@ -53,6 +53,7 @@
 
 struct q6apm {
 	struct device *dev;
+	struct device *dma_dev;
 	gpr_port_t *port;
 	gpr_device_t *gdev;
 	/* For Graph OPEN/START/STOP/CLOSE operations */
@@ -103,6 +104,17 @@ struct audioreach_graph {
 	int state;
 	int start_count;
 	bool initializing;
+	struct device *dma_dev;
+	void *oob_virt;
+	dma_addr_t oob_dma;
+	phys_addr_t oob_dsp_addr;
+	size_t oob_size;
+	u32 oob_mem_map_handle;
+	u32 oob_token;
+	/* Serialize use of the graph's shared OOB buffer. */
+	struct mutex oob_lock;
+	bool oob_map_uncertain;
+	bool oob_transfer_uncertain;
 	/* Cached Graph data */
 	void *graph;
 	struct kref refcount;
@@ -186,6 +198,10 @@ int q6apm_unmap_memory_fixed_region(struct device *dev, unsigned int graph_id);
 /* Helpers */
 int q6apm_send_cmd_sync(struct q6apm *apm, struct gpr_pkt *pkt,
 			uint32_t rsp_opcode);
+int q6apm_send_oob_config(struct audioreach_graph *graph,
+			  const void *data, size_t size);
+int q6apm_send_graph_oob_config(struct q6apm_graph *graph,
+				const void *data, size_t size);
 
 /* Callback for graph specific */
 struct audioreach_module *q6apm_find_module_by_mid(struct q6apm_graph *graph,

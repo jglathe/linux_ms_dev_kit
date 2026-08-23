@@ -8,6 +8,7 @@
 #include <sound/soc.h>
 struct q6apm;
 struct q6apm_graph;
+struct audioreach_graph;
 
 /* Module IDs */
 #define MODULE_ID_WR_SHARED_MEM_EP	0x07001000
@@ -943,6 +944,10 @@ void *audioreach_alloc_pkt(int payload_size, uint32_t opcode,
 			   uint32_t dest_port);
 void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 				 const struct audioreach_graph_info *info);
+const struct audioreach_module_priv_data *
+audioreach_graph_find_data(const struct audioreach_graph_info *info, u32 type);
+int audioreach_graph_protection_oob_size(const struct audioreach_graph_info *info,
+					 size_t *size);
 /* Topology specific */
 int audioreach_tplg_init(struct snd_soc_component *component);
 
