@@ -8,6 +8,7 @@
 #include <linux/bits.h>
 #include <linux/cleanup.h>
 #include <linux/init.h>
+#include <linux/kobject.h>
 #include <linux/mutex.h>
 #include <linux/platform_profile.h>
 #include <linux/sysfs.h>
@@ -15,6 +16,8 @@
 #define to_pprof_handler(d)	(container_of(d, struct platform_profile_handler, dev))
 
 static DEFINE_MUTEX(profile_lock);
+static struct kobject *platform_profile_kobj;
+static bool platform_profile_kobj_created;
 
 struct platform_profile_handler {
 	const char *name;
@@ -216,7 +219,7 @@ static ssize_t profile_store(struct device *dev,
 			return ret;
 	}
 
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
 
 	return count;
 }
@@ -436,7 +439,7 @@ static ssize_t platform_profile_store(struct kobject *kobj,
 			return ret;
 	}
 
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
 
 	return count;
 }
@@ -482,7 +485,7 @@ void platform_profile_notify(struct device *dev)
 	scoped_cond_guard(mutex_intr, return, &profile_lock) {
 		_notify_class_profile(dev, NULL);
 	}
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
 }
 EXPORT_SYMBOL_GPL(platform_profile_notify);
 
@@ -532,7 +535,7 @@ int platform_profile_cycle(void)
 			return err;
 	}
 
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
 
 	return 0;
 }
@@ -605,9 +608,9 @@ struct device *platform_profile_register(struct device *dev, const char *name,
 		goto cleanup_ida;
 	}
 
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
 
-	err = sysfs_update_group(acpi_kobj, &platform_profile_group);
+	err = sysfs_update_group(platform_profile_kobj, &platform_profile_group);
 	if (err)
 		goto cleanup_cur;
 
@@ -641,8 +644,8 @@ void platform_profile_remove(struct device *dev)
 	ida_free(&platform_profile_ida, pprof->minor);
 	device_unregister(&pprof->dev);
 
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
-	sysfs_update_group(acpi_kobj, &platform_profile_group);
+	sysfs_notify(platform_profile_kobj, NULL, "platform_profile");
+	sysfs_update_group(platform_profile_kobj, &platform_profile_group);
 }
 EXPORT_SYMBOL_GPL(platform_profile_remove);
 
@@ -690,24 +693,50 @@ static int __init platform_profile_init(void)
 {
 	int err;
 
-	if (acpi_disabled)
-		return -EOPNOTSUPP;
+	/*
+	 * The legacy sysfs interface at /sys/firmware/acpi/platform_profile
+	 * is expected by userspace (power-profiles-daemon). On systems where
+	 * ACPI is disabled (e.g. device-tree based ARM64 platforms such as
+	 * the Surface Pro 11), the "acpi" directory is never created by the
+	 * ACPI subsystem, so create it here to keep the interface available.
+	 */
+	if (acpi_kobj) {
+		platform_profile_kobj = acpi_kobj;
+	} else {
+		platform_profile_kobj = kobject_create_and_add("acpi", firmware_kobj);
+		if (!platform_profile_kobj)
+			return -ENOMEM;
+		platform_profile_kobj_created = true;
+	}
 
 	err = class_register(&platform_profile_class);
 	if (err)
-		return err;
+		goto err_kobj;
 
-	err = sysfs_create_group(acpi_kobj, &platform_profile_group);
+	err = sysfs_create_group(platform_profile_kobj, &platform_profile_group);
 	if (err)
-		class_unregister(&platform_profile_class);
+		goto err_class;
 
+	return 0;
+
+err_class:
+	class_unregister(&platform_profile_class);
+err_kobj:
+	if (platform_profile_kobj_created) {
+		kobject_put(platform_profile_kobj);
+		platform_profile_kobj = NULL;
+	}
 	return err;
 }
 
 static void __exit platform_profile_exit(void)
 {
-	sysfs_remove_group(acpi_kobj, &platform_profile_group);
+	sysfs_remove_group(platform_profile_kobj, &platform_profile_group);
 	class_unregister(&platform_profile_class);
+	if (platform_profile_kobj_created) {
+		kobject_put(platform_profile_kobj);
+		platform_profile_kobj = NULL;
+	}
 }
 module_init(platform_profile_init);
 module_exit(platform_profile_exit);
