@@ -29,6 +29,9 @@ properties:
               - qcom,sm8650-sndcard
               - qcom,sm8750-sndcard
           - const: qcom,sm8450-sndcard
+      - items:
+          - const: microsoft,denali-sndcard
+          - const: qcom,x1e80100-sndcard
       - enum:
           - dell,xps13-9345-sndcard
           - fairphone,fp4-sndcard

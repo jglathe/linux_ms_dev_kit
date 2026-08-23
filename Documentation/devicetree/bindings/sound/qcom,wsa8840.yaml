@@ -40,8 +40,32 @@ properties:
     minItems: 6
     maxItems: 6
 
+  qcom,enable-cps:
+    type: boolean
+    description: Enable the dedicated CPS SoundWire source DAI on data port 6.
+
+  qcom,cps-offset1:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    maximum: 255
+    description: |
+      Slave-only SoundWire DP6 OffsetCtrl1 override for CPS. This does not
+      change the physical master-port schedule selected by qcom,port-mapping.
+
+  qcom,visense-channel-mask:
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 1
+    maximum: 255
+    description: |
+      Native WSA data-port-5 channel-enable mask for the VISENSE protection
+      sidechain. If absent, the codec default is used.
+
   '#sound-dai-cells':
-    const: 0
+    enum: [0, 1]
+    description: |
+      Zero selects the legacy single speaker-playback DAI. With one cell,
+      DAI 0 is speaker playback, DAI 1 is the render-coupled VISENSE
+      protection-feedback sidechain, and DAI 2 is the dedicated CPS feedback
+      sidechain when qcom,enable-cps is present.
 
   vdd-1p8-supply: true
   vdd-io-supply: true
@@ -75,7 +99,7 @@ examples:
             pinctrl-names = "default";
             pinctrl-0 = <&spkr_2_sd_n_active>;
             powerdown-gpios = <&lpass_tlmm 18 GPIO_ACTIVE_LOW>;
-            #sound-dai-cells = <0>;
+            #sound-dai-cells = <1>;
             sound-name-prefix = "SpkrRight";
             vdd-1p8-supply = <&vreg_l15b_1p8>;
             vdd-io-supply = <&vreg_l3g_1p2>;
