@@ -13,6 +13,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <linux/pm_runtime.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/pm_clock.h>
 #include <sound/tlv.h>
@@ -374,6 +375,7 @@ enum {
 	WSA_MACRO_AIF_MIX1_PB,
 	WSA_MACRO_AIF_VI,
 	WSA_MACRO_AIF_ECHO,
+	WSA_MACRO_AIF_CPS,
 	WSA_MACRO_MAX_DAIS,
 };
 
@@ -414,6 +416,7 @@ struct wsa_macro {
 	u32 pcm_rate_vi;
 	int is_softclip_on[WSA_MACRO_SOFTCLIP_MAX];
 	int softclip_clk_users[WSA_MACRO_SOFTCLIP_MAX];
+	bool protected_feedback;
 	struct regmap *regmap;
 	struct clk *mclk;
 	struct clk *npl;
@@ -1278,6 +1281,15 @@ static int wsa_macro_hw_params(struct snd_pcm_substream *substream,
 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
 	int ret;
 
+	if (wsa->protected_feedback && dai->id == WSA_MACRO_AIF_VI &&
+	    substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		wsa->pcm_rate_vi = params_rate(params);
+		return 0;
+	}
+
+	if (wsa->protected_feedback && dai->id == WSA_MACRO_AIF_CPS)
+		return 0;
+
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
 		ret = wsa_macro_set_interpolator_rate(dai, params_rate(params));
@@ -1311,6 +1323,10 @@ static int wsa_macro_get_channel_map(const struct snd_soc_dai *dai,
 	case WSA_MACRO_AIF_VI:
 		*tx_slot = wsa->active_ch_mask[dai->id];
 		*tx_num = wsa->active_ch_cnt[dai->id];
+		break;
+	case WSA_MACRO_AIF_CPS:
+		*tx_num = 2;
+		*tx_slot = GENMASK(1, 0);
 		break;
 	case WSA_MACRO_AIF1_PB:
 	case WSA_MACRO_AIF_MIX1_PB:
@@ -2388,6 +2404,25 @@ static const struct snd_soc_dapm_widget wsa_macro_dapm_widgets[] = {
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 };
 
+static const struct snd_soc_dapm_widget wsa_macro_denali_widgets[] = {
+	SND_SOC_DAPM_AIF_IN_E("WSA AIF_VI Protection",
+			      "WSA_AIF_VI Protection", 0,
+			      SND_SOC_NOPM, WSA_MACRO_AIF_VI, 0,
+			      wsa_macro_enable_vi_feedback,
+			      SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_AIF_IN("WSA AIF_CPS Protection",
+			    "WSA_AIF_CPS Protection", 0,
+			    SND_SOC_NOPM, WSA_MACRO_AIF_CPS, 0),
+	SND_SOC_DAPM_INPUT("CPSINPUT_WSA"),
+};
+
+static const struct snd_soc_dapm_route wsa_macro_denali_routes[] = {
+	{ "WSA AIF_VI Protection", NULL, "WSA_AIF_VI Mixer" },
+	{ "WSA AIF_VI Protection", NULL, "WSA_MCLK" },
+	{ "WSA AIF_CPS Protection", NULL, "CPSINPUT_WSA" },
+	{ "WSA AIF_CPS Protection", NULL, "WSA_MCLK" },
+};
+
 static const struct snd_soc_dapm_widget wsa_macro_dapm_widgets_v2_1[] = {
 	SND_SOC_DAPM_MUX("WSA_RX0 INP0", SND_SOC_NOPM, 0, 0, &rx0_prim_inp0_mux_v2_1),
 	SND_SOC_DAPM_MUX("WSA_RX0 INP1", SND_SOC_NOPM, 0, 0, &rx0_prim_inp1_mux_v2_1),
@@ -2562,6 +2597,7 @@ static int wsa_macro_component_probe(struct snd_soc_component *comp)
 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(comp);
 	const struct snd_soc_dapm_widget *widgets;
 	unsigned int num_widgets;
+	int ret;
 
 	snd_soc_component_init_regmap(comp, wsa->regmap);
 
@@ -2599,7 +2635,17 @@ static int wsa_macro_component_probe(struct snd_soc_component *comp)
 		return -EINVAL;
 	}
 
-	return snd_soc_dapm_new_controls(dapm, widgets, num_widgets);
+	ret = snd_soc_dapm_new_controls(dapm, widgets, num_widgets);
+	if (ret || !wsa->protected_feedback)
+		return ret;
+
+	ret = snd_soc_dapm_new_controls(dapm, wsa_macro_denali_widgets,
+					ARRAY_SIZE(wsa_macro_denali_widgets));
+	if (ret)
+		return ret;
+
+	return snd_soc_dapm_add_routes(dapm, wsa_macro_denali_routes,
+				       ARRAY_SIZE(wsa_macro_denali_routes));
 }
 
 static int swclk_gate_enable(struct clk_hw *hw)
@@ -2679,9 +2725,11 @@ static const struct snd_soc_component_driver wsa_macro_component_drv = {
 static int wsa_macro_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct snd_soc_dai_driver *dais = wsa_macro_dai;
 	struct wsa_macro *wsa;
 	kernel_ulong_t flags;
 	void __iomem *base;
+	int num_dais = ARRAY_SIZE(wsa_macro_dai);
 	int ret, def_count;
 
 	flags = (kernel_ulong_t)device_get_match_data(dev);
@@ -2771,6 +2819,39 @@ static int wsa_macro_probe(struct platform_device *pdev)
 	dev_set_drvdata(dev, wsa);
 
 	wsa->dev = dev;
+	wsa->protected_feedback =
+		of_machine_is_compatible("microsoft,denali");
+	if (wsa->protected_feedback) {
+		dais = devm_kcalloc(dev, num_dais + 1, sizeof(*dais), GFP_KERNEL);
+		if (!dais)
+			return -ENOMEM;
+
+		memcpy(dais, wsa_macro_dai, sizeof(wsa_macro_dai));
+		dais[WSA_MACRO_AIF_VI].playback = (struct snd_soc_pcm_stream) {
+			.stream_name = "WSA_AIF_VI Protection",
+			.rates = SNDRV_PCM_RATE_8000,
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			.rate_max = 8000,
+			.rate_min = 8000,
+			.channels_min = 1,
+			.channels_max = 4,
+		};
+		dais[num_dais] = (struct snd_soc_dai_driver) {
+			.name = "wsa_macro_cps",
+			.id = WSA_MACRO_AIF_CPS,
+			.playback = {
+				.stream_name = "WSA_AIF_CPS Protection",
+				.rates = SNDRV_PCM_RATE_24000,
+				.formats = SNDRV_PCM_FMTBIT_S32_LE,
+				.rate_max = 24000,
+				.rate_min = 24000,
+				.channels_min = 2,
+				.channels_max = 2,
+			},
+			.ops = &wsa_macro_dai_ops,
+		};
+		num_dais++;
+	}
 
 	/* set MCLK and NPL rates */
 	clk_set_rate(wsa->mclk, WSA_MACRO_MCLK_FREQ);
@@ -2807,8 +2888,7 @@ static int wsa_macro_probe(struct platform_device *pdev)
 			   CDC_WSA_SWR_RST_EN_MASK, CDC_WSA_SWR_RST_DISABLE);
 
 	ret = devm_snd_soc_register_component(dev, &wsa_macro_component_drv,
-					      wsa_macro_dai,
-					      ARRAY_SIZE(wsa_macro_dai));
+					      dais, num_dais);
 	if (ret)
 		goto err_rpm_put;
 
