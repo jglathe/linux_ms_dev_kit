@@ -127,7 +127,8 @@
 #define G6TS_SP11_MAX_OUTPUT_LEN		512U
 #define G6TS_SP11_MAX_FRAGMENT_LEN	8192U
 #define G6TS_SP11_VENDOR_ID		0x045eU
-#define G6TS_SP11_PRODUCT_ID		0x0c83U
+#define G6TS_SP11_X1E_PRODUCT_ID	0x0c83U
+#define G6TS_SP11_X1P_PRODUCT_ID	0x0c80U
 #define G6TS_SP11_VERSION_ID		0x0004U
 #define G6TS_SP11_DESCRIPTOR_FLAGS	0x0001U
 #define G6TS_WINDOWS_FEEDBACK_LEN	63U
@@ -3100,7 +3101,8 @@ static int g6ts_validate_sp11_device_descriptor(struct g6ts *ts)
 	    le16_to_cpu(descriptor->max_output_len) != G6TS_SP11_MAX_OUTPUT_LEN ||
 	    le16_to_cpu(descriptor->max_frag_len) != G6TS_SP11_MAX_FRAGMENT_LEN ||
 	    le16_to_cpu(descriptor->vendor_id) != G6TS_SP11_VENDOR_ID ||
-	    le16_to_cpu(descriptor->product_id) != G6TS_SP11_PRODUCT_ID ||
+	    (le16_to_cpu(descriptor->product_id) != G6TS_SP11_X1E_PRODUCT_ID &&
+	     le16_to_cpu(descriptor->product_id) != G6TS_SP11_X1P_PRODUCT_ID) ||
 	    le16_to_cpu(descriptor->version_id) != G6TS_SP11_VERSION_ID ||
 	    le16_to_cpu(descriptor->flags) != G6TS_SP11_DESCRIPTOR_FLAGS ||
 	    le32_to_cpu(descriptor->reserved) != 0)

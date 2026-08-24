@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/of.h>
 #include <linux/power_supply.h>
 #include <linux/sysfs.h>
 #include <linux/types.h>
@@ -818,6 +819,10 @@ static int surface_battery_probe(struct ssam_device *sdev)
 {
 	const struct spwr_psy_properties *p;
 	struct spwr_battery_device *bat;
+
+	/* Qualcomm battmgr is the authoritative battery provider on Denali. */
+	if (of_machine_is_compatible("microsoft,denali"))
+		return -ENODEV;
 
 	p = ssam_device_get_match_data(sdev);
 	if (!p)
