@@ -1,3 +1,13 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v11) resolute; urgency=medium
+
+  * Surface Pro 11 v11: support X1P MSHW0485 touchscreen product ID
+    (0x0c80) alongside the X1E (0x0c83); descriptor validation now
+    accepts both
+  * Surface Pro 11 v11: skip the SAM battery provider on Denali;
+    Qualcomm battmgr is the authoritative battery source there
+
+ -- Justin White <kyjus25@gmail.com>  Mon, 24 Aug 2026 15:50:00 -0500
+
 linux-qcom-x1e (7.2.0-jg-0sp11v10) resolute; urgency=medium
 
   * Surface Pro 11 v10: port geocausa Golden v33 TOP_CFG1 physical VI
