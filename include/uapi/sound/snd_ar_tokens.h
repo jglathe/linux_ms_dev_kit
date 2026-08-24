@@ -96,6 +96,10 @@ enum ar_event_types {
  *						APM_PROC_DOMAIN_ID_SDSP = 4,
  *						APM_PROC_DOMAIN_ID_CDSP = 5
  *
+ * %AR_TKN_U32_CONTAINER_PARENT_ID:		Parent container instance ID.
+ *
+ * %AR_TKN_U32_CONTAINER_HEAP_ID:		Container heap ID.
+ *
  * %AR_TKN_U32_MODULE_ID:			Module ID
  *
  * %AR_TKN_U32_MODULE_INSTANCE_ID:		Module Instance ID.
@@ -111,6 +115,16 @@ enum ar_event_types {
  * %AR_TKN_U32_MODULE_SRC_OP_PORT_ID:		Source module output port ID
  *
  * %AR_TKN_U32_MODULE_DST_IN_PORT_ID:		Destination module input port ID
+ *
+ * %AR_TKN_U32_MODULE_SPEAKER_PROTECTION_BYPASS:
+ *						Leave speaker-protection modules
+ *						in their default disabled state.
+ *						0 = automatic setup,
+ *						1 = bypass.
+ *
+ * %AR_TKN_U32_MODULE_INTEGRATED_BACKEND_ID:
+ *						Backend DAI ID represented inside
+ *						the same graph as the frontend.
  *
  * %AR_TKN_U32_MODULE_HW_IF_IDX:		Interface index types for I2S/LPAIF
  *
@@ -186,6 +200,8 @@ enum ar_event_types {
 #define AR_TKN_U32_CONTAINER_STACK_SIZE		102
 #define AR_TKN_U32_CONTAINER_GRAPH_POS		103
 #define AR_TKN_U32_CONTAINER_PROC_DOMAIN	104
+#define AR_TKN_U32_CONTAINER_PARENT_ID		105
+#define AR_TKN_U32_CONTAINER_HEAP_ID		106
 
 /* Module Tokens */
 #define AR_TKN_U32_MODULE_ID			200
@@ -239,8 +255,28 @@ enum ar_event_types {
 #define AR_TKN_U32_MODULE_LOG_CODE		259
 #define AR_TKN_U32_MODULE_LOG_TAP_POINT_ID	260
 #define AR_TKN_U32_MODULE_LOG_MODE		261
+#define AR_TKN_U32_MODULE_SPEAKER_PROTECTION_BYPASS	262
+#define AR_TKN_U32_MODULE_INTEGRATED_BACKEND_ID	263
 
 #define SND_SOC_AR_TPLG_MODULE_CFG_TYPE 0x01001006
+/*
+ * Private byte-array payload for APM_PARAM_ID_MODULE_CTRL_LINK_CFG.
+ * The data begins with num_ctrl_link_cfg and is copied into GRAPH_OPEN.
+ */
+#define SND_SOC_AR_TPLG_CTRL_LINK_CFG_TYPE	0x08001061
+
+/* Ordered, validated SP11 calibration stages. */
+#define SND_SOC_AR_TPLG_GRAPH_CAL_CFG_TYPE	0x53503101
+#define SND_SOC_AR_TPLG_RENDER_EP_CFG_TYPE	0x53503102
+#define SND_SOC_AR_TPLG_SP_TAG_CFG_TYPE		0x53503103
+#define SND_SOC_AR_TPLG_SPVI_TAG_CFG_TYPE	0x53503104
+#define SND_SOC_AR_TPLG_VI_EP_CFG_TYPE		0x53503105
+#define SND_SOC_AR_TPLG_PROTECTION_DYNAMIC_CFG_TYPE	0x53503106
+#define SND_SOC_AR_TPLG_VOLUME_GAIN_CFG_TYPE	0x53503107
+#define SND_SOC_AR_TPLG_VOLUME_FILTER_CFG_TYPE	0x53503108
+#define SND_SOC_AR_TPLG_VOLUME_MUTE_CFG_TYPE	0x53503109
+#define SND_SOC_AR_TPLG_CHANNEL_MIXER_CFG_TYPE	0x5350310A
+
 struct audioreach_module_priv_data {
 	__le32 size;	/* size in bytes of the array, including all elements */
 	__le32 type;	/* SND_SOC_AR_TPLG_MODULE_CFG_TYPE */

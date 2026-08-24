@@ -189,8 +189,11 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	struct q6apm_lpass_dai_data *dai_data = dev_get_drvdata(dai->dev);
 	struct audioreach_module_config *cfg = &dai_data->module_config[dai->id];
 	struct q6apm_graph *graph;
-	int graph_id = dai->id;
+	int graph_id = q6apm_graph_id_for_backend(dai->dev, dai->id);
 	int rc;
+
+	if (graph_id < 0)
+		return graph_id;
 
 	if (dai_data->is_port_started[dai->id]) {
 		q6apm_graph_stop(dai_data->graph[dai->id]);
@@ -209,7 +212,21 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 			rc = PTR_ERR(graph);
 			return rc;
 		}
-		dai_data->graph[graph_id] = graph;
+		dai_data->graph[dai->id] = graph;
+	}
+
+	/*
+	 * The integrated SP11 pull graph has one Windows-ordered configuration
+	 * owner: its frontend.  Generic backend prepare runs first in the DPCM
+	 * sequence, before the pull ring and event registrations exist.  Sending
+	 * PCM/MFC/protection configuration here therefore changes the captured
+	 * order and is rejected by the DSP.  The frontend configures the same
+	 * shared graph completely before start.
+	 */
+	if (dai_data->graph[dai->id]->pull_mode) {
+		dev_info_once(dai->dev,
+			      "SP11 pull graph: backend configuration deferred to frontend\n");
+		return 0;
 	}
 
 	cfg->direction = substream->stream;
@@ -237,7 +254,10 @@ static int q6apm_lpass_dai_startup(struct snd_pcm_substream *substream, struct s
 {
 	struct q6apm_lpass_dai_data *dai_data = dev_get_drvdata(dai->dev);
 	struct q6apm_graph *graph;
-	int graph_id = dai->id;
+	int graph_id = q6apm_graph_id_for_backend(dai->dev, dai->id);
+
+	if (graph_id < 0)
+		return graph_id;
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id, substream->stream);
@@ -245,7 +265,7 @@ static int q6apm_lpass_dai_startup(struct snd_pcm_substream *substream, struct s
 			dev_err(dai->dev, "Failed to open graph (%d)\n", graph_id);
 			return PTR_ERR(graph);
 		}
-		dai_data->graph[graph_id] = graph;
+		dai_data->graph[dai->id] = graph;
 	}
 
 	return 0;

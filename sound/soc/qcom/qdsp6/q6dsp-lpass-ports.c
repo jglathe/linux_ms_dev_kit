@@ -79,6 +79,60 @@
 		.id = did,						\
 	}
 
+#define Q6AFE_CDC_DMA_CPS_DAI(did) {				\
+		.playback = {						\
+			.stream_name = #did " Protection",		\
+			.rates = SNDRV_PCM_RATE_24000,		\
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,		\
+			.channels_min = 2,				\
+			.channels_max = 2,				\
+			.rate_min = 24000,				\
+			.rate_max = 24000,				\
+		},							\
+		.capture = {						\
+			.stream_name = #did " Capture",		\
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
+				SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
+				SNDRV_PCM_RATE_176400,			\
+			.formats = SNDRV_PCM_FMTBIT_S16_LE |		\
+				   SNDRV_PCM_FMTBIT_S24_LE |		\
+				   SNDRV_PCM_FMTBIT_S32_LE,		\
+			.channels_min = 1,				\
+			.channels_max = 8,				\
+			.rate_min = 8000,				\
+			.rate_max = 176400,				\
+		},							\
+		.name = #did,						\
+		.id = did,						\
+	}
+
+#define Q6AFE_CDC_DMA_VI_DAI(did) {				\
+		.playback = {						\
+			.stream_name = #did" Protection",		\
+			.rates = SNDRV_PCM_RATE_8000,			\
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,		\
+			.channels_min = 2,				\
+			.channels_max = 2,				\
+			.rate_min = 8000,				\
+			.rate_max = 8000,				\
+		},							\
+		.capture = {						\
+			.stream_name = #did" Capture",			\
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
+				SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
+				SNDRV_PCM_RATE_176400,			\
+			.formats = SNDRV_PCM_FMTBIT_S16_LE |		\
+				   SNDRV_PCM_FMTBIT_S24_LE |		\
+				   SNDRV_PCM_FMTBIT_S32_LE,		\
+			.channels_min = 1,				\
+			.channels_max = 8,				\
+			.rate_min = 8000,				\
+			.rate_max = 176400,				\
+		},							\
+		.name = #did,						\
+		.id = did,						\
+	}
+
 #define Q6AFE_DP_RX_DAI(did) {						\
 		.playback = {						\
 			.stream_name = #did" Playback",			\
@@ -647,9 +701,9 @@ static struct snd_soc_dai_driver q6dsp_audio_fe_dais[] = {
 	Q6AFE_DP_RX_DAI(DISPLAY_PORT_RX_6),
 	Q6AFE_DP_RX_DAI(DISPLAY_PORT_RX_7),
 	Q6AFE_CDC_DMA_RX_DAI(WSA_CODEC_DMA_RX_0),
-	Q6AFE_CDC_DMA_TX_DAI(WSA_CODEC_DMA_TX_0),
+	Q6AFE_CDC_DMA_VI_DAI(WSA_CODEC_DMA_TX_0),
 	Q6AFE_CDC_DMA_RX_DAI(WSA_CODEC_DMA_RX_1),
-	Q6AFE_CDC_DMA_TX_DAI(WSA_CODEC_DMA_TX_1),
+	Q6AFE_CDC_DMA_CPS_DAI(WSA_CODEC_DMA_TX_1),
 	Q6AFE_CDC_DMA_TX_DAI(WSA_CODEC_DMA_TX_2),
 	Q6AFE_CDC_DMA_TX_DAI(VA_CODEC_DMA_TX_0),
 	Q6AFE_CDC_DMA_TX_DAI(VA_CODEC_DMA_TX_1),

@@ -6,12 +6,14 @@
 #include <linux/platform_device.h>
 #include <linux/soundwire/sdw.h>
 #include <sound/pcm.h>
+#include <sound/pcm_params.h>
 #include <sound/jack.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 
 #include "common.h"
 #include "qdsp6/q6afe.h"
+#include "qdsp6/q6apm.h"
 #include "qdsp6/q6dsp-common.h"
 #include "sdw.h"
 
@@ -42,21 +44,35 @@ static int x1e80100_snd_init(struct snd_soc_pcm_runtime *rtd)
 	case WSA_CODEC_DMA_RX_0:
 	case WSA_CODEC_DMA_RX_1:
 		/*
-		 * Set limit of -3 dB on Digital Volume and 0 dB on PA Volume
-		 * to reduce the risk of speaker damage until we have active
-		 * speaker protection in place.
+		 * PA Volume limit REMOVED 2026-08-01. The control now exposes the
+		 * full hardware range, 0..31 (-9 dB .. +37.5 dB, 1.5 dB steps).
+		 *
+		 * Upstream capped this at 6 (0 dB) "to reduce the risk of speaker
+		 * damage until we have active speaker protection in place". Both
+		 * the author and reviewer of that series said the cap should go
+		 * once protection exists. On this machine it does, verified live:
+		 * SP 0x4027 + SP_VI 0x4024 enabled with VI feedback at 8 kHz on
+		 * both amps, R0/T0 byte-identical to Windows, 106/107 calibration
+		 * frames accepted, 20 protection stages accepted at graph start.
+		 *
+		 * WARNING: protection limits excursion and coil temperature. It
+		 * does NOT make arbitrary levels safe on 4 ohm micro-speakers.
+		 * Sustained operation near the top of this range will damage them.
+		 * The operating point is set independently in UCM (SP11-HiFi.conf),
+		 * currently 24 (+27 dB). Do not confuse that PA control with the
+		 * codec's separate PA_AUX setting when comparing deployments.
+		 *
+		 * Digital Volume stays capped at 81 (-3 dB) as upstream, and is the
+		 * runtime knob for fine adjustment in 1 dB steps.
 		 */
 		snd_soc_limit_volume(card, "WSA WSA_RX0 Digital Volume", 81);
 		snd_soc_limit_volume(card, "WSA WSA_RX1 Digital Volume", 81);
 		snd_soc_limit_volume(card, "WSA2 WSA_RX0 Digital Volume", 81);
 		snd_soc_limit_volume(card, "WSA2 WSA_RX1 Digital Volume", 81);
-		snd_soc_limit_volume(card, "SpkrLeft PA Volume", 6);
-		snd_soc_limit_volume(card, "SpkrRight PA Volume", 6);
-		snd_soc_limit_volume(card, "WooferLeft PA Volume", 6);
-		snd_soc_limit_volume(card, "TweeterLeft PA Volume", 6);
-		snd_soc_limit_volume(card, "WooferRight PA Volume", 6);
-		snd_soc_limit_volume(card, "TweeterRight PA Volume", 6);
 		break;
+	case WSA_CODEC_DMA_TX_0:
+	case WSA_CODEC_DMA_TX_1:
+		return 0;
 	case DISPLAY_PORT_RX_0:
 		dp_pcm_id = 0;
 		dp_jack = &data->dp_jack[dp_pcm_id];
@@ -83,6 +99,8 @@ static int x1e80100_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 						      SNDRV_PCM_HW_PARAM_RATE);
 	struct snd_interval *channels = hw_param_interval(params,
 							  SNDRV_PCM_HW_PARAM_CHANNELS);
+	struct snd_mask *format = hw_param_mask(params,
+					       SNDRV_PCM_HW_PARAM_FORMAT);
 
 	rate->min = rate->max = 48000;
 	switch (cpu_dai->id) {
@@ -91,6 +109,20 @@ static int x1e80100_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	case TX_CODEC_DMA_TX_2:
 	case TX_CODEC_DMA_TX_3:
 		channels->min = 1;
+		break;
+	case WSA_CODEC_DMA_TX_0:
+		rate->min = rate->max = 8000;
+		channels->min = channels->max = 2;
+		snd_mask_none(format);
+		snd_mask_set_format(format, SNDRV_PCM_FORMAT_S32_LE);
+		break;
+	case WSA_CODEC_DMA_TX_1:
+		rate->min = 24000;
+		rate->max = 24000;
+		channels->min = 2;
+		channels->max = 2;
+		snd_mask_none(format);
+		snd_mask_set_format(format, SNDRV_PCM_FORMAT_S32_LE);
 		break;
 	default:
 		break;
@@ -142,6 +174,7 @@ static int x1e80100_snd_prepare(struct snd_pcm_substream *substream)
 	struct x1e80100_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	unsigned int channels = substream->runtime->channels;
 	unsigned int rx_slot[4];
+	unsigned int tx_slot[4];
 	int ret;
 
 	switch (cpu_dai->id) {
@@ -156,11 +189,46 @@ static int x1e80100_snd_prepare(struct snd_pcm_substream *substream)
 		if (ret)
 			return ret;
 		break;
+	case WSA_CODEC_DMA_TX_0:
+	case WSA_CODEC_DMA_TX_1:
+		ret = x1e80100_snd_hw_map_channels(data, tx_slot, channels);
+		if (ret)
+			return ret;
+
+		ret = snd_soc_dai_set_channel_map(cpu_dai, channels, tx_slot,
+						  0, NULL);
+		if (ret)
+			return ret;
+		break;
 	default:
 		break;
 	}
 
-	return qcom_snd_sdw_prepare(substream, &data->stream_prepared[cpu_dai->id]);
+	ret = qcom_snd_sdw_prepare(substream,
+				   &data->stream_prepared[cpu_dai->id]);
+	if (cpu_dai->id == WSA_CODEC_DMA_TX_0) {
+		q6apm_sp11_set_vi_ready(ret == 0);
+		dev_info(rtd->dev, "SP11 VI feedback %s\n",
+			 ret ? "unavailable; protection will bypass" :
+			       "ready on WSA_CODEC_DMA_TX_0");
+		/*
+		 * VI is a protection sidechain, not the render transport.
+		 * Keep playback available if its SoundWire allocation fails;
+		 * the frontend will explicitly bypass SP/SPVI before start.
+		 */
+		if (ret)
+			return 0;
+	}
+	if (cpu_dai->id == WSA_CODEC_DMA_TX_1) {
+		q6apm_sp11_set_cps_ready(ret == 0);
+		dev_info(rtd->dev, "SP11 CPS feedback %s\n",
+			 ret ? "unavailable; protection will bypass" :
+			       "ready on WSA_CODEC_DMA_TX_1");
+		if (ret)
+			return 0;
+	}
+
+	return ret;
 }
 
 static int x1e80100_snd_hw_free(struct snd_pcm_substream *substream)
@@ -168,6 +236,11 @@ static int x1e80100_snd_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct x1e80100_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+
+	if (cpu_dai->id == WSA_CODEC_DMA_TX_0)
+		q6apm_sp11_set_vi_ready(false);
+	else if (cpu_dai->id == WSA_CODEC_DMA_TX_1)
+		q6apm_sp11_set_cps_ready(false);
 
 	return qcom_snd_sdw_hw_free(substream, &data->stream_prepared[cpu_dai->id]);
 }

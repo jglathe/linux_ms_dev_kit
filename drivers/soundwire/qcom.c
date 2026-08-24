@@ -122,6 +122,29 @@
 #define SWRM_DP_PORT_CTRL_EN_CHAN_SHFT				0x18
 #define SWRM_DP_PORT_CTRL_OFFSET2_SHFT				0x10
 #define SWRM_DP_PORT_CTRL_OFFSET1_SHFT				0x08
+
+/*
+ * SP11/Denali diagnostic parity gate.  Native Windows programs active WSA
+ * feedback master ports 10/11/13 with Offset2 == 0 immediately before graph
+ * start.  Golden Linux preserves the inactive 0xff Offset2 when enabling the
+ * channel mask.  Keep this opt-in and touch only those three ports.
+ */
+static bool sp11_feedback_active_offset2_zero;
+module_param_named(sp11_feedback_active_offset2_zero,
+		   sp11_feedback_active_offset2_zero, bool, 0644);
+MODULE_PARM_DESC(sp11_feedback_active_offset2_zero,
+		 "Clear WSA feedback ports 10/11/13 Offset2 only while enabling channels");
+
+/* SP11 diagnostic: Windows WSA controller/CPS packetization state. */
+static bool sp11_cps_pcm_route_105c;
+module_param_named(sp11_cps_pcm_route_105c, sp11_cps_pcm_route_105c, bool, 0644);
+MODULE_PARM_DESC(sp11_cps_pcm_route_105c,
+		 "Program Windows WSA route 0x105c and CPS DP13 PCM control 0x1d54");
+
+static bool qcom_swrm_is_sp11_feedback_port(unsigned int port_num)
+{
+	return port_num == 10 || port_num == 11 || port_num == 13;
+}
 #define SWRM_AHB_BRIDGE_WR_DATA_0				0xc85
 #define SWRM_AHB_BRIDGE_WR_ADDR_0				0xc89
 #define SWRM_AHB_BRIDGE_RD_ADDR_0				0xc8d
@@ -1040,6 +1063,37 @@ static int qcom_swrm_transport_params(struct sdw_bus *bus,
 
 	pcfg = &ctrl->pconfig[params->port_num];
 
+	/*
+	 * Native Windows speaker start also programs controller route 0x105c
+	 * and CPS DIN DP13 PCM control 0x1d54.  This was insufficient by
+	 * itself, but is re-tested here only after PROTCLK + Offset2 parity.
+	 */
+	if (sp11_cps_pcm_route_105c &&
+	    of_machine_is_compatible("microsoft,denali") &&
+	    bus->controller_id == MASTER_ID_WSA && params->port_num == 13) {
+		u32 route_old = 0;
+		u32 pcm_old = 0;
+		u32 pcm_reg = 0x1054 + params->port_num * 0x100;
+
+		ret = ctrl->reg_read(ctrl, 0x105c, &route_old);
+		if (ret)
+			goto err;
+		if (route_old != 0x0005000f) {
+			ret = ctrl->reg_write(ctrl, 0x105c, 0x0005000f);
+			if (ret)
+				goto err;
+		}
+		ret = ctrl->reg_read(ctrl, pcm_reg, &pcm_old);
+		if (ret)
+			goto err;
+		ret = ctrl->reg_write(ctrl, pcm_reg, 0x3);
+		dev_info(ctrl->dev,
+			 "SP11 CPS wake parity: bank=%u route_old=%#x route_new=0x5000f pcm_reg=%#x pcm_old=%#x pcm_new=0x3 ret=%d\n",
+			 bank, route_old, pcm_reg, pcm_old, ret);
+		if (ret)
+			goto err;
+	}
+
 	value = pcfg->off1 << SWRM_DP_PORT_CTRL_OFFSET1_SHFT;
 	value |= pcfg->off2 << SWRM_DP_PORT_CTRL_OFFSET2_SHFT;
 	value |= pcfg->si & 0xff;
@@ -1116,10 +1170,23 @@ static int qcom_swrm_port_enable(struct sdw_bus *bus,
 
 	ctrl->reg_read(ctrl, reg, &val);
 
-	if (enable_ch->enable)
+	if (enable_ch->enable) {
+		u32 old = val;
+
+		if (sp11_feedback_active_offset2_zero &&
+		    qcom_swrm_is_sp11_feedback_port(enable_ch->port_num))
+			val &= ~(0xff << SWRM_DP_PORT_CTRL_OFFSET2_SHFT);
+
 		val |= (enable_ch->ch_mask << SWRM_DP_PORT_CTRL_EN_CHAN_SHFT);
-	else
+
+		if (sp11_feedback_active_offset2_zero &&
+		    qcom_swrm_is_sp11_feedback_port(enable_ch->port_num))
+			dev_info(ctrl->dev,
+				 "SP11 feedback active Offset2 parity: port=%u bank=%u old=%#010x new=%#010x ch=%#x\n",
+				 enable_ch->port_num, bank, old, val, enable_ch->ch_mask);
+	} else {
 		val &= ~(0xff << SWRM_DP_PORT_CTRL_EN_CHAN_SHFT);
+	}
 
 	return ctrl->reg_write(ctrl, reg, val);
 }
@@ -1220,7 +1287,7 @@ static void qcom_swrm_stream_free_ports(struct qcom_swrm_ctrl *ctrl,
 static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 					struct sdw_stream_runtime *stream,
 				       struct snd_pcm_hw_params *params,
-				       int direction)
+				       int dai_id)
 {
 	struct sdw_stream_config sconfig;
 	struct sdw_master_runtime *m_rt;
@@ -1228,14 +1295,20 @@ static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 	struct sdw_port_runtime *p_rt;
 	struct sdw_slave *slave;
 	unsigned long *port_mask;
-	int maxport, pn, nports = 0;
+	int maxport, pn, nports = 0, i;
 	unsigned int m_port;
 	struct sdw_port_config *pconfig __free(kfree) = kzalloc_objs(*pconfig,
 								     ctrl->nports);
 	if (!pconfig)
 		return -ENOMEM;
 
-	if (direction == SNDRV_PCM_STREAM_CAPTURE)
+	/*
+	 * Direction is a property of the controller data port.  A speaker VI
+	 * sidechain is intentionally exposed as a companion playback BE so
+	 * DPCM starts it with render, while the physical DIN port still carries
+	 * data from the SoundWire slaves into the master.
+	 */
+	if (dai_id >= ctrl->num_dout_ports)
 		sconfig.direction = SDW_DATA_DIR_TX;
 	else
 		sconfig.direction = SDW_DATA_DIR_RX;
@@ -1275,6 +1348,21 @@ static int qcom_swrm_stream_alloc_ports(struct qcom_swrm_ctrl *ctrl,
 					dev_err(ctrl->dev, "All ports busy\n");
 					return -EBUSY;
 				}
+
+				/* Multiple slaves may intentionally share one physical
+				 * master port. Keep one master runtime and merge the
+				 * channels instead of programming the same port twice.
+				 */
+				for (i = 0; i < nports; i++) {
+					if (pconfig[i].num != pn)
+						continue;
+
+					pconfig[i].ch_mask |= p_rt->ch_mask;
+					break;
+				}
+				if (i < nports)
+					continue;
+
 				set_bit(pn, port_mask);
 				pconfig[nports].num = pn;
 				pconfig[nports].ch_mask = p_rt->ch_mask;
@@ -1298,7 +1386,7 @@ static int qcom_swrm_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 
 	ret = qcom_swrm_stream_alloc_ports(ctrl, sruntime, params,
-					   substream->stream);
+					   dai->id);
 	if (ret)
 		qcom_swrm_stream_free_ports(ctrl, sruntime);
 
@@ -1394,15 +1482,36 @@ static int qcom_swrm_register_dais(struct qcom_swrm_ctrl *ctrl)
 		if (!dais[i].name)
 			return -ENOMEM;
 
-		if (i < ctrl->num_dout_ports)
+		if (i < ctrl->num_dout_ports) {
 			stream = &dais[i].playback;
-		else
+		} else {
 			stream = &dais[i].capture;
+			dais[i].playback = (struct snd_soc_pcm_stream) {
+				.channels_min = 1,
+				.channels_max = 1,
+				.rates = SNDRV_PCM_RATE_8000 |
+					 SNDRV_PCM_RATE_24000 |
+					 SNDRV_PCM_RATE_48000,
+				.formats = SNDRV_PCM_FMTBIT_S16_LE |
+					   SNDRV_PCM_FMTBIT_S32_LE,
+			};
+			dais[i].playback.stream_name = devm_kasprintf(
+				dev, GFP_KERNEL, "SoundWire VI Protection%d",
+				i - ctrl->num_dout_ports);
+			if (!dais[i].playback.stream_name)
+				return -ENOMEM;
+		}
 
 		stream->channels_min = 1;
 		stream->channels_max = 1;
-		stream->rates = SNDRV_PCM_RATE_48000;
-		stream->formats = SNDRV_PCM_FMTBIT_S16_LE;
+		stream->rates = i < ctrl->num_dout_ports ?
+				SNDRV_PCM_RATE_48000 :
+				SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_24000 |
+				SNDRV_PCM_RATE_48000;
+		stream->formats = i < ctrl->num_dout_ports ?
+				SNDRV_PCM_FMTBIT_S16_LE :
+				SNDRV_PCM_FMTBIT_S16_LE |
+				SNDRV_PCM_FMTBIT_S32_LE;
 
 		dais[i].ops = &qcom_swrm_pdm_dai_ops;
 		dais[i].id = i;
