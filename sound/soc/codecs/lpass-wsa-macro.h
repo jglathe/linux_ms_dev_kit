@@ -13,5 +13,6 @@ enum {
 };
 
 int wsa_macro_set_spkr_mode(struct snd_soc_component *component, int mode);
+void wsa_macro_sp11_pa_event(bool enable);
 
 #endif /* __LPASS_WSA_MACRO_H__ */

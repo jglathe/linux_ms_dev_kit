@@ -14,11 +14,12 @@
 #include <asm/div64.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+#include <linux/completion.h>
+#include <linux/jiffies.h>
 #include <sound/pcm_params.h>
 #include "q6apm.h"
 
 #define DRV_NAME "q6apm-dai"
-#define POS_BUFFER_BYTES	4096
 
 #define PLAYBACK_MIN_NUM_PERIODS	2
 #define PLAYBACK_MAX_NUM_PERIODS	8
@@ -30,6 +31,17 @@
 #define CAPTURE_MIN_PERIOD_SIZE		6144
 #define BUFFER_BYTES_MAX (PLAYBACK_MAX_NUM_PERIODS * PLAYBACK_MAX_PERIOD_SIZE)
 #define BUFFER_BYTES_MIN (PLAYBACK_MIN_NUM_PERIODS * PLAYBACK_MIN_PERIOD_SIZE)
+#define SP11_PULL_PERIOD_BYTES	1920
+#define SP11_PULL_BUFFER_BYTES	3840
+/* Current Windows DEFAULT 0x466b timing: 0x102d rampdown=20 ms,
+ * 0x103e downstream delay=25 ms, and qcadcm adds a 5 ms completion margin.
+ */
+#define SP11_SOFT_PAUSE_RAMPDOWN_MS		20
+#define SP11_SOFT_PAUSE_DOWNSTREAM_DELAY_MS	25
+#define SP11_SOFT_PAUSE_COMPLETION_MARGIN_MS	5
+#define SP11_SOFT_PAUSE_TIMEOUT_MS		\
+	(SP11_SOFT_PAUSE_RAMPDOWN_MS + SP11_SOFT_PAUSE_DOWNSTREAM_DELAY_MS + \
+	 SP11_SOFT_PAUSE_COMPLETION_MARGIN_MS)
 #define COMPR_PLAYBACK_MAX_FRAGMENT_SIZE (128 * 1024)
 #define COMPR_PLAYBACK_MAX_NUM_FRAGMENTS (16 * 4)
 #define COMPR_PLAYBACK_MIN_FRAGMENT_SIZE (8 * 1024)
@@ -63,12 +75,8 @@ struct q6apm_dai_rtd {
 	struct snd_codec codec;
 	struct snd_compr_params codec_param;
 	struct snd_dma_buffer dma_buffer;
-	struct sh_mem_pull_push_mode_position_buffer *pos_buffer;
-	uint32_t last_pos_index;
 	phys_addr_t phys;
-	phys_addr_t pos_phys;
 	unsigned int pcm_size;
-	unsigned int push_pull_size;
 	unsigned int pcm_count;
 	unsigned int periods;
 	uint64_t bytes_sent;
@@ -81,6 +89,9 @@ struct q6apm_dai_rtd {
 	struct q6apm_graph *graph;
 	spinlock_t lock;
 	bool notify_on_drain;
+	bool soft_paused;
+	struct completion soft_pause_done;
+	struct completion soft_resume_done;
 };
 
 struct q6apm_dai_data {
@@ -127,21 +138,52 @@ static const struct snd_pcm_hardware q6apm_dai_hardware_playback = {
 	.fifo_size =            0,
 };
 
+static const struct snd_pcm_hardware q6apm_dai_hardware_sp11_pull = {
+	.info =			(SNDRV_PCM_INFO_MMAP |
+				 SNDRV_PCM_INFO_BLOCK_TRANSFER |
+				 SNDRV_PCM_INFO_MMAP_VALID |
+				 SNDRV_PCM_INFO_INTERLEAVED |
+				 SNDRV_PCM_INFO_PAUSE |
+				 SNDRV_PCM_INFO_RESUME |
+				 SNDRV_PCM_INFO_NO_REWINDS |
+				 SNDRV_PCM_INFO_SYNC_APPLPTR |
+				 SNDRV_PCM_INFO_BATCH),
+	.formats =		SNDRV_PCM_FMTBIT_S16_LE,
+	.rates =		SNDRV_PCM_RATE_48000,
+	.rate_min =		48000,
+	.rate_max =		48000,
+	.channels_min =		2,
+	.channels_max =		2,
+	.buffer_bytes_max =	SP11_PULL_BUFFER_BYTES,
+	.period_bytes_min =	SP11_PULL_PERIOD_BYTES,
+	.period_bytes_max =	SP11_PULL_PERIOD_BYTES,
+	.periods_min =		2,
+	.periods_max =		2,
+	.fifo_size =		0,
+};
+
 static void event_handler(uint32_t opcode, uint32_t token, void *payload, void *priv)
 {
 	struct q6apm_dai_rtd *prtd = priv;
 	struct snd_pcm_substream *substream = prtd->substream;
 
 	switch (opcode) {
-	case APM_CLIENT_EVENT_WATERMARK_EVENT:
-		snd_pcm_period_elapsed(substream);
-		break;
 	case APM_CLIENT_EVENT_CMD_EOS_DONE:
 		prtd->state = Q6APM_STREAM_STOPPED;
 		break;
 	case APM_CLIENT_EVENT_DATA_WRITE_DONE:
 		snd_pcm_period_elapsed(substream);
 
+		break;
+	case APM_CLIENT_EVENT_PULL_WATERMARK:
+		if (prtd->state == Q6APM_STREAM_RUNNING)
+			snd_pcm_period_elapsed(substream);
+		break;
+	case APM_CLIENT_EVENT_SOFT_PAUSE_COMPLETE:
+		complete(&prtd->soft_pause_done);
+		break;
+	case APM_CLIENT_EVENT_SOFT_RESUME_COMPLETE:
+		complete(&prtd->soft_resume_done);
 		break;
 	case APM_CLIENT_EVENT_DATA_READ_DONE:
 		snd_pcm_period_elapsed(substream);
@@ -230,6 +272,19 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 		return -EINVAL;
 	}
 
+	/*
+	 * The SP11 pull endpoint is configured once for the lifetime of its
+	 * graph.  ALSA may call prepare again on the same open stream, including
+	 * after STOP.  Re-sending the pull-ring parameter is rejected by the DSP
+	 * with AR_EALREADY, while the fixed 48 kHz stereo format cannot change.
+	 * Keep the persistent graph running and only re-arm the host-side state.
+	 */
+	if (prtd->graph->pull_mode && prtd->state != Q6APM_STREAM_IDLE) {
+		prtd->state = Q6APM_STREAM_RUNNING;
+		dev_info(dev, "SP11 stage duplicate prepare reused pull graph\n");
+		return 0;
+	}
+
 	cfg.direction = substream->stream;
 	cfg.sample_rate = runtime->rate;
 	cfg.num_channels = runtime->channels;
@@ -239,37 +294,22 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 	if (prtd->state) {
 		/* clear the previous setup if any  */
 		q6apm_graph_stop(prtd->graph);
-		q6apm_free_fragments(prtd->graph, substream->stream);
+		if (!prtd->graph->pull_mode)
+			q6apm_free_fragments(prtd->graph, substream->stream);
 	}
 
-	prtd->last_pos_index = 0;
 	prtd->pcm_count = snd_pcm_lib_period_bytes(substream);
-	if (q6apm_is_graph_in_push_pull_mode(prtd->graph)) {
-		if (prtd->pcm_size != prtd->push_pull_size) {
-			ret = q6apm_push_pull_config(prtd->graph, prtd->phys, prtd->pos_phys,
-						     prtd->pcm_size);
-			if (ret < 0) {
-				dev_err(dev, "Push/Pull config failed rc = %d\n", ret);
-				return ret;
-			}
-
-			ret = q6apm_register_watermark_event(prtd->graph,
-							     prtd->pcm_size / prtd->periods,
-							     prtd->periods);
-			if (ret < 0) {
-				dev_err(dev, "WaterMark event config failed rc = %d\n", ret);
-				return ret;
-			}
-			prtd->push_pull_size = prtd->pcm_size;
-		}
-	} else {
-		ret = q6apm_alloc_fragments(prtd->graph, substream->stream, prtd->phys,
-					(prtd->pcm_size / prtd->periods), prtd->periods);
-		if (ret < 0) {
-			dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
-			return ret;
-		}
-
+	/* rate and channels are sent to audio driver */
+	if (prtd->graph->pull_mode)
+		ret = q6apm_graph_configure_pull(
+			prtd->graph, &cfg, prtd->phys, prtd->pcm_size,
+			prtd->pcm_count);
+	else
+		ret = q6apm_graph_media_format_shmem(prtd->graph, &cfg);
+	if (ret < 0) {
+		dev_err(dev, "%s: shared-memory setup failed: %d\n",
+			__func__, ret);
+		return ret;
 	}
 
 	ret = q6apm_graph_media_format_pcm(prtd->graph, &cfg);
@@ -278,11 +318,16 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 		return ret;
 	}
 
-	/* rate and channels are sent to audio driver */
-	ret = q6apm_graph_media_format_shmem(prtd->graph, &cfg);
+	if (!prtd->graph->pull_mode)
+		ret = q6apm_alloc_fragments(
+			prtd->graph, substream->stream, prtd->phys,
+			(prtd->pcm_size / prtd->periods), prtd->periods);
+	else
+		ret = 0;
+
 	if (ret < 0) {
-		dev_err(dev, "Failed to set media format %d\n", ret);
-		return ret;
+		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
+		return -ENOMEM;
 	}
 
 	ret = q6apm_graph_prepare(prtd->graph);
@@ -296,13 +341,13 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 		dev_err(dev, "Failed to Start Graph %d\n", ret);
 		return ret;
 	}
-	if (!q6apm_is_graph_in_push_pull_mode(prtd->graph)) {
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-			int i;
-			/* Queue the buffers for Capture ONLY after graph is started */
-			for (i = 0; i < runtime->periods; i++)
-				q6apm_read(prtd->graph);
-		}
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		int i;
+		/* Queue the buffers for Capture ONLY after graph is started */
+		for (i = 0; i < runtime->periods; i++)
+			q6apm_read(prtd->graph);
+
 	}
 
 	/* Now that graph as been prepared and started update the internal state accordingly */
@@ -317,10 +362,9 @@ static int q6apm_dai_ack(struct snd_soc_component *component, struct snd_pcm_sub
 	struct q6apm_dai_rtd *prtd = runtime->private_data;
 	int i, ret = 0, avail_periods;
 
-	if (q6apm_is_graph_in_push_pull_mode(prtd->graph))
-		return 0;
-
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (prtd->graph->pull_mode)
+			return 0;
 		avail_periods = (runtime->control->appl_ptr - prtd->queue_ptr)/runtime->period_size;
 		for (i = 0; i < avail_periods; i++) {
 			ret = q6apm_write_async(prtd->graph, prtd->pcm_count, 0, 0, NO_TIMESTAMP);
@@ -335,6 +379,52 @@ static int q6apm_dai_ack(struct snd_soc_component *component, struct snd_pcm_sub
 	return ret;
 }
 
+static int q6apm_dai_sp11_soft_pause(struct snd_soc_component *component,
+				     struct q6apm_dai_rtd *prtd,
+				     bool pause)
+{
+	struct completion *done = pause ? &prtd->soft_pause_done :
+					    &prtd->soft_resume_done;
+	unsigned long timeout;
+	int ret;
+
+	if (!prtd->graph->pull_mode)
+		return -EOPNOTSUPP;
+
+	/*
+	 * ALSA calls trigger() with the PCM stream lock held.  A pull watermark
+	 * delivered while that lock is held must not call snd_pcm_period_elapsed()
+	 * ahead of the SOFT_PAUSE completion event on the same GPR receive path,
+	 * or completion delivery is blocked behind the trigger waiter.  Windows
+	 * likewise enters PAUSE/state 3 before it sends the value-1 TKV.
+	 */
+	if (pause)
+		prtd->state = Q6APM_STREAM_STOPPED;
+
+	reinit_completion(done);
+	ret = q6apm_graph_sp11_soft_pause(prtd->graph, pause);
+	if (ret) {
+		if (pause)
+			prtd->state = Q6APM_STREAM_RUNNING;
+		return ret;
+	}
+
+	/* The DSP accepted the command. Track requested state even if its
+	 * completion event is delayed/lost so STOP can safely clean up a
+	 * possibly outstanding pause.
+	 */
+	prtd->soft_paused = pause;
+
+	timeout = wait_for_completion_timeout(done, msecs_to_jiffies(SP11_SOFT_PAUSE_TIMEOUT_MS));
+	if (!timeout) {
+		dev_err(component->dev, "SP11 soft-%s completion timed out\n",
+			pause ? "pause" : "resume");
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
 static int q6apm_dai_trigger(struct snd_soc_component *component,
 			     struct snd_pcm_substream *substream, int cmd)
 {
@@ -344,17 +434,51 @@ static int q6apm_dai_trigger(struct snd_soc_component *component,
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (substream->stream != SNDRV_PCM_STREAM_PLAYBACK ||
+		    !prtd->graph->pull_mode || !prtd->soft_paused)
+			break;
+		ret = q6apm_dai_sp11_soft_pause(component, prtd, false);
+		if (ret == -EOPNOTSUPP) {
+			ret = 0;
+		} else if (!ret) {
+			prtd->soft_paused = false;
+			prtd->state = Q6APM_STREAM_RUNNING;
+		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
-		/* TODO support be handled via SoftPause Module */
+		/*
+		 * ALSA STOP is an intermediate host lifecycle transition for this
+		 * persistent pull graph, not the Windows graph teardown boundary.
+		 * If a Windows PAUSE is outstanding, release it exactly before the
+		 * host reprepare; q6apm_dai_close() retains the real graph STOP.
+		 */
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&
+		    prtd->graph->pull_mode && prtd->soft_paused) {
+			ret = q6apm_dai_sp11_soft_pause(component, prtd, false);
+			if (ret == -EOPNOTSUPP)
+				ret = 0;
+			else if (!ret)
+				prtd->soft_paused = false;
+		}
 		prtd->state = Q6APM_STREAM_STOPPED;
 		prtd->queue_ptr = 0;
-		prtd->last_pos_index = 0;
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
+		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (substream->stream != SNDRV_PCM_STREAM_PLAYBACK ||
+		    !prtd->graph->pull_mode || prtd->soft_paused)
+			break;
+		ret = q6apm_dai_sp11_soft_pause(component, prtd, true);
+		if (ret == -EOPNOTSUPP) {
+			ret = 0;
+		} else if (!ret) {
+			prtd->soft_paused = true;
+			prtd->state = Q6APM_STREAM_STOPPED;
+		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -388,6 +512,8 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 		return -ENOMEM;
 
 	spin_lock_init(&prtd->lock);
+	init_completion(&prtd->soft_pause_done);
+	init_completion(&prtd->soft_resume_done);
 	prtd->substream = substream;
 	prtd->graph = q6apm_graph_open(dev, event_handler, prtd, graph_id, substream->stream);
 	if (IS_ERR(prtd->graph)) {
@@ -396,8 +522,12 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 		goto err;
 	}
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		runtime->hw = q6apm_dai_hardware_playback;
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (prtd->graph->pull_mode)
+			runtime->hw = q6apm_dai_hardware_sp11_pull;
+		else
+			runtime->hw = q6apm_dai_hardware_playback;
+	}
 	else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		runtime->hw = q6apm_dai_hardware_capture;
 
@@ -408,7 +538,8 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 		goto err;
 	}
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&
+	    !prtd->graph->pull_mode) {
 		ret = snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
 						   BUFFER_BYTES_MIN, BUFFER_BYTES_MAX);
 		if (ret < 0) {
@@ -431,19 +562,12 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 	}
 
 	runtime->private_data = prtd;
-	runtime->dma_bytes = BUFFER_BYTES_MAX;
+	runtime->dma_bytes = prtd->graph->pull_mode ?
+			     PAGE_SIZE : BUFFER_BYTES_MAX;
 	if (pdata->sid < 0)
 		prtd->phys = substream->dma_buffer.addr;
 	else
 		prtd->phys = substream->dma_buffer.addr | (pdata->sid << 32);
-
-	if (q6apm_is_graph_in_push_pull_mode(prtd->graph)) {
-		void *pos_buffer;
-
-		prtd->pos_phys = prtd->phys + BUFFER_BYTES_MAX;
-		pos_buffer = (void *)(substream->dma_buffer.area + BUFFER_BYTES_MAX);
-		prtd->pos_buffer = (struct sh_mem_pull_push_mode_position_buffer *)(pos_buffer);
-	}
 
 	return 0;
 err:
@@ -461,7 +585,8 @@ static int q6apm_dai_close(struct snd_soc_component *component,
 	if (prtd->state) {
 		/* only stop graph that is started */
 		q6apm_graph_stop(prtd->graph);
-		q6apm_free_fragments(prtd->graph, substream->stream);
+		if (!prtd->graph->pull_mode)
+			q6apm_free_fragments(prtd->graph, substream->stream);
 	}
 
 	q6apm_graph_close(prtd->graph);
@@ -479,25 +604,9 @@ static snd_pcm_uframes_t q6apm_dai_pointer(struct snd_soc_component *component,
 	struct q6apm_dai_rtd *prtd = runtime->private_data;
 	snd_pcm_uframes_t ptr;
 
-	if (q6apm_is_graph_in_push_pull_mode(prtd->graph)) {
-		int retries = 10;
-		uint32_t index, fc1, fc2;
+	if (prtd->graph->pull_mode)
+		return q6apm_get_pull_hw_pointer(prtd->graph, runtime);
 
-		/* index is valid if frame_counter does not change while reading. */
-		do {
-			fc1 = READ_ONCE(prtd->pos_buffer->frame_counter);
-			index = READ_ONCE(prtd->pos_buffer->index);
-			fc2 = READ_ONCE(prtd->pos_buffer->frame_counter);
-		} while (fc1 != fc2 && --retries);
-
-		if (fc1 != fc2)
-			index = prtd->last_pos_index;
-		else
-			prtd->last_pos_index = index;
-
-		ptr = bytes_to_frames(runtime, index);
-		return ptr;
-	}
 	ptr = q6apm_get_hw_pointer(prtd->graph, substream->stream) * runtime->period_size;
 	if (ptr)
 		return ptr - 1;
@@ -530,11 +639,11 @@ static int q6apm_dai_hw_params(struct snd_soc_component *component,
 }
 
 static int q6apm_dai_memory_map(struct snd_soc_component *component,
-				struct snd_pcm_substream *substream,
-				int graph_id, bool is_push_pull)
+				struct snd_pcm_substream *substream, int graph_id)
 {
 	struct q6apm_dai_data *pdata;
 	struct device *dev = component->dev;
+	size_t map_size;
 	phys_addr_t phys;
 	int ret;
 
@@ -549,22 +658,11 @@ static int q6apm_dai_memory_map(struct snd_soc_component *component,
 	else
 		phys = substream->dma_buffer.addr | (pdata->sid << 32);
 
-	ret = q6apm_map_memory_fixed_region(dev, graph_id, phys, BUFFER_BYTES_MAX);
+	map_size = q6apm_graph_is_pull_mode(dev, graph_id) ?
+		   PAGE_SIZE : BUFFER_BYTES_MAX;
+	ret = q6apm_map_memory_fixed_region(dev, graph_id, phys, map_size);
 	if (ret < 0)
 		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
-
-	if (is_push_pull) {
-		if (pdata->sid < 0)
-			phys = substream->dma_buffer.addr + BUFFER_BYTES_MAX;
-		else
-			phys = (substream->dma_buffer.addr + BUFFER_BYTES_MAX) | (pdata->sid << 32);
-
-		ret = q6apm_map_pos_buffer(dev, graph_id, phys, POS_BUFFER_BYTES);
-		if (ret < 0)
-			dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
-	} else {
-
-	}
 
 	return ret;
 }
@@ -578,32 +676,29 @@ static int q6apm_dai_pcm_new(struct snd_soc_component *component, struct snd_soc
 	 * address arithmetic can overflow when the buffer is placed near the
 	 * end of the addressable range.
 	 */
-	int size = BUFFER_BYTES_MAX + PAGE_SIZE;
+	int size;
 	int graph_id, ret;
-	bool is_push_pull;
-	struct snd_pcm_substream *substream = NULL;
+	struct snd_pcm_substream *substream;
 
 	graph_id = cpu_dai->driver->id;
+	size = (q6apm_graph_is_pull_mode(component->dev, graph_id) ?
+		PAGE_SIZE : BUFFER_BYTES_MAX) + PAGE_SIZE;
+
+	ret = snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV, component->dev, size);
+	if (ret)
+		return ret;
 
 	/* Note: DSP backend dais are uni-directional ONLY(either playback or capture) */
-	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream)
+	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 		substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
-	else  if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream)
-		substream = pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream;
-
-
-	if (substream) {
-		is_push_pull = q6apm_is_graph_in_push_pull_mode_from_id(component->dev,
-									graph_id,
-									substream->stream);
-		if (is_push_pull)
-			size += POS_BUFFER_BYTES;
-
-		ret = snd_pcm_set_fixed_buffer_all(pcm, SNDRV_DMA_TYPE_DEV, component->dev, size);
+		ret = q6apm_dai_memory_map(component, substream, graph_id);
 		if (ret)
 			return ret;
+	}
 
-		ret = q6apm_dai_memory_map(component, substream, graph_id, is_push_pull);
+	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+		substream = pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream;
+		ret = q6apm_dai_memory_map(component, substream, graph_id);
 		if (ret)
 			return ret;
 	}
@@ -628,9 +723,6 @@ static void q6apm_dai_memory_unmap(struct snd_soc_component *component,
 
 	graph_id = cpu_dai->driver->id;
 	q6apm_unmap_memory_fixed_region(component->dev, graph_id);
-
-	if (q6apm_is_graph_in_push_pull_mode_from_id(component->dev, graph_id, substream->stream))
-		q6apm_unmap_pos_buffer(component->dev, graph_id);
 }
 
 static void q6apm_dai_pcm_free(struct snd_soc_component *component, struct snd_pcm *pcm)

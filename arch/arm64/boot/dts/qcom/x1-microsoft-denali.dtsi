@@ -333,12 +333,57 @@
 			link-name = "WSA Playback";
 
 			codec {
-				sound-dai = <&left_spkr>, <&right_spkr>,
+				sound-dai = <&left_spkr 0>, <&right_spkr 0>,
 					    <&swr0 0>, <&lpass_wsamacro 0>;
 			};
 
 			cpu {
 				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		wsa-vi-dai-link {
+			link-name = "WSA VI Protection";
+
+			/*
+			 * One two-channel Windows-equivalent feedback transport:
+			 * amplifier VISENSE ports 10/11 -> WSA macro VI ->
+			 * SoundWire DIN0 -> AudioReach WSA TX0.
+			 */
+			codec {
+				sound-dai = <&left_spkr 1>, <&right_spkr 1>,
+					    <&swr0 9>, <&lpass_wsamacro 2>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_TX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		wsa-cps-dai-link {
+			link-name = "WSA CPS Protection";
+
+			/*
+			 * Dedicated CPS sidechain: both WSA8845 DP6 sources share
+			 * physical SoundWire master port 13. swr0 DAI 10 is only
+			 * the independent ASoC/SoundWire stream handle; qcom,port-mapping
+			 * below remains authoritative for the physical master ports.
+			 */
+			codec {
+				sound-dai = <&left_spkr 2>, <&right_spkr 2>,
+					    <&swr0 10>, <&lpass_wsamacro 4>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_TX_1>;
 			};
 
 			platform {
@@ -882,7 +927,7 @@
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <2400000>;
+	qcom,dmic-sample-rate = <4800000>;
 };
 
 &mdss {
@@ -1106,11 +1151,14 @@
 		compatible = "sdw20217020400";
 		reg = <0 0>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-		#sound-dai-cells = <0>;
+		#sound-dai-cells = <1>;
 		sound-name-prefix = "SpkrLeft";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <1 2 3 7 10 13>;
+		qcom,visense-channel-mask = <3>;
+		qcom,enable-cps;
+		qcom,cps-offset1 = <0>;
 	};
 
 	/* WSA8845, Right Speaker */
@@ -1118,11 +1166,14 @@
 		compatible = "sdw20217020400";
 		reg = <0 1>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-		#sound-dai-cells = <0>;
+		#sound-dai-cells = <1>;
 		sound-name-prefix = "SpkrRight";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <4 5 6 7 11 13>;
+		qcom,visense-channel-mask = <3>;
+		qcom,enable-cps;
+		qcom,cps-offset1 = <25>;
 	};
 };
 

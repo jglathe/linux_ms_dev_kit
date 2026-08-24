@@ -117,6 +117,8 @@ int sdw_find_col_index(int col);
  * @ch_mask: Channel mask
  * @transport_params: Transport parameters
  * @port_params: Port parameters
+ * @transport_params_override_mask: Bitmask of per-slave transport overrides
+ * @transport_params_override: Per-slave transport override values
  * @port_node: List node for Master or Slave port_list
  * @lane: Which lane is used
  *
@@ -128,6 +130,8 @@ struct sdw_port_runtime {
 	int ch_mask;
 	struct sdw_transport_params transport_params;
 	struct sdw_port_params port_params;
+	unsigned int transport_params_override_mask;
+	struct sdw_transport_params transport_params_override;
 	struct list_head port_node;
 	unsigned int lane;
 };
