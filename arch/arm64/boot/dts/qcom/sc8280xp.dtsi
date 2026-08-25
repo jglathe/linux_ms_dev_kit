@@ -4903,6 +4903,7 @@
 				phy-names = "dp";
 
 				#sound-dai-cells = <0>;
+				sound-name-prefix = "DisplayPort0";
 
 				operating-points-v2 = <&mdss0_dp0_opp_table>;
 				power-domains = <&rpmhpd SC8280XP_MMCX>;
@@ -5168,6 +5169,7 @@
 				phy-names = "dp";
 
 				#sound-dai-cells = <0>;
+				sound-name-prefix = "DisplayPort1";
 
 				operating-points-v2 = <&mdss0_dp1_opp_table>;
 				power-domains = <&rpmhpd SC8280XP_MMCX>;
@@ -5252,6 +5254,7 @@
 				operating-points-v2 = <&mdss0_dp2_opp_table>;
 
 				#sound-dai-cells = <0>;
+				sound-name-prefix = "DisplayPort2";
 
 				status = "disabled";
 
@@ -5327,6 +5330,7 @@
 				operating-points-v2 = <&mdss0_dp3_opp_table>;
 
 				#sound-dai-cells = <0>;
+				sound-name-prefix = "DisplayPort3";
 
 				status = "disabled";
 
