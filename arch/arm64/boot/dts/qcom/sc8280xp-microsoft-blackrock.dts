@@ -561,7 +561,6 @@
 };
 
 &mdss0_dp0 {
-	sound-name-prefix = "DisplayPort0";
 	status = "okay";
 };
 
@@ -573,7 +572,6 @@
 };
 
 &mdss0_dp1 {
-	sound-name-prefix = "DisplayPort1";
 	status = "okay";
 };
 
@@ -585,7 +583,6 @@
 };
 
 &mdss0_dp2 {
-	sound-name-prefix = "DisplayPort2";
 	compatible = "qcom,sc8280xp-dp";
 
 	status = "okay";
