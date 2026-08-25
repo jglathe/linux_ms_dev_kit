@@ -1,3 +1,17 @@
+linux-qcom-x1e (7.1.9-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: sc8280xp-x13s: update to linux-next
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: update to linux-next
+  * arm64: dts: qcom: sc8280xp: align with linux-next improvements
+  * usb: typec: mux: initialize orientation switch array [Haobo Cheng <i@4t.pw>]
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: Replace old sound nodes, enable DisplayPort audio
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: Enable 4-lane DP altmode
+  * arm64: dts: qcom: sc8280xp-lenovo-thinkpad-x13s: Add DP DAIs
+  * usb: typec: mux: avoid duplicated mux switches [Marek Vasut <marex@nabladev.com>]
+  * usb: typec: mux: Fix typec_switch_match() [Marek Vasut <marex@nabladev.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 25 Aug 2026 18:41:47 +0200
+
 linux-qcom-x1e (7.1.9-jg-0) resolute; urgency=medium
 
   * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: amend numbering of eUSB2 repeaters
