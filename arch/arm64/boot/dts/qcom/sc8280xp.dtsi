@@ -3697,7 +3697,7 @@
 			#clock-cells = <1>;
 			#phy-cells = <1>;
 
-			mode-switch;			
+			mode-switch;
 
 			status = "disabled";
 
