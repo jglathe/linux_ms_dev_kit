@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_clk.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
@@ -1453,6 +1454,10 @@ static int va_macro_validate_dmic_sample_rate(u32 dmic_sample_rate,
 {
 	u32 div_factor;
 	u32 mclk_rate = VA_MACRO_MCLK_FREQ;
+
+	/* Denali programs its divider from the 19.2 MHz VA MCLK vote. */
+	if (of_machine_is_compatible("microsoft,denali"))
+		mclk_rate = 2 * VA_MACRO_MCLK_FREQ;
 
 	if (!dmic_sample_rate || mclk_rate % dmic_sample_rate != 0)
 		goto undefined_rate;
