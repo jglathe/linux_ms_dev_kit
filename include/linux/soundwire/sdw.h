@@ -305,7 +305,14 @@ struct sdw_dp0_prop {
  * @read_only_wordlength: Read Only wordlength field in DPN_BlockCtrl1 register
  * @simple_ch_prep_sm: If the port supports simplified channel prepare state
  * machine
+ * @simple_transport_registers: Optional banked transport registers implemented
+ * by a SIMPLE port in addition to the mandatory SIMPLE register set.
  */
+#define SDW_DPN_SIMPLE_TRANSPORT_BLOCKCTRL3	BIT(0)
+#define SDW_DPN_SIMPLE_TRANSPORT_SAMPLECTRL2	BIT(1)
+#define SDW_DPN_SIMPLE_TRANSPORT_HCTRL		BIT(2)
+#define SDW_DPN_SIMPLE_TRANSPORT_OFFSETCTRL2	BIT(3)
+
 struct sdw_dpn_prop {
 	u32 num;
 	u32 max_word;
@@ -330,6 +337,7 @@ struct sdw_dpn_prop {
 	bool block_pack_mode;
 	bool read_only_wordlength;
 	bool simple_ch_prep_sm;
+	u32 simple_transport_registers;
 };
 
 /**
@@ -890,10 +898,18 @@ void sdw_show_ping_status(struct sdw_bus *bus, bool sync_delay);
  *
  * @num: Port number
  * @ch_mask: channels mask for port
+ * @transport_params_override_mask: Bitmask selecting slave transport fields
+ * which override values computed by the bus master. Master port parameters are
+ * never affected by these per-slave overrides.
+ * @transport_params_override: Values for the selected transport fields.
  */
+#define SDW_PORT_CONFIG_OVERRIDE_OFFSET1	BIT(0)
+
 struct sdw_port_config {
 	unsigned int num;
 	unsigned int ch_mask;
+	unsigned int transport_params_override_mask;
+	struct sdw_transport_params transport_params_override;
 };
 
 /**

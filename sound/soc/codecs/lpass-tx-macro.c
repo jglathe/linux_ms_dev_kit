@@ -49,6 +49,7 @@
 #define CDC_TX_INP_MUX_ADC_MUXn_CFG0(n)	(0x0100 + 0x8 * n)
 #define CDC_TX_MACRO_SWR_MIC_MUX_SEL_MASK GENMASK(3, 0)
 #define CDC_TX_MACRO_DMIC_MUX_SEL_MASK GENMASK(7, 4)
+#define CDC_TX_MACRO_DEC_MUX_SEL_MASK GENMASK(1, 0)
 #define CDC_TX_INP_MUX_ADC_MUX0_CFG0	(0x0100)
 #define CDC_TX_INP_MUX_ADC_MUXn_CFG1(n)	(0x0104 + 0x8 * n)
 #define CDC_TX_INP_MUX_ADC_MUX0_CFG1	(0x0104)
@@ -285,6 +286,7 @@ struct tx_macro {
 	int dec_mode[NUM_DECIMATORS];
 	struct lpass_macro *pds;
 	bool bcs_clk_en;
+	bool sp11_va_dmic_active;
 };
 #define to_tx_macro(_hw) container_of(_hw, struct tx_macro, hw)
 
@@ -906,6 +908,63 @@ static int tx_macro_tx_mixer_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+static int tx_macro_sp11_va_dmic_request(struct snd_soc_component *component,
+					 bool enable)
+{
+	struct tx_macro *tx = snd_soc_component_get_drvdata(component);
+	unsigned int dec0_src, dec1_src, dec0_dmic, dec1_dmic;
+	unsigned long expected = BIT(TX_MACRO_DEC0) | BIT(TX_MACRO_DEC1);
+	int ret, ret2;
+
+	if (!of_machine_is_compatible("microsoft,denali"))
+		return 0;
+
+	if (enable == tx->sp11_va_dmic_active)
+		return 0;
+
+	if (!enable) {
+		ret = lpass_macro_dmic_clk_request(1, false);
+		ret2 = lpass_macro_dmic_clk_request(0, false);
+		if (!ret && ret2)
+			ret = ret2;
+		if (!ret)
+			tx->sp11_va_dmic_active = false;
+		return ret;
+	}
+
+	if (tx->active_ch_mask[TX_MACRO_AIF1_CAP] != expected ||
+	    tx->active_ch_mask[TX_MACRO_AIF2_CAP] ||
+	    tx->active_ch_mask[TX_MACRO_AIF3_CAP])
+		return -EINVAL;
+
+	dec0_src = snd_soc_component_read(component, CDC_TX_INP_MUX_ADC_MUXn_CFG1(TX_MACRO_DEC0));
+	dec0_src &= CDC_TX_MACRO_DEC_MUX_SEL_MASK;
+	dec1_src = snd_soc_component_read(component, CDC_TX_INP_MUX_ADC_MUXn_CFG1(TX_MACRO_DEC1));
+	dec1_src &= CDC_TX_MACRO_DEC_MUX_SEL_MASK;
+	dec0_dmic = snd_soc_component_read(component, CDC_TX_INP_MUX_ADC_MUXn_CFG0(TX_MACRO_DEC0));
+	dec0_dmic = FIELD_GET(CDC_TX_MACRO_DMIC_MUX_SEL_MASK, dec0_dmic);
+	dec1_dmic = snd_soc_component_read(component, CDC_TX_INP_MUX_ADC_MUXn_CFG0(TX_MACRO_DEC1));
+	dec1_dmic = FIELD_GET(CDC_TX_MACRO_DMIC_MUX_SEL_MASK, dec1_dmic);
+
+	/* Windows EP16 is DEC0 <- DMIC1 and DEC1 <- DMIC0, both MSM_DMIC. */
+	if (dec0_src != MSM_DMIC || dec1_src != MSM_DMIC ||
+	    dec0_dmic != 2 || dec1_dmic != 1)
+		return -EINVAL;
+
+	ret = lpass_macro_dmic_clk_request(1, true);
+	if (ret)
+		return ret;
+
+	ret = lpass_macro_dmic_clk_request(0, true);
+	if (ret) {
+		lpass_macro_dmic_clk_request(1, false);
+		return ret;
+	}
+
+	tx->sp11_va_dmic_active = true;
+	return 0;
+}
+
 static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 			       struct snd_kcontrol *kcontrol, int event)
 {
@@ -915,6 +974,7 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 	u8 hpf_cut_off_freq;
 	int hpf_delay = TX_MACRO_DMIC_HPF_DELAY_MS;
 	int unmute_delay = TX_MACRO_DMIC_UNMUTE_DELAY_MS;
+	int ret;
 	u16 adc_mux_reg, adc_reg, adc_n, dmic;
 	u16 dmic_clk_reg;
 	struct tx_macro *tx = snd_soc_component_get_drvdata(component);
@@ -949,6 +1009,9 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 					      CDC_TXn_PGA_MUTE_MASK, 0x1);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		ret = tx_macro_sp11_va_dmic_request(component, true);
+		if (ret)
+			return ret;
 		snd_soc_component_write_field(component, tx_vol_ctl_reg,
 					     CDC_TXn_CLK_EN_MASK, 0x1);
 		if (!is_amic_enabled(component, tx, decimator)) {
@@ -1047,6 +1110,9 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 		cancel_delayed_work_sync(&tx->tx_mute_dwork[decimator].dwork);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		ret = tx_macro_sp11_va_dmic_request(component, false);
+		if (ret)
+			return ret;
 		snd_soc_component_write_field(component, tx_vol_ctl_reg,
 					      CDC_TXn_CLK_EN_MASK, 0x0);
 		snd_soc_component_write_field(component, dec_cfg_reg,

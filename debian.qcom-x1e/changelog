@@ -1,3 +1,62 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v12) resolute; urgency=medium
+
+  * Surface Pro 11 v12: adopt geocausa mic implementation (0072 VA DMIC
+    Windows divider + 0078 share VA DMIC clock with TX capture), drop our
+    VA DMIC DAPM-supply approach, retain TX capture DAI + micbias + 4.8 MHz
+    [geocausa https://github.com/geocausa]
+
+ -- Leon Silcott <leon@boasi.io>  Wed, 26 Aug 2026 18:30:00 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v11) resolute; urgency=medium
+
+  * Surface Pro 11 v11: support X1P MSHW0485 touchscreen product ID
+    (0x0c80) alongside the X1E (0x0c83); descriptor validation now
+    accepts both
+  * Surface Pro 11 v11: skip the SAM battery provider on Denali;
+    Qualcomm battmgr is the authoritative battery source there
+
+ -- Justin White <kyjus25@gmail.com>  Mon, 24 Aug 2026 15:50:00 -0500
+
+linux-qcom-x1e (7.2.0-jg-0sp11v10) resolute; urgency=medium
+
+  * Surface Pro 11 v10: port geocausa Golden v33 TOP_CFG1 physical VI
+    parity (https://github.com/geocausa/SP11X1e-audio) on top of v9:
+    materialize WSA macro TOP_CFG1=0x03 after each enabled VI pair on
+    Denali [geocausa https://github.com/geocausa]
+
+ -- Leon Silcott <leon@boasi.io>  Mon, 24 Aug 2026 00:00:00 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v9) resolute; urgency=medium
+
+  * Surface Pro 11 v9: port geocausa SP11 Golden v32 audio parity
+    (https://github.com/geocausa/SP11X1e-audio): protected AudioReach
+    pull-mode graph, WSA VI feedback + CPS feedback transport,
+    Windows-ordered calibration/volume/mute semantics, WSA8845
+    lifecycle fixes, SoundWire transport parity, 4.8 MHz DMIC clock
+    [geocausa https://github.com/geocausa]
+
+ -- Leon Silcott <leon@boasi.io>  Sun, 23 Aug 2026 00:00:00 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v8) resolute; urgency=medium
+
+  * Surface Pro 11 v8: platform_profile framework works without ACPI
+    (module-local kobject fallback), enabling power-profiles-daemon on
+    the DT-only SP11.
+
+ -- Leon Silcott <leon@boasi.io>  Sun, 23 Aug 2026 00:00:00 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v7) resolute; urgency=medium
+
+  * Surface Pro 11 v7: non-rc 7.2.0 integration line.
+
+ -- Leon Silcott <leon@boasi.io>  Tue, 18 Aug 2026 00:00:00 +0100
+
+linux-qcom-x1e (7.2-rc6-jg-0sp11v6) resolute; urgency=medium
+
+  * Surface Pro 11 v6: wsa884x 2S supply + PA fault recovery + 4-ohm profile.
+
+ -- Leon Silcott <leon@boasi.io>  Mon, 17 Aug 2026 00:00:00 +0100
+
 linux-qcom-x1e (7.2.0-jg-0) resolute; urgency=medium
 
   * phy: snps-eusb2: delay clk defaults until after power-up

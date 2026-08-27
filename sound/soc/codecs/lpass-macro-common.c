@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (c) 2022, The Linux Foundation. All rights reserved.
 
+#include <linux/errno.h>
 #include <linux/export.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -13,6 +14,10 @@
 
 static DEFINE_MUTEX(lpass_codec_mutex);
 static enum lpass_codec_version lpass_codec_version;
+
+static DEFINE_MUTEX(lpass_dmic_clk_mutex);
+static void *lpass_dmic_clk_priv;
+static const struct lpass_macro_dmic_clk_ops *lpass_dmic_clk_ops;
 
 struct lpass_macro *lpass_macro_pds_init(struct device *dev)
 {
@@ -88,6 +93,52 @@ enum lpass_codec_version lpass_macro_get_codec_version(void)
 	return ver;
 }
 EXPORT_SYMBOL_GPL(lpass_macro_get_codec_version);
+
+int lpass_macro_register_dmic_clk_provider(void *priv, const struct lpass_macro_dmic_clk_ops *ops)
+{
+	int ret = 0;
+
+	if (!priv || !ops || !ops->request)
+		return -EINVAL;
+
+	mutex_lock(&lpass_dmic_clk_mutex);
+	if (lpass_dmic_clk_priv && lpass_dmic_clk_priv != priv) {
+		ret = -EBUSY;
+	} else {
+		lpass_dmic_clk_priv = priv;
+		lpass_dmic_clk_ops = ops;
+	}
+	mutex_unlock(&lpass_dmic_clk_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lpass_macro_register_dmic_clk_provider);
+
+void lpass_macro_unregister_dmic_clk_provider(void *priv)
+{
+	mutex_lock(&lpass_dmic_clk_mutex);
+	if (lpass_dmic_clk_priv == priv) {
+		lpass_dmic_clk_ops = NULL;
+		lpass_dmic_clk_priv = NULL;
+	}
+	mutex_unlock(&lpass_dmic_clk_mutex);
+}
+EXPORT_SYMBOL_GPL(lpass_macro_unregister_dmic_clk_provider);
+
+int lpass_macro_dmic_clk_request(unsigned int dmic, bool enable)
+{
+	int ret;
+
+	mutex_lock(&lpass_dmic_clk_mutex);
+	if (!lpass_dmic_clk_ops)
+		ret = -ENODEV;
+	else
+		ret = lpass_dmic_clk_ops->request(lpass_dmic_clk_priv, dmic, enable);
+	mutex_unlock(&lpass_dmic_clk_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lpass_macro_dmic_clk_request);
 
 MODULE_DESCRIPTION("Common macro driver");
 MODULE_LICENSE("GPL");

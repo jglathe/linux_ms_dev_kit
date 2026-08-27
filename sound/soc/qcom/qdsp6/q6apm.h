@@ -10,6 +10,7 @@
 #include <linux/sched.h>
 #include <linux/of.h>
 #include <linux/delay.h>
+#include <linux/dma-mapping.h>
 #include <sound/soc.h>
 #include <linux/of_platform.h>
 #include <linux/jiffies.h>
@@ -41,7 +42,9 @@
 #define APM_CLIENT_EVENT_CMD_RUN_DONE		0x1008
 #define APM_CLIENT_EVENT_DATA_WRITE_DONE	0x1009
 #define APM_CLIENT_EVENT_DATA_READ_DONE		0x100a
-#define APM_CLIENT_EVENT_WATERMARK_EVENT	0x100b
+#define APM_CLIENT_EVENT_PULL_WATERMARK		0x100b
+#define APM_CLIENT_EVENT_SOFT_PAUSE_COMPLETE	0x100c
+#define APM_CLIENT_EVENT_SOFT_RESUME_COMPLETE	0x100d
 #define APM_WRITE_TOKEN_MASK                   GENMASK(15, 0)
 #define APM_WRITE_TOKEN_LEN_MASK               GENMASK(31, 16)
 #define APM_WRITE_TOKEN_LEN_SHIFT              16
@@ -87,6 +90,19 @@ struct audioreach_graph {
 	uint32_t id;
 	int state;
 	int start_count;
+	bool protection_configured;
+	struct mutex protection_lock;
+	struct device *dma_dev;
+	void *oob_virt;
+	dma_addr_t oob_phys;
+	phys_addr_t oob_dsp_addr;
+	size_t oob_size;
+	uint32_t oob_mem_map_handle;
+	void *position_virt;
+	dma_addr_t position_phys;
+	phys_addr_t position_dsp_addr;
+	size_t position_size;
+	uint32_t position_mem_map_handle;
 	/* Cached Graph data */
 	void *graph;
 	struct kref refcount;
@@ -110,6 +126,7 @@ struct q6apm_graph {
 	struct mutex lock;
 	struct audioreach_graph *ar_graph;
 	struct audioreach_graph_info *info;
+	bool pull_mode;
 };
 
 /* Graph Operations */
@@ -120,6 +137,8 @@ int q6apm_graph_prepare(struct q6apm_graph *graph);
 int q6apm_graph_start(struct q6apm_graph *graph);
 int q6apm_graph_stop(struct q6apm_graph *graph);
 int q6apm_graph_flush(struct q6apm_graph *graph);
+int q6apm_graph_sp11_soft_pause(struct q6apm_graph *graph, bool pause);
+bool q6apm_graph_is_pull_mode(struct device *dev, unsigned int graph_id);
 
 /* Media Format */
 int q6apm_graph_media_format_pcm(struct q6apm_graph *graph,
@@ -127,6 +146,10 @@ int q6apm_graph_media_format_pcm(struct q6apm_graph *graph,
 
 int q6apm_graph_media_format_shmem(struct q6apm_graph *graph,
 				   struct audioreach_module_config *cfg);
+int q6apm_graph_configure_pull(struct q6apm_graph *graph,
+			      struct audioreach_module_config *cfg,
+			      phys_addr_t ring_addr, size_t ring_size,
+			      size_t period_size);
 
 /* read/write related */
 int q6apm_read(struct q6apm_graph *graph);
@@ -137,10 +160,6 @@ int q6apm_write_async(struct q6apm_graph *graph, uint32_t len, uint32_t msw_ts,
 int q6apm_map_memory_fixed_region(struct device *dev,
 			     unsigned int graph_id, phys_addr_t phys,
 			     size_t sz);
-int q6apm_map_pos_buffer(struct device *dev,
-			     unsigned int graph_id, phys_addr_t phys,
-			     size_t sz);
-int q6apm_unmap_pos_buffer(struct device *dev, unsigned int graph_id);
 int q6apm_alloc_fragments(struct q6apm_graph *graph,
 			unsigned int dir, phys_addr_t phys,
 			size_t period_sz, unsigned int periods);
@@ -149,21 +168,30 @@ int q6apm_unmap_memory_fixed_region(struct device *dev, unsigned int graph_id);
 /* Helpers */
 int q6apm_send_cmd_sync(struct q6apm *apm, const struct gpr_pkt *pkt,
 			uint32_t rsp_opcode);
+int q6apm_graph_id_for_backend(struct device *dev, int backend_id);
+int q6apm_send_oob_config(struct audioreach_graph *graph,
+			   const void *data, size_t size);
+int q6apm_send_graph_oob_config(struct q6apm_graph *graph,
+				const void *data, size_t size);
+int q6apm_send_inband_config(struct audioreach_graph *graph,
+			     const void *data, size_t size);
 
 /* Callback for graph specific */
 struct audioreach_module *q6apm_find_module_by_mid(struct q6apm_graph *graph,
 						    uint32_t mid);
+int q6apm_graph_get_rx_shmem_module_iid(struct q6apm_graph *graph);
+
 bool q6apm_is_adsp_ready(void);
+void q6apm_sp11_set_vi_ready(bool ready);
+bool q6apm_sp11_vi_ready(void);
+void q6apm_sp11_set_cps_ready(bool ready);
+bool q6apm_sp11_cps_ready(void);
 
 int q6apm_enable_compress_module(struct device *dev, struct q6apm_graph *graph, bool en);
 int q6apm_remove_initial_silence(struct device *dev, struct q6apm_graph *graph, uint32_t samples);
 int q6apm_remove_trailing_silence(struct device *dev, struct q6apm_graph *graph, uint32_t samples);
 int q6apm_set_real_module_id(struct device *dev, struct q6apm_graph *graph, uint32_t codec_id);
 int q6apm_get_hw_pointer(struct q6apm_graph *graph, int dir);
-bool q6apm_is_graph_in_push_pull_mode(struct q6apm_graph *graph);
-bool q6apm_is_graph_in_push_pull_mode_from_id(struct device *dev, unsigned int graph_id, int dir);
-int q6apm_push_pull_config(struct q6apm_graph *graph, phys_addr_t bphys,
-			   phys_addr_t pphys, uint32_t size);
-
-int q6apm_register_watermark_event(struct q6apm_graph *graph, int watermark_bytes, int num_levels);
+snd_pcm_uframes_t q6apm_get_pull_hw_pointer(struct q6apm_graph *graph,
+					    struct snd_pcm_runtime *runtime);
 #endif /* __APM_GRAPH_ */

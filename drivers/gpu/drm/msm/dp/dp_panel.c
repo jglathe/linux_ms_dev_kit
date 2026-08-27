@@ -12,6 +12,8 @@
 #include <drm/drm_of.h>
 #include <drm/drm_print.h>
 
+#include <linux/dmi.h>
+
 #include <linux/io.h>
 #include <linux/types.h>
 #include <asm/byteorder.h>
@@ -98,6 +100,17 @@ static int msm_dp_panel_read_dpcd(struct msm_dp_panel *msm_dp_panel)
 	rc = drm_dp_read_dpcd_caps(panel->aux, dpcd);
 	if (rc)
 		return rc;
+
+	/*
+	 * for some reason the ATNA30DW01-1 OLED panel in the Surface Pro 11
+	 * reports a max link rate of 0 in the DPCD. Fix it to match the
+	 * EDPOverrideDPCDCaps string found in the ACPI DSDT
+	 */
+	if (dpcd[DP_MAX_LINK_RATE] == 0 &&
+	    dmi_match(DMI_SYS_VENDOR, "Microsoft Corporation") &&
+	    dmi_match(DMI_PRODUCT_NAME, "Microsoft Surface Pro, 11th Edition")) {
+		dpcd[1] = DP_LINK_BW_8_1;
+	}
 
 	msm_dp_panel->vsc_sdp_supported = drm_dp_vsc_sdp_supported(panel->aux, dpcd);
 	link_info = &msm_dp_panel->link_info;

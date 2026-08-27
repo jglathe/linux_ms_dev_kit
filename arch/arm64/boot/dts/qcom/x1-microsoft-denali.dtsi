@@ -20,8 +20,9 @@
 	gpio-keys {
 		compatible = "gpio-keys";
 
-		pinctrl-0 = <&hall_int_n_default>;
+		pinctrl-0 = <&hall_int_n_default>, <&kypd_vol_up_n>, <&kypd_vol_down_n>;
 		pinctrl-names = "default";
+		autorepeat;
 
 		switch-lid {
 			gpios = <&tlmm 2 GPIO_ACTIVE_LOW>;
@@ -29,6 +30,20 @@
 			linux,code = <SW_LID>;
 			wakeup-source;
 			wakeup-event-action = <EV_ACT_DEASSERTED>;
+		};
+
+		key-vol-up {
+			label = "volume_up";
+			gpios = <&pm8550_gpios 6 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			wakeup-source;
+		};
+
+		key-vol-down {
+			label = "volume_down";
+			gpios = <&pm8550_gpios 8 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEDOWN>;
+			wakeup-source;
 		};
 	};
 
@@ -312,18 +327,65 @@
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"VA DMIC0", "vdd-micb",
-				"VA DMIC1", "vdd-micb";
+				"VA DMIC1", "vdd-micb",
+				"TX DMIC0", "vdd-micb",
+				"TX DMIC1", "vdd-micb";
 
 		wsa-dai-link {
 			link-name = "WSA Playback";
 
 			codec {
-				sound-dai = <&left_spkr>, <&right_spkr>,
+				sound-dai = <&left_spkr 0>, <&right_spkr 0>,
 					    <&swr0 0>, <&lpass_wsamacro 0>;
 			};
 
 			cpu {
 				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		wsa-vi-dai-link {
+			link-name = "WSA VI Protection";
+
+			/*
+			 * One two-channel Windows-equivalent feedback transport:
+			 * amplifier VISENSE ports 10/11 -> WSA macro VI ->
+			 * SoundWire DIN0 -> AudioReach WSA TX0.
+			 */
+			codec {
+				sound-dai = <&left_spkr 1>, <&right_spkr 1>,
+					    <&swr0 9>, <&lpass_wsamacro 2>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_TX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		wsa-cps-dai-link {
+			link-name = "WSA CPS Protection";
+
+			/*
+			 * Dedicated CPS sidechain: both WSA8845 DP6 sources share
+			 * physical SoundWire master port 13. swr0 DAI 10 is only
+			 * the independent ASoC/SoundWire stream handle; qcom,port-mapping
+			 * below remains authoritative for the physical master ports.
+			 */
+			codec {
+				sound-dai = <&left_spkr 2>, <&right_spkr 2>,
+					    <&swr0 10>, <&lpass_wsamacro 4>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_TX_1>;
 			};
 
 			platform {
@@ -340,6 +402,22 @@
 
 			cpu {
 				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		tx-dai-link {
+			link-name = "TX Capture";
+
+			codec {
+				sound-dai = <&lpass_txmacro 0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
 			};
 
 			platform {
@@ -997,6 +1075,22 @@
 		function = "normal";
 		power-source = <1>; /* 1.8V */
 	};
+
+	kypd_vol_up_n: kypd-vol-up-n-state {
+		pins = "gpio6";
+		function = "normal";
+		power-source = <1>; /* 1.8V */
+		bias-pull-up;
+		input-enable;
+	};
+
+	kypd_vol_down_n: kypd-vol-down-n-state {
+		pins = "gpio8";
+		function = "normal";
+		power-source = <1>; /* 1.8V */
+		bias-pull-up;
+		input-enable;
+	};
 };
 
 &pm8550ve_9_gpios {
@@ -1075,11 +1169,14 @@
 		compatible = "sdw20217020400";
 		reg = <0 0>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-		#sound-dai-cells = <0>;
+		#sound-dai-cells = <1>;
 		sound-name-prefix = "SpkrLeft";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <1 2 3 7 10 13>;
+		qcom,visense-channel-mask = <3>;
+		qcom,enable-cps;
+		qcom,cps-offset1 = <0>;
 	};
 
 	/* WSA8845, Right Speaker */
@@ -1087,11 +1184,14 @@
 		compatible = "sdw20217020400";
 		reg = <0 1>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
-		#sound-dai-cells = <0>;
+		#sound-dai-cells = <1>;
 		sound-name-prefix = "SpkrRight";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <4 5 6 7 11 13>;
+		qcom,visense-channel-mask = <3>;
+		qcom,enable-cps;
+		qcom,cps-offset1 = <25>;
 	};
 };
 
@@ -1214,6 +1314,7 @@
 	};
 };
 
+
 &uart2 {
 	status = "okay";
 
@@ -1264,6 +1365,7 @@
 
 &usb_1_ss0 {
 	dr_mode = "host";
+	snps,reinit-phy-on-resume;
 
 	status = "okay";
 };
@@ -1294,6 +1396,7 @@
 
 &usb_1_ss1 {
 	dr_mode = "host";
+	snps,reinit-phy-on-resume;
 
 	status = "okay";
 };
@@ -1304,4 +1407,72 @@
 
 &usb_1_ss1_qmpphy_out {
 	remote-endpoint = <&retimer_ss1_ss_in>;
+};
+
+/*
+ * Disable cluster-level PSCI idle states to ensure reliable s2idle
+ * resume. The X1E80100 SoC's deeper cluster sleep (cluster_cl4,
+ * psci-suspend-param 0x01000044) can fail to resume on the Surface
+ * Pro 11, leaving the display or USB subsystem unresponsive after
+ * suspend. Override the cluster power domains to remove the deep
+ * cluster idle state, keeping only architectural WFI (cluster_c4,
+ * psci-suspend-param 0x00000004) at the CPU level.
+ */
+&cluster_pd0 {
+	domain-idle-states = <>;
+};
+
+&cluster_pd1 {
+	domain-idle-states = <>;
+};
+
+&cluster_pd2 {
+	domain-idle-states = <>;
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&i2c10 {
+	status = "disabled";
+};
+
+&tlmm {
+	g6ts_qspi_data23: g6ts-qspi-data23-state {
+		pins = "gpio49", "gpio50";
+		function = "qup1_se2";
+
+		drive-strength = <6>;
+		bias-disable;
+	};
+};
+
+&spi10 {
+	status = "okay";
+
+	qcom,biosref-qspi;
+	qcom,enable-gsi-dma;
+
+	dmas = <&gpi_dma1 0 2 4>,
+	       <&gpi_dma1 1 2 4>;
+	dma-names = "tx", "rx";
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&qup_spi10_data_clk>,
+		    <&qup_spi10_cs>,
+		    <&g6ts_qspi_data23>;
+
+	touchscreen@0 {
+		compatible = "microsoft,mshw0485";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <51 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
+
+		power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+	};
 };
