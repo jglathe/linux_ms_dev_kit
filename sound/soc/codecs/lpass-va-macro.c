@@ -7,6 +7,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_clk.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
@@ -724,6 +725,16 @@ static int va_dmic_clk_enable(struct snd_soc_component *component,
 	return 0;
 }
 
+static int va_macro_shared_dmic_clk_request(void *priv, unsigned int dmic,
+					    bool enable)
+{
+	return va_dmic_clk_enable(priv, dmic, enable);
+}
+
+static const struct lpass_macro_dmic_clk_ops va_macro_dmic_clk_ops = {
+	.request = va_macro_shared_dmic_clk_request,
+};
+
 static int va_macro_enable_dmic(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *kcontrol, int event)
 {
@@ -1331,15 +1342,31 @@ static const struct snd_kcontrol_new va_macro_snd_controls[] = {
 static int va_macro_component_probe(struct snd_soc_component *component)
 {
 	struct va_macro *va = snd_soc_component_get_drvdata(component);
+	int ret;
 
 	snd_soc_component_init_regmap(component, va->regmap);
 
+	if (!of_machine_is_compatible("microsoft,denali"))
+		return 0;
+
+	ret = lpass_macro_register_dmic_clk_provider(component, &va_macro_dmic_clk_ops);
+	if (ret)
+		return dev_err_probe(component->dev, ret,
+				     "failed to register shared DMIC clock provider\n");
+
 	return 0;
+}
+
+static void va_macro_component_remove(struct snd_soc_component *component)
+{
+	if (of_machine_is_compatible("microsoft,denali"))
+		lpass_macro_unregister_dmic_clk_provider(component);
 }
 
 static const struct snd_soc_component_driver va_macro_component_drv = {
 	.name = "VA MACRO",
 	.probe = va_macro_component_probe,
+	.remove = va_macro_component_remove,
 	.controls = va_macro_snd_controls,
 	.num_controls = ARRAY_SIZE(va_macro_snd_controls),
 	.dapm_widgets = va_macro_dapm_widgets,
@@ -1453,6 +1480,14 @@ static int va_macro_validate_dmic_sample_rate(u32 dmic_sample_rate,
 {
 	u32 div_factor;
 	u32 mclk_rate = VA_MACRO_MCLK_FREQ;
+
+	/*
+	 * Native Windows on Surface Pro 11 (Denali) votes the VA MCLK at
+	 * 19.2 MHz and programs the DMIC clock selector from that rate.
+	 * Linux already requests that same 19.2 MHz MCLK in probe.
+	 */
+	if (of_machine_is_compatible("microsoft,denali"))
+		mclk_rate = 2 * VA_MACRO_MCLK_FREQ;
 
 	if (!dmic_sample_rate || mclk_rate % dmic_sample_rate != 0)
 		goto undefined_rate;

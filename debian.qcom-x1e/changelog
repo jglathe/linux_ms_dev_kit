@@ -1,3 +1,12 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v12) resolute; urgency=medium
+
+  * Surface Pro 11 v12: adopt geocausa mic implementation (0072 VA DMIC
+    Windows divider + 0078 share VA DMIC clock with TX capture), drop our
+    VA DMIC DAPM-supply approach, retain TX capture DAI + micbias + 4.8 MHz
+    [geocausa https://github.com/geocausa]
+
+ -- Leon Silcott <leon@boasi.io>  Wed, 26 Aug 2026 18:30:00 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v11) resolute; urgency=medium
 
   * Surface Pro 11 v11: support X1P MSHW0485 touchscreen product ID

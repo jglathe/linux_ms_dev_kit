@@ -327,7 +327,9 @@
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"VA DMIC0", "vdd-micb",
-				"VA DMIC1", "vdd-micb";
+				"VA DMIC1", "vdd-micb",
+				"TX DMIC0", "vdd-micb",
+				"TX DMIC1", "vdd-micb";
 
 		wsa-dai-link {
 			link-name = "WSA Playback";
@@ -400,6 +402,22 @@
 
 			cpu {
 				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		tx-dai-link {
+			link-name = "TX Capture";
+
+			codec {
+				sound-dai = <&lpass_txmacro 0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
 			};
 
 			platform {
