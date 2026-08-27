@@ -12,6 +12,11 @@
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
 
+/ {
+	model = "Lenovo IdeaCentre Mini 01Q8X10 (Purwa)";
+	compatible = "lenovo,purwa-ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
+};
+
 //&iris {
 //	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcvss8380_pa.mbn";
 //
