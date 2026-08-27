@@ -1,5 +1,16 @@
 linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * arm64: dts: qcom: x1p64100-dell-latitude-5455: add Dell 5455 model
+  * arm64: dts: qcom: sc8280xp-x13s: update to linux-next
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: update to linux-next
+  * arm64: dts: qcom: sc8280xp: align with linux-next improvements
+  * usb: typec: mux: initialize orientation switch array [Haobo Cheng <i@4t.pw>]
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: Replace old sound nodes, enable DisplayPort audio
+  * arm64: dts: qcom: sc8280xp-microsoft-blackrock: Enable 4-lane DP altmode
+  * arm64: dts: qcom: sc8280xp-lenovo-thinkpad-x13s: Add DP DAIs
+  * usb: typec: mux: avoid duplicated mux switches [Marek Vasut <marex@nabladev.com>]
+  * usb: typec: mux: Fix typec_switch_match() [Marek Vasut <marex@nabladev.com>]
+  * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: make common dtsi
   * phy: snps-eusb2: delay clk defaults until after power-up
   * usb: dwc3-qcom: delay clk defaults until after power-up
   * arm64: dts: qcom: x1p42100-ideapad-slim5x-oled: specify usb2-only clock for usb_1_ss2
