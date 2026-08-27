@@ -8,6 +8,11 @@
 #include "hamoa.dtsi"
 #include "x1-lenovo-ideacentre-mini-01q8x10.dtsi"
 
+/ {
+	model = "Lenovo IdeaCentre Mini 01Q8X10 (Hamoa)";
+	compatible = "lenovo,hamoa-ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
+};
+
 //&iris {
 //	firmware-name = "qcom/x1e80100/LENOVO/91B6/qcvss8380.mbn";
 //
