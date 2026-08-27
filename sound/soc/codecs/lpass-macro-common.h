@@ -41,6 +41,13 @@ struct lpass_macro *lpass_macro_pds_init(struct device *dev);
 void lpass_macro_pds_exit(struct lpass_macro *pds);
 void lpass_macro_set_codec_version(enum lpass_codec_version version);
 enum lpass_codec_version lpass_macro_get_codec_version(void);
+struct lpass_macro_dmic_clk_ops {
+	int (*request)(void *priv, unsigned int dmic, bool enable);
+};
+
+int lpass_macro_register_dmic_clk_provider(void *priv, const struct lpass_macro_dmic_clk_ops *ops);
+void lpass_macro_unregister_dmic_clk_provider(void *priv);
+int lpass_macro_dmic_clk_request(unsigned int dmic, bool enable);
 
 static inline void lpass_macro_pds_exit_action(void *pds)
 {
