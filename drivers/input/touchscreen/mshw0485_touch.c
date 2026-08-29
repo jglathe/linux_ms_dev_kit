@@ -212,6 +212,17 @@ MODULE_PARM_DESC(ipts_hid_bridge,
 		 "Expose a HIDRAW-only IPTS compatibility device (default: true)");
 
 /*
+ * Phase 83 isolates the private post-mode feature exchanges from the
+ * HID-over-SPI sequence used by the known-working SP11 IPTS stack.  Keep this
+ * opt-in: existing installations rely on the Phase 72 mode tail, while this
+ * path deliberately stops after iptsd's SET_FEATURE 0x05 mode command.
+ */
+static bool g6ts_ipts_minimal_init;
+module_param_named(ipts_minimal_init, g6ts_ipts_minimal_init, bool, 0444);
+MODULE_PARM_DESC(ipts_minimal_init,
+		 "Use SET_FEATURE 0x05-only IPTS initialization; requires ipts_hid_bridge (default: false)");
+
+/*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
  * Phase 75 transport and recovery path.  It enables three independently
  * proven ordinary-finger pieces without enabling the incomplete Windows
@@ -1105,6 +1116,8 @@ static const char *g6ts_profile_name(void)
 {
 	if (g6ts_windows_init_parity)
 		return "windows-init-parity";
+	if (g6ts_ipts_minimal_init)
+		return "phase83-ipts-minimal";
 	if (g6ts_ready_quiesce && g6ts_feature70_one_byte)
 		return "phase82";
 	if (g6ts_ready_quiesce)
@@ -1136,6 +1149,7 @@ static ssize_t behavior_stats_show(struct device *dev,
 		div64_u64(ts->processing_ns_total, ts->heat_frames) : 0;
 	length = sysfs_emit(buf,
 			    "profile=%s\n"
+			    "ipts_minimal_init=%u\n"
 			    "parity_linux_power=%u\n"
 			    "windows_read_cadence=%u\n"
 			    "initialization_stage=%s\n"
@@ -1185,7 +1199,7 @@ static ssize_t behavior_stats_show(struct device *dev,
 			    "last_host_fault=%d\n"
 			    "ready_heat_frames=%llu\n"
 			    "ready_verification_failures=%llu\n",
-			    g6ts_profile_name(),
+			    g6ts_profile_name(), g6ts_ipts_minimal_init,
 			    g6ts_parity_linux_power,
 			    g6ts_windows_read_cadence,
 			    g6ts_initialization_stage_name(ts->initialization_stage),
@@ -4086,9 +4100,15 @@ static int g6ts_full_reinitialize_locked(struct g6ts *ts,
 	if (ret)
 		goto out;
 
-	ts->initialization_stage = G6TS_INIT_GET_FEATURE70;
 	ts->mode_config_valid = false;
 	ts->mode_config_len = 0;
+	if (g6ts_ipts_minimal_init) {
+		dev_info(&ts->spi->dev,
+			 "IPTS minimal init: SET_FEATURE 0x05 only; skipped feature 0x70/0x56\n");
+		goto mode_ready;
+	}
+
+	ts->initialization_stage = G6TS_INIT_GET_FEATURE70;
 	ret = g6ts_dma_feature_exchange(ts, GET_FEATURE, 0x70, NULL, 0);
 	if (ret)
 		goto out;
@@ -4183,6 +4203,7 @@ static int g6ts_full_reinitialize_locked(struct g6ts *ts,
 	if (ret)
 		goto out;
 
+mode_ready:
 	if (g6ts_reset_recovery_v2) {
 		ts->initialization_stage = G6TS_INIT_WAIT_HEAT;
 		/*
@@ -4278,6 +4299,12 @@ static int g6ts_probe(struct spi_device *spi)
 	if (g6ts_behavior_v2 && g6ts_windows_orchestrator)
 		return dev_err_probe(&spi->dev, -EINVAL,
 				     "behavior_v2 and windows_orchestrator are mutually exclusive\n");
+	if (g6ts_ipts_minimal_init && !g6ts_ipts_hid_bridge)
+		return dev_err_probe(&spi->dev, -EINVAL,
+				     "ipts_minimal_init requires ipts_hid_bridge\n");
+	if (g6ts_ipts_minimal_init && g6ts_windows_init_parity)
+		return dev_err_probe(&spi->dev, -EINVAL,
+				     "ipts_minimal_init and windows_init_parity are mutually exclusive\n");
 	if (g6ts_reset_storm_breaker && !g6ts_reset_recovery_v2)
 		return dev_err_probe(&spi->dev, -EINVAL,
 				     "reset_storm_breaker requires reset_recovery_v2\n");
