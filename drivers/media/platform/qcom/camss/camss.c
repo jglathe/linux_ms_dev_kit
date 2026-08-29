@@ -4592,7 +4592,7 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
 }
 
 /**
- * camss_get_link_freq - Get link frequency from sensor
+ * camss_get_link_freq - Get link frequency from the upstream transmitter
  * @entity: Media entity in the current pipeline
  * @bpp: Number of bits per pixel for the current format
  * @lanes: Number of lanes in the link to the sensor
@@ -4602,13 +4602,38 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
 s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
 			unsigned int lanes)
 {
-	struct media_pad *sensor_pad;
+	struct media_pad *sink_pad;
+	struct media_pad *source_pad;
+	s64 link_freq;
 
-	sensor_pad = camss_find_sensor_pad(entity);
-	if (!sensor_pad)
-		return -ENODEV;
+	/*
+	 * A sensor can expose multiple subdevices between its pixel array and
+	 * the receiver.  The link-frequency control belongs to the subdevice
+	 * driving the physical link (for example a CCS scaler), not necessarily
+	 * to the entity classified as MEDIA_ENT_F_CAM_SENSOR.  Walk upstream and
+	 * use the first transmitter source pad that advertises the frequency.
+	 */
+	while (1) {
+		if (WARN_ON(!entity->pads || !entity->num_pads))
+			return -ENODEV;
 
-	return v4l2_get_link_freq(sensor_pad, bpp, 2 * lanes);
+		sink_pad = &entity->pads[0];
+		if (!(sink_pad->flags & MEDIA_PAD_FL_SINK))
+			return -ENODEV;
+
+		source_pad = media_pad_remote_pad_first(sink_pad);
+		if (!source_pad ||
+		    !is_media_entity_v4l2_subdev(source_pad->entity))
+			return -ENODEV;
+
+		link_freq = v4l2_get_link_freq(source_pad, bpp, 2 * lanes);
+		if (link_freq != -ENOENT)
+			return link_freq;
+
+		entity = source_pad->entity;
+		if (entity->function == MEDIA_ENT_F_CAM_SENSOR)
+			return -ENODEV;
+	}
 }
 
 /*
@@ -4718,7 +4743,10 @@ static int camss_parse_endpoint_node(struct device *dev,
 {
 	struct csiphy_lanes_cfg *lncfg = &csd->interface.csi2.lane_cfg;
 	struct v4l2_mbus_config_mipi_csi2 *mipi_csi2;
+	struct v4l2_fwnode_endpoint remote_vep = { { 0 } };
 	struct v4l2_fwnode_endpoint vep = { { 0 } };
+	struct fwnode_handle *remote_ep;
+	enum v4l2_mbus_type bus_type;
 	unsigned int i;
 	int ret;
 
@@ -4726,20 +4754,33 @@ static int camss_parse_endpoint_node(struct device *dev,
 	if (ret)
 		return ret;
 
-	/*
-	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
-	 * D-PHY is supported in the driver.
-	 */
-	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
-		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
+	remote_ep = fwnode_graph_get_remote_endpoint(ep);
+	if (!remote_ep)
+		return -ENOTCONN;
+
+	ret = v4l2_fwnode_endpoint_parse(remote_ep, &remote_vep);
+	fwnode_handle_put(remote_ep);
+	if (ret)
+		return ret;
+
+	/* The transmitter endpoint is authoritative for the CSI-2 PHY type. */
+	bus_type = remote_vep.bus_type == V4L2_MBUS_UNKNOWN ?
+		   vep.bus_type : remote_vep.bus_type;
+	if (bus_type != V4L2_MBUS_CSI2_DPHY &&
+	    bus_type != V4L2_MBUS_CSI2_CPHY) {
+		dev_err(dev, "Unsupported bus type %d\n", bus_type);
 		return -EINVAL;
 	}
 
 	csd->interface.csiphy_id = vep.base.port;
+	csd->interface.csi2.bus_type = bus_type;
 
 	mipi_csi2 = &vep.bus.mipi_csi2;
-	lncfg->clk.pos = mipi_csi2->clock_lane;
-	lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+	if (bus_type == V4L2_MBUS_CSI2_DPHY) {
+		lncfg->clk.pos = mipi_csi2->clock_lane;
+		lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+	}
+
 	lncfg->num_data = mipi_csi2->num_data_lanes;
 
 	lncfg->data = devm_kcalloc(dev,

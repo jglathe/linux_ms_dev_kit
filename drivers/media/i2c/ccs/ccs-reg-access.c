@@ -48,6 +48,9 @@ static u32 float_to_u32_mul_1000000(struct i2c_client *client, u32 phloat)
 	 * have 0 in the high bit)
 	 */
 	exp = ((int32_t)phloat >> 23) - 127;
+	/* Such small values round down to zero after scaling. */
+	if (exp <= -64)
+		return 0;
 
 	/* Extract mantissa, add missing '1' bit and it's in MHz */
 	man = ((phloat & 0x7fffff) | 0x800000) * 1000000ULL;

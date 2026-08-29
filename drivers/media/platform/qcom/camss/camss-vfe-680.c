@@ -38,6 +38,7 @@
 
 #define VFE_BUS_WRITE_CLIENT_CFG(vfe, c)	((vfe_is_lite(vfe) ? 0x400 : 0xe00) + (c) * 0x100)
 #define		VFE_BUS_WRITE_CLIENT_CFG_EN	BIT(0)
+#define		VFE_BUS_WRITE_CLIENT_CFG_MODE_MIPI_RAW	BIT(16)
 #define VFE_BUS_IMAGE_ADDR(vfe, c)		((vfe_is_lite(vfe) ? 0x404 : 0xe04) + (c) * 0x100)
 #define VFE_BUS_FRAME_INCR(vfe, c)		((vfe_is_lite(vfe) ? 0x408 : 0xe08) + (c) * 0x100)
 #define VFE_BUS_IMAGE_CFG0(vfe, c)		((vfe_is_lite(vfe) ? 0x40c : 0xe0c) + (c) * 0x100)
@@ -186,16 +187,56 @@ static void vfe_wm_start(struct vfe_device *vfe, u8 rdi, struct vfe_line *line)
 	vfe_disable_irq(vfe);
 
 	/* Enable WM */
-	writel(VFE_BUS_WRITE_CLIENT_CFG_EN,
+	writel(VFE_BUS_WRITE_CLIENT_CFG_EN |
+	       VFE_BUS_WRITE_CLIENT_CFG_MODE_MIPI_RAW,
 	       vfe->base + VFE_BUS_WRITE_CLIENT_CFG(vfe, wm));
 
 	dev_dbg(vfe->camss->dev, "RDI%d WM:%d width %d height %d stride %d\n",
 		rdi, wm, pix->width, pix->height, stride);
 }
 
+static bool vfe_is_imx681_raw(struct vfe_device *vfe, u8 rdi)
+{
+	struct v4l2_pix_format_mplane *pix;
+
+	if (vfe->camss->res->version != CAMSS_X1E80100 ||
+	    vfe_is_lite(vfe) || rdi >= vfe->res->line_num)
+		return false;
+
+	pix = &vfe->line[rdi].video_out.active_fmt.fmt.pix_mp;
+
+	return pix->pixelformat == V4L2_PIX_FMT_SRGGB10P &&
+	       pix->width == 3840 && pix->height == 2640 &&
+	       pix->plane_fmt[0].bytesperline == 4800;
+}
+
 static void vfe_wm_stop(struct vfe_device *vfe, u8 rdi)
 {
 	u8 wm = RDI_WM(rdi);
+
+	if (vfe_is_imx681_raw(vfe, rdi)) {
+		dev_info(vfe->camss->dev,
+			 "VFE%u IMX681 RDI%u WM%u stop: CFG=%#010x ADDR=%#010x INCR=%#010x IMG=%#010x/%#010x/%#010x PACKER=%#010x\n",
+			 vfe->id, rdi, wm,
+			 readl(vfe->base + VFE_BUS_WRITE_CLIENT_CFG(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_IMAGE_ADDR(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_FRAME_INCR(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_IMAGE_CFG0(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_IMAGE_CFG1(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_IMAGE_CFG2(vfe, wm)),
+			 readl(vfe->base + VFE_BUS_PACKER_CFG(vfe, wm)));
+		dev_info(vfe->camss->dev,
+			 "VFE%u IMX681 IRQ: TOP=%#010x/%#010x BUS=%#010x/%#010x VIOL=%#010x OVERFLOW=%#010x IMAGE_VIOL=%#010x\n",
+			 vfe->id,
+			 readl(vfe->base + VFE_TOP_IRQn_STATUS(vfe, 0)),
+			 readl(vfe->base + VFE_TOP_IRQn_STATUS(vfe, 1)),
+			 readl(vfe->base + VFE_BUS_IRQn_STATUS(vfe, 0)),
+			 readl(vfe->base + VFE_BUS_IRQn_STATUS(vfe, 1)),
+			 readl(vfe->base + VFE_BUS_WR_VIOLATION_STATUS(vfe)),
+			 readl(vfe->base + VFE_BUS_WR_OVERFLOW_STATUS(vfe)),
+			 readl(vfe->base +
+			       VFE_BUS_WR_IMAGE_VIOLATION_STATUS(vfe)));
+	}
 
 	writel(0, vfe->base + VFE_BUS_WRITE_CLIENT_CFG(vfe, wm));
 }

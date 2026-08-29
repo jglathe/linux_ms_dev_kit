@@ -249,11 +249,43 @@ static int video_prepare_streaming(struct vb2_queue *q)
 	return ret;
 }
 
+static void video_stop_subdevices(struct camss_video *video,
+				  struct media_entity *last_started)
+{
+	struct video_device *vdev = &video->vdev;
+	struct media_entity *entity = &vdev->entity;
+	struct media_pad *pad;
+	struct v4l2_subdev *subdev;
+	int ret;
+
+	while (1) {
+		pad = &entity->pads[0];
+		if (!(pad->flags & MEDIA_PAD_FL_SINK))
+			break;
+
+		pad = media_pad_remote_pad_first(pad);
+		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
+			break;
+
+		entity = pad->entity;
+		subdev = media_entity_to_v4l2_subdev(entity);
+
+		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
+		if (ret < 0 && ret != -ENOIOCTLCMD)
+			dev_err(video->camss->dev,
+				"Video pipeline stop failed: %d\n", ret);
+
+		if (last_started && entity == last_started)
+			break;
+	}
+}
+
 static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct camss_video *video = vb2_get_drv_priv(q);
 	struct video_device *vdev = &video->vdev;
 	struct media_entity *entity;
+	struct media_entity *last_started = NULL;
 	struct media_pad *pad;
 	struct v4l2_subdev *subdev;
 	int ret;
@@ -284,11 +316,15 @@ static int video_start_streaming(struct vb2_queue *q, unsigned int count)
 		ret = v4l2_subdev_call(subdev, video, s_stream, 1);
 		if (ret < 0 && ret != -ENOIOCTLCMD)
 			goto error;
+		if (ret >= 0)
+			last_started = entity;
 	}
 
 	return 0;
 
 error:
+	if (last_started)
+		video_stop_subdevices(video, last_started);
 	video_device_pipeline_stop(vdev);
 
 flush_buffers:
@@ -301,31 +337,8 @@ static void video_stop_streaming(struct vb2_queue *q)
 {
 	struct camss_video *video = vb2_get_drv_priv(q);
 	struct video_device *vdev = &video->vdev;
-	struct media_entity *entity;
-	struct media_pad *pad;
-	struct v4l2_subdev *subdev;
-	int ret;
 
-	entity = &vdev->entity;
-	while (1) {
-		pad = &entity->pads[0];
-		if (!(pad->flags & MEDIA_PAD_FL_SINK))
-			break;
-
-		pad = media_pad_remote_pad_first(pad);
-		if (!pad || !is_media_entity_v4l2_subdev(pad->entity))
-			break;
-
-		entity = pad->entity;
-		subdev = media_entity_to_v4l2_subdev(entity);
-
-		ret = v4l2_subdev_call(subdev, video, s_stream, 0);
-
-		if (ret) {
-			dev_err(video->camss->dev, "Video pipeline stop failed: %d\n", ret);
-			return;
-		}
-	}
+	video_stop_subdevices(video, NULL);
 
 	video_device_pipeline_stop(vdev);
 
