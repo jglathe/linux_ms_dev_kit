@@ -3182,7 +3182,10 @@ static int g6ts_cache_ipts_metadata_locked(struct g6ts *ts)
 
 static int g6ts_ipts_hid_ll_parse(struct hid_device *hid)
 {
-	struct g6ts *ts = hid_get_drvdata(hid);
+	struct g6ts *ts = hid->driver_data;
+
+	if (!ts)
+		return -ENODEV;
 
 	if (!READ_ONCE(ts->report_descriptor_valid))
 		return -ENODEV;
@@ -3220,10 +3223,12 @@ static int g6ts_ipts_hid_ll_raw_request(struct hid_device *hid,
 					size_t len, unsigned char rtype,
 					int reqtype)
 {
-	struct g6ts *ts = hid_get_drvdata(hid);
+	struct g6ts *ts = hid->driver_data;
 	size_t metadata_len;
 	int ret;
 
+	if (!ts)
+		return -ENODEV;
 	if (!buf || len < 2)
 		return -EINVAL;
 	if (rtype != HID_FEATURE_REPORT)
@@ -3315,7 +3320,8 @@ static struct hid_device *g6ts_ipts_hid_allocate(struct g6ts *ts,
 	if (IS_ERR(hid))
 		return hid;
 
-	hid_set_drvdata(hid, ts);
+	/* Low-level transports own driver_data; drvdata belongs to the HID client. */
+	hid->driver_data = ts;
 	hid->ll_driver = &g6ts_ipts_hid_ll_driver;
 	hid->dev.parent = &ts->spi->dev;
 	hid->bus = BUS_SPI;
