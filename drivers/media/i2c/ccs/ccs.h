@@ -249,6 +249,8 @@ struct ccs_sensor {
 
 	/* Pixel array controls */
 	struct v4l2_ctrl *exposure;
+	struct v4l2_ctrl *analogue_gain;
+	struct v4l2_ctrl *digital_gain;
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vflip;
 	struct v4l2_ctrl *vblank;
@@ -267,6 +269,32 @@ struct ccs_sensor {
 
 #define to_ccs_sensor(_sd)	\
 	(to_ccs_subdev(_sd)->sensor)
+
+#define CCS_IMX681_MFR_ID		0x4260
+#define CCS_IMX681_SP11_MFR_ID		0x3b60
+#define CCS_IMX681_MODEL_ID		0x0681
+#define CCS_IMX681_REVISION		0x0010
+
+static inline bool ccs_is_imx681_id(u16 manufacturer_id, u16 model_id,
+				    u16 revision)
+{
+	/*
+	 * This SP11 unit reports manufacturer 0x3b60 (firmware filename
+	 * ccs-sensor-3b60-0681-0010.fw); other units may report 0x4260.
+	 * Both identities are the Sony IMX681.
+	 */
+	return (manufacturer_id == CCS_IMX681_MFR_ID ||
+		manufacturer_id == CCS_IMX681_SP11_MFR_ID) &&
+	       model_id == CCS_IMX681_MODEL_ID &&
+	       revision == CCS_IMX681_REVISION;
+}
+
+static inline bool ccs_is_imx681(const struct ccs_sensor *sensor)
+{
+	return ccs_is_imx681_id(sensor->minfo.sensor_mipi_manufacturer_id,
+				sensor->minfo.sensor_model_id,
+				sensor->minfo.sensor_revision_number);
+}
 
 void ccs_replace_limit(struct ccs_sensor *sensor,
 		       unsigned int limit, unsigned int offset, u32 val);

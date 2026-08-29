@@ -65,6 +65,11 @@ properties:
   flash-leds: true
   lens-focus: true
 
+  leds: true
+  led-names: true
+
+  orientation: true
+
   rotation:
     enum: [ 0, 180 ]
 

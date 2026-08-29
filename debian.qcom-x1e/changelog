@@ -1,3 +1,48 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v14) resolute; urgency=medium
+
+  * Surface Pro 11 v14: enable the runtime-validated Sony IMX681 front camera
+    with a standalone driver and complete 3840x2640 RAW10 mode tables at
+    approximately 30 fps. Retain Denali's proven CCI address 0x10 and expose
+    one 1.203 GHz V4L2 link frequency, representing 2.406 Gsymbol/s on the
+    wire.
+  * Add the exact X1E80100 trio-0, 2.406-Gsymbol/s C-PHY profile and its
+    observed reset, toggle, common, analogue, IRQ-clear, and shutdown
+    lifecycle. Reject unvalidated C-PHY rates and topologies before receiver
+    power or register programming while preserving the generic D-PHY path.
+  * Complete CAMSS C-PHY routing through CSIPHY2, CSID0, and VFE0 RDI0, with
+    link-derived CSID clock votes, the matched CSID680 receiver configuration,
+    keep-all RDI handling, and VFE680 MIPI RAW mode. Propagate stream failures,
+    unwind partial starts, and shut down the receiver before its clocks and
+    supplies.
+  * Wire the Denali sensor with MCLK4, reset and power rails, user-facing
+    orientation, and the V4L2-managed privacy LED. Preserve Bayer order across
+    flip controls; expose grouped frame-length, 24-bit 0x0229 exposure, and
+    analogue/digital gain controls; and enable CONFIG_VIDEO_IMX681=m in the
+    ARM64 package policy.
+  * Preserve matched-stack provenance from turbineBMW repository b1f5237957b9
+    and camera bundle 675d89b381d8: sensor 00cece0b87c4, Denali wiring
+    8915ca862de4, X1E C-PHY/CSID plumbing b1eae4e60169, and observed receiver
+    sequence 8c1731648d04.
+    [karsies-wq https://github.com/karsies-wq]
+    [geocausa https://github.com/geocausa]
+    [turbineBMW https://github.com/turbineBMW]
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 08:59:29 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v13) resolute; urgency=medium
+
+  * Surface Pro 11 v13: add experimental camera receiver groundwork:
+    disable unconfigured CSID680 RDI crop/drop, select MIPI RAW mode for
+    VFE680 RDI, and guard CCS tiny floating-point limits against oversized
+    shifts. No camera sensors are enabled yet.
+  * Surface Pro 11 v13: enable the Sony IMX681 C-PHY front camera with
+    model-scoped CCS IMX681 support, the x1e80100 C-PHY receive path,
+    CAMSS C-PHY routing and receiver crop, Denali camera device-tree
+    nodes, and the privacy indicator
+    [karsies-wq https://github.com/karsies-wq]
+
+ -- Leon Silcott <leon@boasi.io>  Thu, 27 Aug 2026 16:05:30 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v12) resolute; urgency=medium
 
   * Surface Pro 11 v12: adopt geocausa mic implementation (0072 VA DMIC

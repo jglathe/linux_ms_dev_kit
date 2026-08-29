@@ -56,6 +56,17 @@
 #define CSIPHY_3PH_REGS					6
 #define CSIPHY_SKEW_CAL					7
 
+#include "phy-qcom-mipi-csi2-cphy-x1e80100.h"
+
+#define X1E80100_CPHY_SYMBOL_RATE	2406000000UL
+
+static bool is_x1e80100_cphy(struct mipi_csi2phy_device *csi2phy,
+			     const struct mipi_csi2phy_stream_cfg *cfg);
+static void x1e80100_cphy_write(struct mipi_csi2phy_device *csi2phy,
+				const struct x1e80100_cphy_reg *table,
+				unsigned int num_entries);
+static void x1e80100_cphy_clear_irq(struct mipi_csi2phy_device *csi2phy);
+
 /* 4nm 2PH v 2.1.2 2p5Gbps 4 lane DPHY mode */
 static const struct
 mipi_csi2phy_lane_regs lane_regs_x1e80100[] = {
@@ -218,9 +229,14 @@ static void phy_qcom_mipi_csi2_reset(struct mipi_csi2phy_device *csi2phy)
 
 static irqreturn_t phy_qcom_mipi_csi2_isr(int irq, void *dev)
 {
-	const struct mipi_csi2phy_device *csi2phy = dev;
+	struct mipi_csi2phy_device *csi2phy = dev;
 	const struct mipi_csi2phy_device_regs *regs = csi2phy_dev_to_regs(csi2phy);
 	int i;
+
+	if (is_x1e80100_cphy(csi2phy, &csi2phy->stream_cfg)) {
+		x1e80100_cphy_clear_irq(csi2phy);
+		return IRQ_HANDLED;
+	}
 
 	for (i = 0; i < 11; i++) {
 		int c = i + 22;
@@ -339,6 +355,65 @@ static void phy_qcom_mipi_csi2_gen1_config_lanes(struct mipi_csi2phy_device *csi
 	writel_relaxed(val, csi2phy->base + CSIPHY_3PH_LNn_MISC1(l));
 }
 
+static bool is_x1e80100_cphy(struct mipi_csi2phy_device *csi2phy,
+			     const struct mipi_csi2phy_stream_cfg *cfg)
+{
+	return csi2phy->soc_cfg == &mipi_csi2_dphy_4nm_x1e &&
+	       cfg->mode == PHY_MODE_MIPI_CPHY &&
+	       cfg->cphy_trio == 0 &&
+	       cfg->num_data_lanes == 1 &&
+	       cfg->link_freq ==
+		       (s64)csi2phy->soc_cfg->cphy_symbol_rate;
+}
+
+static void x1e80100_cphy_write(struct mipi_csi2phy_device *csi2phy,
+				const struct x1e80100_cphy_reg *table,
+				unsigned int num_entries)
+{
+	unsigned int i;
+
+	might_sleep();
+
+	for (i = 0; i < num_entries; i++) {
+		u32 delay_us;
+
+		/* writel() preserves the ordering seen at the runtime MMIO writer. */
+		writel(table[i].reg_data, csi2phy->base + table[i].reg_addr);
+
+		if (!table[i].delay_ns)
+			continue;
+
+		/* The observed writer floors nanoseconds and enforces a 1 us minimum. */
+		delay_us = max_t(u32, table[i].delay_ns / NSEC_PER_USEC, 1);
+		if (delay_us <= 50)
+			udelay(delay_us);
+		else
+			usleep_range(delay_us,
+				     delay_us + max(delay_us / 100, 10U));
+	}
+}
+
+static void x1e80100_cphy_clear_irq(struct mipi_csi2phy_device *csi2phy)
+{
+	unsigned int i;
+
+	/* The IRQ-clear table contains only zero or 100 ns observed delays. */
+	for (i = 0; i < ARRAY_SIZE(x1e80100_cphy_irq_clear); i++) {
+		u32 delay_us;
+
+		writel(x1e80100_cphy_irq_clear[i].reg_data,
+		       csi2phy->base + x1e80100_cphy_irq_clear[i].reg_addr);
+
+		if (!x1e80100_cphy_irq_clear[i].delay_ns)
+			continue;
+
+		delay_us = max_t(u32,
+				 x1e80100_cphy_irq_clear[i].delay_ns /
+				 NSEC_PER_USEC, 1);
+		udelay(delay_us);
+	}
+}
+
 static void
 phy_qcom_mipi_csi2_gen2_config_lanes(struct mipi_csi2phy_device *csi2phy,
 				     u8 settle_cnt)
@@ -375,6 +450,35 @@ static bool phy_qcom_mipi_csi2_is_gen2(struct mipi_csi2phy_device *csi2phy)
 	return regs->generation == GEN2;
 }
 
+static int
+phy_qcom_mipi_csi2_cphy_lanes_enable(struct mipi_csi2phy_device *csi2phy,
+				     struct mipi_csi2phy_stream_cfg *cfg)
+{
+	if (!is_x1e80100_cphy(csi2phy, cfg))
+		return -EOPNOTSUPP;
+
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_reset) != 2);
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_toggle) != 6);
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_common) != 9);
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_config) != 121);
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_irq_clear) != 24);
+	BUILD_BUG_ON(ARRAY_SIZE(x1e80100_cphy_shutdown) != 3);
+
+	dev_dbg(csi2phy->dev,
+		"enable X1E80100 C-PHY sequence at %lu symbols/s\n",
+		csi2phy->soc_cfg->cphy_symbol_rate);
+	x1e80100_cphy_write(csi2phy, x1e80100_cphy_reset,
+			    ARRAY_SIZE(x1e80100_cphy_reset));
+	x1e80100_cphy_write(csi2phy, x1e80100_cphy_toggle,
+			    ARRAY_SIZE(x1e80100_cphy_toggle));
+	x1e80100_cphy_write(csi2phy, x1e80100_cphy_common,
+			    ARRAY_SIZE(x1e80100_cphy_common));
+	x1e80100_cphy_write(csi2phy, x1e80100_cphy_config,
+			    ARRAY_SIZE(x1e80100_cphy_config));
+
+	return 0;
+}
+
 static int phy_qcom_mipi_csi2_lanes_enable(struct mipi_csi2phy_device *csi2phy,
 					   struct mipi_csi2phy_stream_cfg *cfg)
 {
@@ -383,6 +487,13 @@ static int phy_qcom_mipi_csi2_lanes_enable(struct mipi_csi2phy_device *csi2phy,
 	u8 settle_cnt;
 	u8 val;
 	int i;
+
+	if (cfg->mode == PHY_MODE_MIPI_CPHY) {
+		if (!phy_qcom_mipi_csi2_is_gen2(csi2phy))
+			return -EOPNOTSUPP;
+
+		return phy_qcom_mipi_csi2_cphy_lanes_enable(csi2phy, cfg);
+	}
 
 	settle_cnt = phy_qcom_mipi_csi2_settle_cnt_calc(cfg->link_freq, csi2phy->timer_clk_rate);
 
@@ -424,6 +535,12 @@ phy_qcom_mipi_csi2_lanes_disable(struct mipi_csi2phy_device *csi2phy,
 				 struct mipi_csi2phy_stream_cfg *cfg)
 {
 	const struct mipi_csi2phy_device_regs *regs = csi2phy_dev_to_regs(csi2phy);
+
+	if (is_x1e80100_cphy(csi2phy, cfg)) {
+		x1e80100_cphy_write(csi2phy, x1e80100_cphy_shutdown,
+				    ARRAY_SIZE(x1e80100_cphy_shutdown));
+		return;
+	}
 
 	writel_relaxed(0, csi2phy->base +
 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 5));
@@ -470,6 +587,8 @@ const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_4nm_x1e = {
 		.offset = 0x1000,
 		.generation = GEN2,
 	},
+	.cphy_symbol_rate = X1E80100_CPHY_SYMBOL_RATE,
+	.cphy_trio_mask = BIT(0),
 	.supply_names = (const char *[]){
 		"vdda-0p8",
 		"vdda-1p2"

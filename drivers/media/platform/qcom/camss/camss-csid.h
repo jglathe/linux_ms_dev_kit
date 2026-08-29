@@ -65,6 +65,7 @@ struct csid_testgen_config {
 };
 
 struct csid_phy_config {
+	enum v4l2_mbus_type bus_type;
 	u8 csiphy_id;
 	u8 lane_cnt;
 	u32 lane_assign;
@@ -80,6 +81,12 @@ struct csid_hw_ops {
 	 * @csid: CSID device
 	 */
 	void (*configure_stream)(struct csid_device *csid, u8 enable);
+
+	/*
+	 * log_status - Log a read-only hardware status snapshot while powered
+	 * @csid: CSID device
+	 */
+	void (*log_status)(struct csid_device *csid);
 
 	/*
 	 * configure_testgen_pattern - Validates and configures output pattern mode
@@ -195,6 +202,11 @@ u32 csid_find_code(u32 *codes, unsigned int ncode,
 const struct csid_format_info *csid_get_fmt_entry(const struct csid_format_info *formats,
 						  unsigned int nformats,
 						  u32 code);
+
+bool csid_is_cphy_raw10_3844(struct csid_device *csid,
+			     const struct v4l2_mbus_framefmt *format);
+bool csid_is_sp11_imx681_format(struct csid_device *csid,
+				const struct v4l2_mbus_framefmt *format);
 
 int msm_csid_subdev_init(struct camss *camss, struct csid_device *csid,
 			 const struct camss_subdev_resources *res, u8 id);

@@ -329,12 +329,16 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
 	struct phy_configure_opts_mipi_dphy *dphy_cfg;
 	union phy_configure_opts dphy_opts = { 0 };
 	struct device *dev = csiphy->camss->dev;
+	bool is_cphy = csiphy->cfg.csi2->bus_type == V4L2_MBUS_CSI2_CPHY;
 	s64 link_freq;
 	int ret;
 
 	dphy_cfg = &dphy_opts.mipi_dphy;
 
-	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
+	if (is_cphy)
+		link_freq = camss_get_link_freq(&csiphy->subdev.entity, 0, 0);
+	else
+		link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
 
 	if (link_freq < 0) {
 		dev_err(dev,
@@ -342,14 +346,40 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
 		return -EINVAL;
 	}
 
-	phy_mipi_dphy_get_default_config_for_hsclk(link_freq, num_lanes, dphy_cfg);
+	if (is_cphy) {
+		if (!num_lanes)
+			return -EINVAL;
 
-	phy_set_mode(csiphy->phy, PHY_MODE_MIPI_DPHY);
+		/*
+		 * V4L2 exposes half the C-PHY symbol rate as LINK_FREQ.  Until
+		 * generic C-PHY options exist, carry the actual symbol rate to the
+		 * X1E PHY in hs_clk_rate and the physical trio in the PHY submode.
+		 */
+		dphy_cfg->hs_clk_rate = link_freq * 2;
+		dphy_cfg->lanes = num_lanes;
 
-	ret = phy_configure(csiphy->phy, &dphy_opts);
-	if (ret) {
-		dev_err(dev, "failed to configure MIPI D-PHY\n");
-		goto error;
+		ret = phy_set_mode_ext(csiphy->phy, PHY_MODE_MIPI_CPHY,
+				       csiphy->cfg.csi2->lane_cfg.data[0].pos);
+		if (ret) {
+			dev_err(dev, "failed to set MIPI C-PHY mode\n");
+			goto error;
+		}
+
+		ret = phy_configure(csiphy->phy, &dphy_opts);
+		if (ret) {
+			dev_err(dev, "failed to configure MIPI C-PHY\n");
+			goto error;
+		}
+	} else {
+		phy_mipi_dphy_get_default_config_for_hsclk(link_freq, num_lanes, dphy_cfg);
+
+		phy_set_mode(csiphy->phy, PHY_MODE_MIPI_DPHY);
+
+		ret = phy_configure(csiphy->phy, &dphy_opts);
+		if (ret) {
+			dev_err(dev, "failed to configure MIPI D-PHY\n");
+			goto error;
+		}
 	}
 
 	return phy_power_on(csiphy->phy);

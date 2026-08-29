@@ -13054,6 +13054,7 @@ CONFIG_VIDEO_IMX335                             policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX355                             policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX412                             policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX415                             policy<{'arm64': 'm'}>
+CONFIG_VIDEO_IMX681                             policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX7_CSI                           policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX8MQ_MIPI_CSI2                   policy<{'arm64': 'm'}>
 CONFIG_VIDEO_IMX8_ISI                           policy<{'arm64': 'm'}>

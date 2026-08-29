@@ -23,7 +23,9 @@ struct mipi_csi2phy_lanes_cfg {
 };
 
 struct mipi_csi2phy_stream_cfg {
+	enum phy_mode mode;
 	u8 combo_mode;
+	u8 cphy_trio;
 	s64 link_freq;
 	u8 num_data_lanes;
 	struct mipi_csi2phy_lanes_cfg lane_cfg;
@@ -70,6 +72,8 @@ struct mipi_csi2phy_clk_freq {
 struct mipi_csi2phy_soc_cfg {
 	const struct mipi_csi2phy_hw_ops *ops;
 	const struct mipi_csi2phy_device_regs reg_info;
+	const unsigned long cphy_symbol_rate;
+	const unsigned long cphy_trio_mask;
 
 	const char ** const supply_names;
 	const unsigned int num_supplies;
@@ -85,6 +89,7 @@ struct mipi_csi2phy_device {
 
 	struct phy *phy;
 	void __iomem *base;
+	int irq;
 
 	struct clk_bulk_data *clks;
 	struct regulator_bulk_data *supplies;
