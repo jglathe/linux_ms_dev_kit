@@ -9,6 +9,7 @@
 #include <linux/fs.h>
 #include <linux/g6ts_heat.h>
 #include <linux/gpio/consumer.h>
+#include <linux/hid.h>
 #include <linux/hid-over-spi.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
@@ -51,6 +52,9 @@
 #define G6TS_RAW_HEAT_REPORT_0D		0x0d
 #define G6TS_RAW_HEAT_REPORT_1A		0x1a
 #define G6TS_RAW_SIDEBAND_REPORT_6E	0x6e
+#define G6TS_IPTS_MODE_REPORT_ID	0x05
+#define G6TS_IPTS_METADATA_REPORT_ID	0x06
+#define G6TS_IPTS_METADATA_LEN		119U
 #define G6TS_PEN_REPORT_ID		0x01
 #define G6TS_PEN_REPORT_LEN		15U
 #define G6TS_PEN_X_MAX			9600U
@@ -70,6 +74,9 @@
 #define G6TS_RECOVERY_DELAY_MS		100U
 #define G6TS_RECOVERY_RETRY_MS		500U
 #define G6TS_RECOVERY_LIMIT		3U
+#define G6TS_HID_REBIND_STABLE_MS	250U
+#define G6TS_HID_REBIND_RETRY_MS	1000U
+#define G6TS_HID_REBIND_RETRY_LIMIT	2U
 #define G6TS_RESET_STORM_WINDOW_MS	5000U
 #define G6TS_RESET_STORM_LIMIT		3U
 #define G6TS_HEAT_ROWS			46U
@@ -193,6 +200,16 @@ module_param_named(heat_feedback, g6ts_heat_feedback, bool, 0444);
 MODULE_PARM_DESC(heat_feedback,
 		 "Enable the per-heat-cycle Windows V06 feedback stream (report 0x09); "
 		 "requires parity_fast_host_id=0..65535 (default: false)");
+
+/*
+ * Expose the native descriptor and DFT reports through a HIDRAW-only sibling
+ * so the established iptsd decoder can provide the stylus input device.  The
+ * custom driver remains the sole owner of panel mode and touch processing.
+ */
+static bool g6ts_ipts_hid_bridge = true;
+module_param_named(ipts_hid_bridge, g6ts_ipts_hid_bridge, bool, 0444);
+MODULE_PARM_DESC(ipts_hid_bridge,
+		 "Expose a HIDRAW-only IPTS compatibility device (default: true)");
 
 /*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
@@ -534,6 +551,7 @@ struct g6ts {
 	struct spi_device *spi;
 	struct input_dev *input;
 	struct g6ts_heat_device *heat;
+	struct hid_device *ipts_hid;
 	struct input_dev *pen_input;
 	struct touchscreen_properties prop;
 	struct touchscreen_properties pen_prop;
@@ -553,11 +571,18 @@ struct g6ts {
 	struct g6ts_track tracks[G6TS_MAX_CONTACTS];
 	struct g6ts_assignment_workspace assignment;
 	struct delayed_work recovery_work;
+	struct delayed_work hid_rebind_work;
 	u8 last_header[HIDSPI_INPUT_HEADER_SIZE];
+	u8 report_descriptor[G6TS_SP11_REPORT_DESCRIPTOR_LEN];
+	u8 ipts_metadata[G6TS_IPTS_METADATA_LEN];
 	u8 last_class;
 	u16 last_content_len;
 	u16 expected_report_descriptor_len;
+	u16 hid_product_id;
 	u8 last_content_id;
+	u32 hid_target_generation;
+	u32 hid_bound_generation;
+	u8 hid_rebind_failures;
 	/* Phase 72 Linux response content used by the combined experimental path. */
 	u8 mode_config[G6TS_FEATURE_RESPONSE_LIMIT];
 	u8 mode_config_len;
@@ -606,10 +631,14 @@ struct g6ts {
 	int last_host_fault;
 	enum g6ts_recovery_path recovery_path;
 	bool nsr_valid;
+	bool report_descriptor_valid;
+	bool ipts_metadata_valid;
+	bool ipts_hid_ready;
 	bool awaiting_ready_heat;
 	bool mode_enabled;
 	bool fatal_transport_error;
 	bool stopping;
+	bool quiescing;
 	bool parity_feedback_required;
 	bool parity_config_owner_required;
 	bool parity_cfu_owner_required;
@@ -622,6 +651,11 @@ struct g6ts {
 	u8 parity_cfu_offer_response[G6TS_WINDOWS_CFU_OFFER_LEN];
 	bool init_get_feature_dumped[G6TS_INIT_STAGE_COUNT];
 };
+
+static bool g6ts_is_quiescing(const struct g6ts *ts)
+{
+	return READ_ONCE(ts->stopping) || READ_ONCE(ts->quiescing);
+}
 
 static bool g6ts_is_raw_export_report(u8 report_id)
 {
@@ -636,6 +670,36 @@ static bool g6ts_is_raw_export_report(u8 report_id)
 	default:
 		return false;
 	}
+}
+
+/*
+ * iptsd consumes only the four core DFT reports. Keep sideband reports on the
+ * diagnostic ABI: report 0x6e can contain a device or pen identifier and is
+ * not needed by the stylus decoder.
+ */
+static bool g6ts_is_ipts_hid_report(u8 report_id)
+{
+	switch (report_id) {
+	case G6TS_RAW_HEAT_REPORT_0B:
+	case G6TS_RAW_HEAT_REPORT_0C:
+	case G6TS_RAW_HEAT_REPORT_0D:
+	case G6TS_RAW_HEAT_REPORT_1A:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* io_lock is held by every transport-generation caller. */
+static void g6ts_hid_generation_boundary(struct g6ts *ts)
+{
+	ts->hid_target_generation++;
+	if (!ts->hid_target_generation)
+		ts->hid_target_generation = 1;
+	ts->hid_rebind_failures = 0;
+
+	/* Never destroy hidraw from a feature ioctl or IRQ/reset call stack. */
+	mod_delayed_work(system_wq, &ts->hid_rebind_work, 0);
 }
 
 static void g6ts_heat_device_release(struct kref *ref)
@@ -722,6 +786,7 @@ static void g6ts_heat_generation_boundary(struct g6ts *ts, u8 flags)
 	struct g6ts_heat_device *heat = ts->heat;
 
 	ts->a5.cycle_saw_0x0d = false;
+	g6ts_hid_generation_boundary(ts);
 	if (!heat)
 		return;
 
@@ -1141,7 +1206,7 @@ static ssize_t behavior_stats_show(struct device *dev,
 			    ts->parity_cfu_offer_response,
 			    ts->last_header, ts->last_class,
 			    ts->last_content_id, ts->last_content_len,
-			    ts->mode_enabled, ts->awaiting_ready_heat,
+			    READ_ONCE(ts->mode_enabled), ts->awaiting_ready_heat,
 			    ts->heat_frames, ts->heat_errors,
 			    ts->component_total, ts->contact_total,
 			    ts->weak_rejections, ts->nsr_rejections,
@@ -2721,6 +2786,7 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 	const u8 *payload = ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE;
 	u16 x, y;
 	bool active;
+	int ret;
 
 	if (ts->last_class != DATA)
 		return;
@@ -2729,6 +2795,21 @@ static void g6ts_handle_data_report(struct g6ts *ts)
 	if (g6ts_is_raw_export_report(ts->last_content_id))
 		g6ts_heat_enqueue(ts, ts->last_content_id, payload,
 				  ts->last_content_len);
+	/*
+	 * HID-SPI stores the report ID immediately before content, so body + 3
+	 * is the exact hidraw packet expected by iptsd. The full allocation size
+	 * is supplied because report 0x1a is 4,350 bytes including its ID.
+	 */
+	if (ts->ipts_hid_ready &&
+	    g6ts_is_ipts_hid_report(ts->last_content_id)) {
+		ret = hid_safe_input_report(ts->ipts_hid, HID_INPUT_REPORT,
+					    ts->body + 3, G6TS_MAX_BODY - 3,
+					    ts->last_content_len + 1, 1);
+		if (ret && ret != -ENODEV && ret != -EBUSY)
+			dev_warn_ratelimited(&ts->spi->dev,
+					     "failed to relay DFT report 0x%02x: %d\n",
+					     ts->last_content_id, ret);
+	}
 	switch (ts->last_content_id) {
 	case 0x1a:
 		g6ts_send_heat_feedback_a5(ts, true);
@@ -2873,7 +2954,7 @@ static int g6ts_dma_read_response(struct g6ts *ts)
 			le16_to_cpu(descriptor->rep_desc_len);
 	}
 	/* Recovery consumes and validates replies before reopening Linux input. */
-	if (READ_ONCE(ts->mode_enabled))
+	if (!g6ts_is_quiescing(ts) && READ_ONCE(ts->mode_enabled))
 		g6ts_handle_data_report(ts);
 	return 0;
 }
@@ -2914,7 +2995,7 @@ static void g6ts_note_panel_reset_locked(struct g6ts *ts,
 		 "panel reset notification #%llu interval=%lums\n",
 		 ts->reset_notifications, interval_ms);
 
-	if (schedule_recovery && !READ_ONCE(ts->stopping))
+	if (schedule_recovery && !g6ts_is_quiescing(ts))
 		schedule_delayed_work(&ts->recovery_work,
 				      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
 }
@@ -2952,7 +3033,7 @@ static void g6ts_note_host_fault_locked(struct g6ts *ts, int error)
 		 "host HID-SPI fault #%llu ret=%d; scheduling cold recovery\n",
 		 ts->host_fault_recoveries, error);
 
-	if (!READ_ONCE(ts->stopping))
+	if (!g6ts_is_quiescing(ts))
 		schedule_delayed_work(&ts->recovery_work,
 				      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
 }
@@ -2963,7 +3044,7 @@ static irqreturn_t g6ts_interrupt_thread(int irq, void *data)
 	unsigned int i;
 	int ret;
 
-	if (!READ_ONCE(ts->mode_enabled))
+	if (g6ts_is_quiescing(ts) || !READ_ONCE(ts->mode_enabled))
 		return IRQ_HANDLED;
 
 	mutex_lock(&ts->io_lock);
@@ -2999,9 +3080,9 @@ static irqreturn_t g6ts_interrupt_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
-				     u8 content_id, const u8 *content,
-				     size_t content_len)
+static int __g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
+				       u8 content_id, const u8 *content,
+				       size_t content_len, bool dump_response)
 {
 	char dump_prefix[64];
 	u8 expected_class;
@@ -3035,7 +3116,7 @@ static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
 
 		if (ts->last_class == expected_class &&
 		    ts->last_content_id == content_id) {
-			if (report_type == GET_FEATURE &&
+			if (dump_response && report_type == GET_FEATURE &&
 			    !ts->init_get_feature_dumped[ts->initialization_stage]) {
 				ts->init_get_feature_dumped[ts->initialization_stage] = true;
 				scnprintf(dump_prefix, sizeof(dump_prefix),
@@ -3070,6 +3151,292 @@ static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
 	return -EOVERFLOW;
 }
 
+static int g6ts_dma_feature_exchange(struct g6ts *ts, u8 report_type,
+				     u8 content_id, const u8 *content,
+				     size_t content_len)
+{
+	return __g6ts_dma_feature_exchange(ts, report_type, content_id, content,
+					   content_len, true);
+}
+
+static int g6ts_cache_ipts_metadata_locked(struct g6ts *ts)
+{
+	const u8 *metadata =
+		ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE;
+
+	if (ts->last_class != GET_FEATURE_RESPONSE ||
+	    ts->last_content_id != G6TS_IPTS_METADATA_REPORT_ID ||
+	    ts->last_content_len != G6TS_IPTS_METADATA_LEN)
+		return -EPROTO;
+	if (ts->ipts_metadata_valid &&
+	    memcmp(ts->ipts_metadata, metadata, G6TS_IPTS_METADATA_LEN)) {
+		dev_err(&ts->spi->dev,
+			"IPTS metadata changed across transport generation\n");
+		return -EPROTO;
+	}
+
+	memcpy(ts->ipts_metadata, metadata, G6TS_IPTS_METADATA_LEN);
+	ts->ipts_metadata_valid = true;
+	return 0;
+}
+
+static int g6ts_ipts_hid_ll_parse(struct hid_device *hid)
+{
+	struct g6ts *ts = hid_get_drvdata(hid);
+
+	if (!READ_ONCE(ts->report_descriptor_valid))
+		return -ENODEV;
+
+	return hid_parse_report(hid, ts->report_descriptor,
+				G6TS_SP11_REPORT_DESCRIPTOR_LEN);
+}
+
+static int g6ts_ipts_hid_ll_start(struct hid_device *hid)
+{
+	return 0;
+}
+
+static void g6ts_ipts_hid_ll_stop(struct hid_device *hid)
+{
+}
+
+static int g6ts_ipts_hid_ll_open(struct hid_device *hid)
+{
+	return 0;
+}
+
+static void g6ts_ipts_hid_ll_close(struct hid_device *hid)
+{
+}
+
+/*
+ * The custom transport owns mode selection.  iptsd's report-0x05 writes are
+ * therefore acknowledged without reaching the panel; in particular, its
+ * shutdown write must not switch the shared controller back to singletouch.
+ * The metadata GET is proxied once and then served from the stable cache.
+ */
+static int g6ts_ipts_hid_ll_raw_request(struct hid_device *hid,
+					unsigned char reportnum, u8 *buf,
+					size_t len, unsigned char rtype,
+					int reqtype)
+{
+	struct g6ts *ts = hid_get_drvdata(hid);
+	size_t metadata_len;
+	int ret;
+
+	if (!buf || len < 2)
+		return -EINVAL;
+	if (rtype != HID_FEATURE_REPORT)
+		return -EOPNOTSUPP;
+
+	mutex_lock(&ts->io_lock);
+	if (g6ts_is_quiescing(ts) || ts->ipts_hid != hid) {
+		ret = -ENODEV;
+		goto out_unlock;
+	}
+
+	if (reqtype == HID_REQ_SET_REPORT) {
+		if (reportnum != G6TS_IPTS_MODE_REPORT_ID ||
+		    buf[0] != reportnum || len != 2 || buf[1] > 1) {
+			ret = -EOPNOTSUPP;
+			goto out_unlock;
+		}
+		ret = len;
+		goto out_unlock;
+	}
+
+	if (reqtype != HID_REQ_GET_REPORT ||
+	    reportnum != G6TS_IPTS_METADATA_REPORT_ID) {
+		ret = -EOPNOTSUPP;
+		goto out_unlock;
+	}
+	if (!READ_ONCE(ts->mode_enabled)) {
+		ret = -EHOSTDOWN;
+		goto out_unlock;
+	}
+
+	if (!ts->ipts_metadata_valid) {
+		ret = __g6ts_dma_feature_exchange(ts, GET_FEATURE,
+						  G6TS_IPTS_METADATA_REPORT_ID,
+						  NULL, 0, false);
+		if (!ret)
+			ret = g6ts_cache_ipts_metadata_locked(ts);
+		if (ret) {
+			if (ret == -EPIPE && !g6ts_is_quiescing(ts))
+				schedule_delayed_work(&ts->recovery_work,
+						      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
+			goto out_unlock;
+		}
+	}
+
+	metadata_len = min_t(size_t, len - 1, G6TS_IPTS_METADATA_LEN);
+	buf[0] = reportnum;
+	memcpy(buf + 1, ts->ipts_metadata, metadata_len);
+	ret = metadata_len + 1;
+
+out_unlock:
+	mutex_unlock(&ts->io_lock);
+	return ret;
+}
+
+static const struct hid_ll_driver g6ts_ipts_hid_ll_driver = {
+	.parse = g6ts_ipts_hid_ll_parse,
+	.start = g6ts_ipts_hid_ll_start,
+	.stop = g6ts_ipts_hid_ll_stop,
+	.open = g6ts_ipts_hid_ll_open,
+	.close = g6ts_ipts_hid_ll_close,
+	.raw_request = g6ts_ipts_hid_ll_raw_request,
+	.max_buffer_size = G6TS_MAX_BODY,
+};
+
+static bool g6ts_ipts_hid_desired_locked(const struct g6ts *ts)
+{
+	return g6ts_ipts_hid_bridge && !g6ts_is_quiescing(ts) &&
+	       READ_ONCE(ts->mode_enabled) &&
+	       ts->report_descriptor_valid && ts->hid_product_id;
+}
+
+static struct hid_device *g6ts_ipts_hid_detach_locked(struct g6ts *ts)
+{
+	struct hid_device *hid = ts->ipts_hid;
+
+	ts->ipts_hid = NULL;
+	ts->ipts_hid_ready = false;
+	ts->hid_bound_generation = 0;
+	return hid;
+}
+
+static struct hid_device *g6ts_ipts_hid_allocate(struct g6ts *ts,
+						 u16 product_id)
+{
+	struct hid_device *hid;
+
+	hid = hid_allocate_device();
+	if (IS_ERR(hid))
+		return hid;
+
+	hid_set_drvdata(hid, ts);
+	hid->ll_driver = &g6ts_ipts_hid_ll_driver;
+	hid->dev.parent = &ts->spi->dev;
+	hid->bus = BUS_SPI;
+	hid->group = HID_GROUP_MSHW0485_IPTS;
+	hid->vendor = G6TS_SP11_VENDOR_ID;
+	hid->product = product_id;
+	hid->version = G6TS_SP11_VERSION_ID;
+	snprintf(hid->name, sizeof(hid->name),
+		 "Microsoft Surface G6 IPTS %04X:%04X",
+		 G6TS_SP11_VENDOR_ID, product_id);
+	snprintf(hid->phys, sizeof(hid->phys), "%s/ipts",
+		 dev_name(&ts->spi->dev));
+
+	return hid;
+}
+
+static bool g6ts_ipts_hid_retry_locked(struct g6ts *ts, u32 generation)
+{
+	if (!g6ts_ipts_hid_desired_locked(ts) || ts->ipts_hid ||
+	    ts->hid_target_generation != generation ||
+	    ts->hid_rebind_failures >= G6TS_HID_REBIND_RETRY_LIMIT)
+		return false;
+
+	ts->hid_rebind_failures++;
+	return true;
+}
+
+/*
+ * HID teardown may take hidraw's minors_rwsem for write.  Never destroy while
+ * io_lock is held: a concurrent feature ioctl takes that rwsem for read before
+ * entering our raw_request callback and acquiring io_lock.
+ */
+static void g6ts_ipts_hid_rebind_work(struct work_struct *work)
+{
+	struct g6ts *ts = container_of(to_delayed_work(work), struct g6ts,
+				      hid_rebind_work);
+	struct hid_device *old_hid = NULL;
+	struct hid_device *hid;
+	bool create = false;
+	bool retry = false;
+	u32 generation = 0;
+	u16 product_id = 0;
+	int ret;
+
+	mutex_lock(&ts->io_lock);
+	if (ts->ipts_hid &&
+	    (!g6ts_ipts_hid_desired_locked(ts) ||
+	     ts->hid_bound_generation != ts->hid_target_generation))
+		old_hid = g6ts_ipts_hid_detach_locked(ts);
+	if (!ts->ipts_hid && g6ts_ipts_hid_desired_locked(ts)) {
+		generation = ts->hid_target_generation;
+		product_id = ts->hid_product_id;
+		create = true;
+	}
+	mutex_unlock(&ts->io_lock);
+
+	if (old_hid)
+		hid_destroy_device(old_hid);
+	if (!create)
+		return;
+
+	hid = g6ts_ipts_hid_allocate(ts, product_id);
+	if (IS_ERR(hid)) {
+		ret = PTR_ERR(hid);
+		mutex_lock(&ts->io_lock);
+		retry = g6ts_ipts_hid_retry_locked(ts, generation);
+		mutex_unlock(&ts->io_lock);
+		dev_err(&ts->spi->dev,
+			"failed to allocate IPTS HID device: %d%s\n", ret,
+			retry ? "; retrying" : "");
+		if (retry)
+			mod_delayed_work(system_wq, &ts->hid_rebind_work,
+					 msecs_to_jiffies(G6TS_HID_REBIND_RETRY_MS));
+		return;
+	}
+
+	mutex_lock(&ts->io_lock);
+	if (!g6ts_ipts_hid_desired_locked(ts) || ts->ipts_hid ||
+	    ts->hid_target_generation != generation ||
+	    ts->hid_product_id != product_id) {
+		mutex_unlock(&ts->io_lock);
+		hid_destroy_device(hid);
+		return;
+	}
+	ts->ipts_hid = hid;
+	ts->ipts_hid_ready = false;
+	ts->hid_bound_generation = generation;
+	mutex_unlock(&ts->io_lock);
+
+	ret = hid_add_device(hid);
+	if (!ret && hid->claimed != HID_CLAIMED_HIDRAW)
+		ret = -ENODEV;
+
+	mutex_lock(&ts->io_lock);
+	if (!ret && ts->ipts_hid == hid &&
+	    g6ts_ipts_hid_desired_locked(ts) &&
+	    ts->hid_target_generation == generation) {
+		ts->ipts_hid_ready = true;
+		ts->hid_rebind_failures = 0;
+		mutex_unlock(&ts->io_lock);
+		dev_info(&ts->spi->dev,
+			 "IPTS HIDRAW bridge ready generation=%u product=%04x\n",
+			 generation, product_id);
+		return;
+	}
+	if (ts->ipts_hid == hid)
+		g6ts_ipts_hid_detach_locked(ts);
+	if (ret)
+		retry = g6ts_ipts_hid_retry_locked(ts, generation);
+	mutex_unlock(&ts->io_lock);
+
+	if (ret)
+		dev_err(&ts->spi->dev,
+			"failed to register HIDRAW-only IPTS device: %d%s\n",
+			ret, retry ? "; retrying" : "");
+	hid_destroy_device(hid);
+	if (retry)
+		mod_delayed_work(system_wq, &ts->hid_rebind_work,
+				 msecs_to_jiffies(G6TS_HID_REBIND_RETRY_MS));
+}
+
 static int g6ts_expect_response(struct g6ts *ts, u8 response_class,
 				u8 content_id, size_t min_content_len)
 {
@@ -3084,6 +3451,7 @@ static int g6ts_expect_response(struct g6ts *ts, u8 response_class,
 static int g6ts_validate_sp11_device_descriptor(struct g6ts *ts)
 {
 	const struct hidspi_dev_descriptor *descriptor;
+	u16 product_id;
 
 	if (ts->last_class != DEVICE_DESCRIPTOR_RESPONSE ||
 	    ts->last_content_id != 0 ||
@@ -3108,6 +3476,10 @@ static int g6ts_validate_sp11_device_descriptor(struct g6ts *ts)
 	    le32_to_cpu(descriptor->reserved) != 0)
 		return -ENODEV;
 
+	product_id = le16_to_cpu(descriptor->product_id);
+	if (ts->hid_product_id && ts->hid_product_id != product_id)
+		return -EPROTO;
+	ts->hid_product_id = product_id;
 	return 0;
 }
 
@@ -3418,12 +3790,18 @@ static int g6ts_windows_cold_attach_locked(struct g6ts *ts)
 		return -EPROTO;
 
 	ts->initialization_stage = G6TS_INIT_WINDOWS_HEAT_CAPS06;
-	ret = g6ts_dma_feature_exchange(ts, GET_FEATURE, 0x06, NULL, 0);
+	ret = g6ts_dma_feature_exchange(ts, GET_FEATURE,
+					G6TS_IPTS_METADATA_REPORT_ID, NULL, 0);
 	if (ret)
 		return ret;
-	ret = g6ts_expect_response(ts, GET_FEATURE_RESPONSE, 0x06, 119);
-	if (ret || ts->last_content_len != 119)
+	ret = g6ts_expect_response(ts, GET_FEATURE_RESPONSE,
+				   G6TS_IPTS_METADATA_REPORT_ID,
+				   G6TS_IPTS_METADATA_LEN);
+	if (ret || ts->last_content_len != G6TS_IPTS_METADATA_LEN)
 		return ret ? ret : -EPROTO;
+	ret = g6ts_cache_ipts_metadata_locked(ts);
+	if (ret)
+		return ret;
 	content = ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE;
 	memcpy(ts->parity_feature06_prefix, content,
 	       sizeof(ts->parity_feature06_prefix));
@@ -3657,6 +4035,21 @@ static int g6ts_full_reinitialize_locked(struct g6ts *ts,
 			ret = -EPROTO;
 		goto out;
 	}
+	if (ts->report_descriptor_valid) {
+		if (memcmp(ts->report_descriptor,
+			   ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE,
+			   G6TS_SP11_REPORT_DESCRIPTOR_LEN)) {
+			dev_err(&ts->spi->dev,
+				"report descriptor changed across transport generation\n");
+			ret = -EPROTO;
+			goto out;
+		}
+	} else {
+		memcpy(ts->report_descriptor,
+		       ts->body + HIDSPI_INPUT_BODY_HEADER_SIZE,
+		       G6TS_SP11_REPORT_DESCRIPTOR_LEN);
+		ts->report_descriptor_valid = true;
+	}
 
 	if (g6ts_windows_init_parity) {
 		/* A software reset has a different, multi-owner Windows ordering. */
@@ -3810,7 +4203,7 @@ static void g6ts_recovery_work(struct work_struct *work)
 	int ret;
 
 	mutex_lock(&ts->io_lock);
-	if (ts->stopping) {
+	if (g6ts_is_quiescing(ts)) {
 		mutex_unlock(&ts->io_lock);
 		return;
 	}
@@ -3860,8 +4253,13 @@ static void g6ts_recovery_work(struct work_struct *work)
 			 retry ? "; retrying" : "");
 	}
 	mutex_unlock(&ts->io_lock);
+	if (!ret && READ_ONCE(ts->mode_enabled))
+		mod_delayed_work(system_wq, &ts->hid_rebind_work,
+				 msecs_to_jiffies(G6TS_HID_REBIND_STABLE_MS));
+	else
+		mod_delayed_work(system_wq, &ts->hid_rebind_work, 0);
 
-	if (retry && !READ_ONCE(ts->stopping))
+	if (retry && !g6ts_is_quiescing(ts))
 		schedule_delayed_work(&ts->recovery_work,
 				      msecs_to_jiffies(G6TS_RECOVERY_RETRY_MS));
 }
@@ -3929,6 +4327,9 @@ static int g6ts_probe(struct spi_device *spi)
 
 	mutex_init(&ts->io_lock);
 	INIT_DELAYED_WORK(&ts->recovery_work, g6ts_recovery_work);
+	INIT_DELAYED_WORK(&ts->hid_rebind_work,
+			  g6ts_ipts_hid_rebind_work);
+	ts->hid_target_generation = 1;
 	spi_set_drvdata(spi, ts);
 	ret = g6ts_heat_register(ts);
 	if (ret)
@@ -4024,35 +4425,59 @@ static int g6ts_probe(struct spi_device *spi)
 static void g6ts_remove(struct spi_device *spi)
 {
 	struct g6ts *ts = spi_get_drvdata(spi);
+	struct hid_device *hid;
 
 	WRITE_ONCE(ts->stopping, true);
+	WRITE_ONCE(ts->quiescing, true);
 	WRITE_ONCE(ts->mode_enabled, false);
+	disable_irq(ts->interrupt_irq);
 	cancel_delayed_work_sync(&ts->recovery_work);
+	cancel_delayed_work_sync(&ts->hid_rebind_work);
 	mutex_lock(&ts->io_lock);
+	hid = g6ts_ipts_hid_detach_locked(ts);
 	g6ts_release_inputs(ts);
 	mutex_unlock(&ts->io_lock);
+	/* Drain generation work queued by an in-flight transport caller. */
+	cancel_delayed_work_sync(&ts->hid_rebind_work);
+	if (hid)
+		hid_destroy_device(hid);
 	(void)g6ts_power_off(ts);
 }
 
 static int g6ts_suspend(struct device *dev)
 {
 	struct g6ts *ts = dev_get_drvdata(dev);
+	struct hid_device *hid;
 	int ret;
 
+	WRITE_ONCE(ts->quiescing, true);
 	WRITE_ONCE(ts->mode_enabled, false);
 	disable_irq(ts->interrupt_irq);
 	cancel_delayed_work_sync(&ts->recovery_work);
+	cancel_delayed_work_sync(&ts->hid_rebind_work);
 
 	mutex_lock(&ts->io_lock);
+	WRITE_ONCE(ts->mode_enabled, false);
 	g6ts_heat_generation_boundary(ts,
 				      G6TS_HEAT_RECORD_F_SUSPEND);
+	hid = g6ts_ipts_hid_detach_locked(ts);
 	g6ts_release_inputs(ts);
+	mutex_unlock(&ts->io_lock);
+	/* The generation boundary queued a teardown pass; the child is detached. */
+	cancel_delayed_work_sync(&ts->hid_rebind_work);
+	if (hid)
+		hid_destroy_device(hid);
+
+	mutex_lock(&ts->io_lock);
 	ret = g6ts_power_off(ts);
+	if (ret) {
+		WRITE_ONCE(ts->quiescing, false);
+		ts->recovery_path = G6TS_RECOVERY_HARDWARE;
+	}
 	mutex_unlock(&ts->io_lock);
 
 	if (ret) {
 		enable_irq(ts->interrupt_irq);
-		ts->recovery_path = G6TS_RECOVERY_HARDWARE;
 		schedule_delayed_work(&ts->recovery_work,
 				      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
 	}
@@ -4070,6 +4495,8 @@ static int g6ts_resume(struct device *dev)
 	ts->recovery_fail_streak = 0;
 	ts->recovery_path = G6TS_RECOVERY_HARDWARE;
 	ret = g6ts_power_on(ts);
+	if (!ret)
+		WRITE_ONCE(ts->quiescing, false);
 	mutex_unlock(&ts->io_lock);
 	if (ret)
 		return ret;
@@ -4081,6 +4508,39 @@ static int g6ts_resume(struct device *dev)
 }
 
 static DEFINE_SIMPLE_DEV_PM_OPS(g6ts_pm_ops, g6ts_suspend, g6ts_resume);
+
+static int g6ts_ipts_hid_probe(struct hid_device *hid,
+			       const struct hid_device_id *id)
+{
+	int ret;
+
+	ret = hid_parse(hid);
+	if (ret)
+		return ret;
+
+	return hid_hw_start(hid, HID_CONNECT_HIDRAW);
+}
+
+static void g6ts_ipts_hid_remove(struct hid_device *hid)
+{
+	hid_hw_stop(hid);
+}
+
+static const struct hid_device_id g6ts_ipts_hid_ids[] = {
+	{ HID_DEVICE(BUS_SPI, HID_GROUP_MSHW0485_IPTS,
+		     G6TS_SP11_VENDOR_ID, G6TS_SP11_X1E_PRODUCT_ID) },
+	{ HID_DEVICE(BUS_SPI, HID_GROUP_MSHW0485_IPTS,
+		     G6TS_SP11_VENDOR_ID, G6TS_SP11_X1P_PRODUCT_ID) },
+	{ }
+};
+MODULE_DEVICE_TABLE(hid, g6ts_ipts_hid_ids);
+
+static struct hid_driver g6ts_ipts_hid_driver = {
+	.name = "mshw0485-ipts",
+	.id_table = g6ts_ipts_hid_ids,
+	.probe = g6ts_ipts_hid_probe,
+	.remove = g6ts_ipts_hid_remove,
+};
 
 static const struct acpi_device_id g6ts_acpi_match[] = {
 	{ "MSHW0485", 0 },
@@ -4111,8 +4571,31 @@ static struct spi_driver g6ts_driver = {
 	.probe = g6ts_probe,
 	.remove = g6ts_remove,
 };
-module_spi_driver(g6ts_driver);
 
-MODULE_DESCRIPTION("Microsoft Surface G6 MSHW0485 touchscreen driver");
+static int __init g6ts_init(void)
+{
+	int ret;
+
+	ret = hid_register_driver(&g6ts_ipts_hid_driver);
+	if (ret)
+		return ret;
+
+	ret = spi_register_driver(&g6ts_driver);
+	if (ret)
+		hid_unregister_driver(&g6ts_ipts_hid_driver);
+
+	return ret;
+}
+module_init(g6ts_init);
+
+static void __exit g6ts_exit(void)
+{
+	/* Destroy every child HID device before its special driver disappears. */
+	spi_unregister_driver(&g6ts_driver);
+	hid_unregister_driver(&g6ts_ipts_hid_driver);
+}
+module_exit(g6ts_exit);
+
+MODULE_DESCRIPTION("Microsoft Surface G6 MSHW0485 touch and IPTS pen bridge");
 MODULE_AUTHOR("SP11 reverse-engineering project");
 MODULE_LICENSE("GPL");

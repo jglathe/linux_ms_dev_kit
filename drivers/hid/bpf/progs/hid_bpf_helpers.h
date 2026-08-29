@@ -169,6 +169,7 @@ DEFINE_GUARD(bpf_spin, struct bpf_spin_lock, bpf_spin_lock, bpf_spin_unlock);
 #define HID_GROUP_STEAM				0x0103
 #define HID_GROUP_LOGITECH_27MHZ_DEVICE		0x0104
 #define HID_GROUP_VIVALDI			0x0105
+#define HID_GROUP_MSHW0485_IPTS			0x0106
 
 /* include/linux/mod_devicetable.h defines as (~0), but that gives us negative size arrays */
 #define HID_VID_ANY				0x0000
