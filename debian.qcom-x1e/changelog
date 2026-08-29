@@ -1,3 +1,22 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v16) resolute; urgency=medium
+
+  * Surface Pro 11 pen part 2: expose the validated MSHW0485 native report
+    descriptor through a private-group, HIDRAW-only sibling device for
+    userspace DFT stylus processing. Preserve the existing kernel-owned panel
+    mode and direct multitouch path.
+  * Relay only core DFT reports 0x0b, 0x0c, 0x0d, and 0x1a. Keep report 0x07
+    and privacy-sensitive report 0x6e on the diagnostic /dev/g6ts-heat ABI.
+  * Proxy and cache feature report 0x06 metadata, acknowledge iptsd report
+    0x05 mode writes locally, and recreate HIDRAW through a deferred,
+    generation-aware lifecycle that avoids the transport/hidraw lock order.
+    Quiesce and remove the child before parent suspend, and bound registration
+    retries so transient allocation failures do not strand the generation.
+  * Enable CONFIG_TOUCHSCREEN_MSHW0485 in ubuntu_x1e_defconfig and require HID
+    plus HIDRAW for the driver. Build and static verification pass; target
+    hardware and suspend/resume qualification remain release gates.
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 19:17:07 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v14) resolute; urgency=medium
 
   * Surface Pro 11 v14: enable the runtime-validated Sony IMX681 front camera
