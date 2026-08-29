@@ -1,3 +1,16 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v17) resolute; urgency=medium
+
+  * Fix the MSHW0485 HIDRAW bridge transport-private-data lifetime exposed by
+    immediate udev feature-report probes. Keep the parent touchscreen state in
+    hid_device.driver_data instead of the HID client driver's drvdata slot, and
+    reject callbacks without valid transport state rather than dereferencing a
+    NULL parent.
+  * Retain the v16 pen bridge and userspace iptsd contract. Clean-boot target
+    validation, transport fault recovery, and suspend/resume remain release
+    gates.
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 21:41:51 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v16) resolute; urgency=medium
 
   * Surface Pro 11 pen part 2: expose the validated MSHW0485 native report
