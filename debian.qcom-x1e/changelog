@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.2.2-jg-0) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
+  * rebase the whole stack to 7.2.2
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 30 Aug 2026 10:34:23 +0200
+
 linux-qcom-x1e (7.2.0-jg-1) resolute; urgency=medium
 
   * arm64: dts: qcom: x1p64100-dell-latitude-5455: add Dell 5455 model
