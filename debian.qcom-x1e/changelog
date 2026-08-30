@@ -1,5 +1,7 @@
 linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
+  * rebase the whole stack to 7.2.2
   * arm64: dts: qcom: x1p64100-dell-latitude-5455: add Dell 5455 model
   * arm64: dts: qcom: sc8280xp-x13s: update to linux-next
   * arm64: dts: qcom: sc8280xp-microsoft-blackrock: update to linux-next
