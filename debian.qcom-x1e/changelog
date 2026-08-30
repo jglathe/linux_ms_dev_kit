@@ -1,3 +1,74 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v19) resolute; urgency=medium
+
+  * Add the Phase 84 IPTS IRQ-cadence path. When paired with the Phase 83
+    minimal initialization, consume exactly one successful runtime header/body
+    response per level-low IRQ, matching the generic Linux HID-over-SPI
+    runtime contract without the Windows-only header/body delay.
+  * Keep the Phase 84 IRQ masked while synchronous initialization and
+    recovery own the transport, then enable it only after input mode is ready.
+    Require the validated empty-read quiesce and host-fault recovery guards;
+    leave feature exchanges and the load-time fallback falling-edge drain loop
+    unchanged.
+  * Promote the complete Phase 84 profile to the driver default after live X1E
+    validation of pressure, two-axis tilt, the barrel button, exact level-low
+    IRQ/report accounting, and a clean error/reset window. Retain all four
+    read-only module parameters as load-time fallbacks, without a global
+    modprobe configuration that could affect an older fallback kernel.
+  * Promote X1P/LCD (0x0c80) as a supported target of the same Phase 84
+    default. Descriptor validation, product-preserving HIDRAW registration,
+    panel-provided metadata, DFT relay, and the level-low Denali wiring are
+    shared with X1E. Keep the qualification boundary explicit: the live result
+    is X1E-only, and X1P pen, forced recovery, and suspend/resume validation
+    remain pending.
+
+ -- Leon Silcott <leon@boasi.io>  Sun, 30 Aug 2026 01:47:29 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v18) resolute; urgency=medium
+
+  * Add an opt-in IPTS minimal-init profile for Surface Pro 11 pen reset
+    isolation. After the proven SET_FEATURE 0x05 mode command, bypass the
+    private GET/SET 0x70, short report 0x09, and SET_FEATURE 0x56 tail so the
+    panel activation matches the request set used by the working generic
+    HID-over-SPI plus iptsd stack.
+  * Keep the experiment behind the read-only ipts_minimal_init parameter,
+    require the HIDRAW bridge, reject Windows-parity initialization, and expose
+    the active profile in behavior statistics. Retain the v17 HID transport
+    lifetime fix and leave the existing initialization path as the default.
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 23:36:14 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v17) resolute; urgency=medium
+
+  * Fix the MSHW0485 HIDRAW bridge transport-private-data lifetime exposed by
+    immediate udev feature-report probes. Keep the parent touchscreen state in
+    hid_device.driver_data instead of the HID client driver's drvdata slot, and
+    reject callbacks without valid transport state rather than dereferencing a
+    NULL parent.
+  * Retain the v16 pen bridge and userspace iptsd contract. Clean-boot target
+    validation, transport fault recovery, and suspend/resume remain release
+    gates.
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 21:41:51 +0100
+
+linux-qcom-x1e (7.2.0-jg-0sp11v16) resolute; urgency=medium
+
+  * Surface Pro 11 pen part 2: expose the validated MSHW0485 native report
+    descriptor through a private-group, HIDRAW-only sibling device for
+    userspace DFT stylus processing. Preserve the existing kernel-owned panel
+    mode and direct multitouch path.
+  * Relay only core DFT reports 0x0b, 0x0c, 0x0d, and 0x1a. Keep report 0x07
+    and privacy-sensitive report 0x6e on the diagnostic /dev/g6ts-heat ABI.
+  * Proxy and cache feature report 0x06 metadata, acknowledge iptsd report
+    0x05 mode writes locally, and recreate HIDRAW through a deferred,
+    generation-aware lifecycle that avoids the transport/hidraw lock order.
+    Quiesce and remove the child before parent suspend, and bound registration
+    retries so transient allocation failures do not strand the generation.
+  * Enable CONFIG_TOUCHSCREEN_MSHW0485 in ubuntu_x1e_defconfig and require HID
+    plus HIDRAW for the driver. Build and static verification pass; target
+    hardware and suspend/resume qualification remain release gates.
+
+ -- Leon Silcott <leon@boasi.io>  Sat, 29 Aug 2026 19:17:07 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v14) resolute; urgency=medium
 
   * Surface Pro 11 v14: enable the runtime-validated Sony IMX681 front camera

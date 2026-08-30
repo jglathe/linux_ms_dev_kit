@@ -1416,10 +1416,12 @@ config TOUCHSCREEN_HIMAX_HX83112B
 
 config TOUCHSCREEN_MSHW0485
 	tristate "Microsoft Surface G6 MSHW0485 touchscreen"
-	depends on SPI
+	depends on SPI && HID && HIDRAW
 	help
 	  Say Y here to enable support for the Microsoft Surface G6 (MSHW0485)
-	  touchscreen found on the Surface Pro 11.
+	  touchscreen found on the Surface Pro 11 X1E/OLED and X1P/LCD variants.
+	  The driver also exposes the native DFT stream through a HIDRAW-only
+	  compatibility device for iptsd stylus processing on both variants.
 
 	  To compile this driver as a module, choose M here: the module will be
 	  called mshw0485_touch.
