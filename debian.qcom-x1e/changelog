@@ -14,6 +14,12 @@ linux-qcom-x1e (7.2.0-jg-0sp11v19) resolute; urgency=medium
     IRQ/report accounting, and a clean error/reset window. Retain all four
     read-only module parameters as load-time fallbacks, without a global
     modprobe configuration that could affect an older fallback kernel.
+  * Promote X1P/LCD (0x0c80) as a supported target of the same Phase 84
+    default. Descriptor validation, product-preserving HIDRAW registration,
+    panel-provided metadata, DFT relay, and the level-low Denali wiring are
+    shared with X1E. Keep the qualification boundary explicit: the live result
+    is X1E-only, and X1P pen, forced recovery, and suspend/resume validation
+    remain pending.
 
  -- Leon Silcott <leon@boasi.io>  Sun, 30 Aug 2026 01:47:29 +0100
 
