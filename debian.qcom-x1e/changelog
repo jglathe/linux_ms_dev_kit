@@ -1,3 +1,16 @@
+linux-qcom-x1e (7.2.0-jg-0sp11v19) resolute; urgency=medium
+
+  * Add an opt-in Phase 84 IPTS IRQ-cadence experiment. When paired with the
+    Phase 83 minimal-init path, consume exactly one successful runtime
+    header/body response per level-low IRQ, matching the generic Linux
+    HID-over-SPI runtime contract without the Windows-only header/body delay.
+  * Keep the experimental IRQ masked while synchronous initialization and
+    recovery own the transport, then enable it only after input mode is ready.
+    Require the validated empty-read quiesce and host-fault recovery guards;
+    leave feature exchanges and the default falling-edge drain loop unchanged.
+
+ -- Leon Silcott <leon@boasi.io>  Sun, 30 Aug 2026 01:47:29 +0100
+
 linux-qcom-x1e (7.2.0-jg-0sp11v18) resolute; urgency=medium
 
   * Add an opt-in IPTS minimal-init profile for Surface Pro 11 pen reset

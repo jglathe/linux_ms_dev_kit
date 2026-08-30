@@ -223,6 +223,18 @@ MODULE_PARM_DESC(ipts_minimal_init,
 		 "Use SET_FEATURE 0x05-only IPTS initialization; requires ipts_hid_bridge (default: false)");
 
 /*
+ * Phase 84 matches the generic Linux HID-over-SPI runtime IRQ contract:
+ * service one complete response per level-low threaded interrupt. Keep the
+ * IRQ masked while the custom driver owns synchronous initialization and
+ * recovery, and add no Windows-only delay between header and body reads.
+ */
+static bool g6ts_ipts_irq_cadence;
+module_param_named(ipts_irq_cadence, g6ts_ipts_irq_cadence, bool, 0444);
+MODULE_PARM_DESC(ipts_irq_cadence,
+		 "Service one response per level-low IRQ without the Windows header/body delay; "
+		 "requires ipts_minimal_init, ready_quiesce, and host_fault_recovery (default: false)");
+
+/*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
  * Phase 75 transport and recovery path.  It enables three independently
  * proven ordinary-finger pieces without enabling the incomplete Windows
@@ -568,6 +580,8 @@ struct g6ts {
 	struct touchscreen_properties pen_prop;
 	/* Serializes transport, initialization, recovery, and power changes. */
 	struct mutex io_lock;
+	/* Serializes the Phase 84 IRQ enable depth across recovery and PM. */
+	struct mutex irq_state_lock;
 	struct gpio_desc *interrupt_gpio;
 	struct gpio_desc *power_gpio;
 	struct gpio_desc *reset_gpio;
@@ -647,6 +661,7 @@ struct g6ts {
 	bool ipts_hid_ready;
 	bool awaiting_ready_heat;
 	bool mode_enabled;
+	bool irq_enabled;
 	bool fatal_transport_error;
 	bool stopping;
 	bool quiescing;
@@ -1116,6 +1131,8 @@ static const char *g6ts_profile_name(void)
 {
 	if (g6ts_windows_init_parity)
 		return "windows-init-parity";
+	if (g6ts_ipts_irq_cadence)
+		return "phase84-ipts-irq-cadence";
 	if (g6ts_ipts_minimal_init)
 		return "phase83-ipts-minimal";
 	if (g6ts_ready_quiesce && g6ts_feature70_one_byte)
@@ -1150,6 +1167,11 @@ static ssize_t behavior_stats_show(struct device *dev,
 	length = sysfs_emit(buf,
 			    "profile=%s\n"
 			    "ipts_minimal_init=%u\n"
+			    "ipts_irq_cadence=%u\n"
+			    "irq_enabled=%u\n"
+			    "irq_trigger_type=%u\n"
+			    "interrupt_irqs=%lld\n"
+			    "handled_interrupt_irqs=%lld\n"
 			    "parity_linux_power=%u\n"
 			    "windows_read_cadence=%u\n"
 			    "initialization_stage=%s\n"
@@ -1200,6 +1222,11 @@ static ssize_t behavior_stats_show(struct device *dev,
 			    "ready_heat_frames=%llu\n"
 			    "ready_verification_failures=%llu\n",
 			    g6ts_profile_name(), g6ts_ipts_minimal_init,
+			    g6ts_ipts_irq_cadence,
+			    READ_ONCE(ts->irq_enabled),
+			    irq_get_trigger_type(ts->interrupt_irq),
+			    atomic64_read(&ts->interrupt_edges),
+			    ts->handled_interrupt_edges,
 			    g6ts_parity_linux_power,
 			    g6ts_windows_read_cadence,
 			    g6ts_initialization_stage_name(ts->initialization_stage),
@@ -1475,6 +1502,45 @@ static irqreturn_t g6ts_interrupt_edge(int irq, void *data)
 
 	atomic64_inc(&ts->interrupt_edges);
 	return IRQ_WAKE_THREAD;
+}
+
+/* Phase 84 owns one IRQ-disable depth while initialization is synchronous. */
+static void g6ts_ipts_irq_disable_nosync(struct g6ts *ts)
+{
+	if (!g6ts_ipts_irq_cadence)
+		return;
+
+	mutex_lock(&ts->irq_state_lock);
+	if (ts->irq_enabled) {
+		ts->irq_enabled = false;
+		disable_irq_nosync(ts->interrupt_irq);
+	}
+	mutex_unlock(&ts->irq_state_lock);
+}
+
+/* Never call this synchronous form from either IRQ handler. */
+static void g6ts_ipts_irq_disable_sync(struct g6ts *ts)
+{
+	if (!g6ts_ipts_irq_cadence)
+		return;
+
+	g6ts_ipts_irq_disable_nosync(ts);
+	synchronize_irq(ts->interrupt_irq);
+}
+
+static void g6ts_ipts_irq_enable_runtime(struct g6ts *ts)
+{
+	if (!g6ts_ipts_irq_cadence)
+		return;
+
+	mutex_lock(&ts->irq_state_lock);
+	if (!ts->irq_enabled && READ_ONCE(ts->mode_enabled) &&
+	    !g6ts_is_quiescing(ts)) {
+		/* Publish ownership before the level-low IRQ can wake its thread. */
+		ts->irq_enabled = true;
+		enable_irq(ts->interrupt_irq);
+	}
+	mutex_unlock(&ts->irq_state_lock);
 }
 
 static int g6ts_wait_pending(struct g6ts *ts, unsigned int timeout_ms)
@@ -2985,6 +3051,7 @@ static void g6ts_note_panel_reset_locked(struct g6ts *ts,
 	ts->last_reset_jiffies = now;
 	ts->reset_notifications++;
 	ts->mode_enabled = false;
+	g6ts_ipts_irq_disable_nosync(ts);
 	ts->awaiting_ready_heat = false;
 	ts->recovery_path = g6ts_reset_recovery_v2 ?
 		G6TS_RECOVERY_SOFTWARE : G6TS_RECOVERY_HARDWARE;
@@ -3038,6 +3105,7 @@ static void g6ts_note_host_fault_locked(struct g6ts *ts, int error)
 	 */
 	ts->fatal_transport_error = false;
 	ts->mode_enabled = false;
+	g6ts_ipts_irq_disable_nosync(ts);
 	ts->awaiting_ready_heat = false;
 	ts->recovery_path = G6TS_RECOVERY_HARDWARE;
 	ts->rapid_reset_streak = 0;
@@ -3058,8 +3126,10 @@ static irqreturn_t g6ts_interrupt_thread(int irq, void *data)
 	unsigned int i;
 	int ret;
 
-	if (g6ts_is_quiescing(ts) || !READ_ONCE(ts->mode_enabled))
+	if (g6ts_is_quiescing(ts) || !READ_ONCE(ts->mode_enabled)) {
+		g6ts_ipts_irq_disable_nosync(ts);
 		return IRQ_HANDLED;
+	}
 
 	mutex_lock(&ts->io_lock);
 	for (i = 0; i < G6TS_IRQ_DRAIN_LIMIT; i++) {
@@ -3075,15 +3145,16 @@ static irqreturn_t g6ts_interrupt_thread(int irq, void *data)
 			g6ts_note_panel_reset_locked(ts, true);
 			break;
 		}
-		if (g6ts_windows_read_cadence) {
+		if (g6ts_windows_read_cadence || g6ts_ipts_irq_cadence) {
 			ts->cadence_single_response_irqs++;
 			break;
 		}
 	}
 	/*
-	 * This IRQ is edge-triggered.  Returning while GPIO51 still advertises an
-	 * unread packet can strand the stream because no second falling edge is
-	 * guaranteed.  Bound the drain for safety, then use the same observable
+	 * The default IRQ path drains the edge-triggered stream while GPIO51 still
+	 * advertises an unread packet. Phase 84 uses the firmware's level-low IRQ,
+	 * so returning after one response retriggers while more data is pending.
+	 * Bound only the default drain for safety, then use the same observable
 	 * host-fault recovery as a timed-out Windows transfer.
 	 */
 	if (i == G6TS_IRQ_DRAIN_LIMIT && g6ts_has_unread_response(ts)) {
@@ -4229,6 +4300,8 @@ static void g6ts_recovery_work(struct work_struct *work)
 	bool retry = false;
 	int ret;
 
+	/* Synchronous recovery owns every response until mode_enabled is restored. */
+	g6ts_ipts_irq_disable_sync(ts);
 	mutex_lock(&ts->io_lock);
 	if (g6ts_is_quiescing(ts)) {
 		mutex_unlock(&ts->io_lock);
@@ -4281,10 +4354,13 @@ static void g6ts_recovery_work(struct work_struct *work)
 	}
 	mutex_unlock(&ts->io_lock);
 	if (!ret && READ_ONCE(ts->mode_enabled))
+		g6ts_ipts_irq_enable_runtime(ts);
+	if (!ret && READ_ONCE(ts->mode_enabled) && !g6ts_is_quiescing(ts)) {
 		mod_delayed_work(system_wq, &ts->hid_rebind_work,
 				 msecs_to_jiffies(G6TS_HID_REBIND_STABLE_MS));
-	else
+	} else {
 		mod_delayed_work(system_wq, &ts->hid_rebind_work, 0);
+	}
 
 	if (retry && !g6ts_is_quiescing(ts))
 		schedule_delayed_work(&ts->recovery_work,
@@ -4294,6 +4370,7 @@ static void g6ts_recovery_work(struct work_struct *work)
 static int g6ts_probe(struct spi_device *spi)
 {
 	struct g6ts *ts;
+	unsigned long irq_flags;
 	int ret;
 
 	if (g6ts_behavior_v2 && g6ts_windows_orchestrator)
@@ -4305,6 +4382,15 @@ static int g6ts_probe(struct spi_device *spi)
 	if (g6ts_ipts_minimal_init && g6ts_windows_init_parity)
 		return dev_err_probe(&spi->dev, -EINVAL,
 				     "ipts_minimal_init and windows_init_parity are mutually exclusive\n");
+	if (g6ts_ipts_irq_cadence && !g6ts_ipts_minimal_init)
+		return dev_err_probe(&spi->dev, -EINVAL,
+				     "ipts_irq_cadence requires ipts_minimal_init\n");
+	if (g6ts_ipts_irq_cadence && !g6ts_host_fault_recovery)
+		return dev_err_probe(&spi->dev, -EINVAL,
+				     "ipts_irq_cadence requires host_fault_recovery\n");
+	if (g6ts_ipts_irq_cadence && !g6ts_ready_quiesce)
+		return dev_err_probe(&spi->dev, -EINVAL,
+				     "ipts_irq_cadence requires ready_quiesce\n");
 	if (g6ts_reset_storm_breaker && !g6ts_reset_recovery_v2)
 		return dev_err_probe(&spi->dev, -EINVAL,
 				     "reset_storm_breaker requires reset_recovery_v2\n");
@@ -4359,6 +4445,7 @@ static int g6ts_probe(struct spi_device *spi)
 				     "power and reset GPIOs must be paired\n");
 
 	mutex_init(&ts->io_lock);
+	mutex_init(&ts->irq_state_lock);
 	INIT_DELAYED_WORK(&ts->recovery_work, g6ts_recovery_work);
 	INIT_DELAYED_WORK(&ts->hid_rebind_work,
 			  g6ts_ipts_hid_rebind_work);
@@ -4368,14 +4455,18 @@ static int g6ts_probe(struct spi_device *spi)
 	if (ret)
 		return dev_err_probe(&spi->dev, ret,
 				     "failed to register raw Heat device\n");
+	irq_flags = IRQF_ONESHOT |
+		(g6ts_ipts_irq_cadence ?
+		 IRQF_TRIGGER_LOW | IRQF_NO_AUTOEN : IRQF_TRIGGER_FALLING);
 	ret = devm_request_threaded_irq(&spi->dev, ts->interrupt_irq,
 					g6ts_interrupt_edge,
 					g6ts_interrupt_thread,
-					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					irq_flags,
 					G6TS_NAME, ts);
 	if (ret)
 		return dev_err_probe(&spi->dev, ret,
 				     "failed to request interrupt\n");
+	ts->irq_enabled = !g6ts_ipts_irq_cadence;
 	ret = devm_device_add_group(&spi->dev, &g6ts_attribute_group);
 	if (ret)
 		return dev_err_probe(&spi->dev, ret,
@@ -4463,7 +4554,10 @@ static void g6ts_remove(struct spi_device *spi)
 	WRITE_ONCE(ts->stopping, true);
 	WRITE_ONCE(ts->quiescing, true);
 	WRITE_ONCE(ts->mode_enabled, false);
-	disable_irq(ts->interrupt_irq);
+	if (g6ts_ipts_irq_cadence)
+		g6ts_ipts_irq_disable_sync(ts);
+	else
+		disable_irq(ts->interrupt_irq);
 	cancel_delayed_work_sync(&ts->recovery_work);
 	cancel_delayed_work_sync(&ts->hid_rebind_work);
 	mutex_lock(&ts->io_lock);
@@ -4485,7 +4579,10 @@ static int g6ts_suspend(struct device *dev)
 
 	WRITE_ONCE(ts->quiescing, true);
 	WRITE_ONCE(ts->mode_enabled, false);
-	disable_irq(ts->interrupt_irq);
+	if (g6ts_ipts_irq_cadence)
+		g6ts_ipts_irq_disable_sync(ts);
+	else
+		disable_irq(ts->interrupt_irq);
 	cancel_delayed_work_sync(&ts->recovery_work);
 	cancel_delayed_work_sync(&ts->hid_rebind_work);
 
@@ -4510,7 +4607,8 @@ static int g6ts_suspend(struct device *dev)
 	mutex_unlock(&ts->io_lock);
 
 	if (ret) {
-		enable_irq(ts->interrupt_irq);
+		if (!g6ts_ipts_irq_cadence)
+			enable_irq(ts->interrupt_irq);
 		schedule_delayed_work(&ts->recovery_work,
 				      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
 	}
@@ -4534,7 +4632,8 @@ static int g6ts_resume(struct device *dev)
 	if (ret)
 		return ret;
 
-	enable_irq(ts->interrupt_irq);
+	if (!g6ts_ipts_irq_cadence)
+		enable_irq(ts->interrupt_irq);
 	schedule_delayed_work(&ts->recovery_work,
 			      msecs_to_jiffies(G6TS_RECOVERY_DELAY_MS));
 	return 0;
