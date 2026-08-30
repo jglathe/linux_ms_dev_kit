@@ -128,7 +128,7 @@
 #define G6TS_ASSIGN_UNMATCHED_COST	1000000
 #define G6TS_ASSIGN_INVALID_COST	3000000
 
-/* Exact SP11 descriptor values observed in every complete Windows capture. */
+/* Exact SP11 descriptor values shared by the supported X1E and X1P panels. */
 #define G6TS_SP11_REPORT_DESCRIPTOR_LEN	1484U
 #define G6TS_SP11_MAX_INPUT_LEN		8192U
 #define G6TS_SP11_MAX_OUTPUT_LEN		512U
@@ -202,9 +202,12 @@ MODULE_PARM_DESC(heat_feedback,
 		 "requires parity_fast_host_id=0..65535 (default: false)");
 
 /*
- * Expose the native descriptor and DFT reports through a HIDRAW-only sibling
- * so the established iptsd decoder can provide the stylus input device.  The
- * custom driver remains the sole owner of panel mode and touch processing.
+ * Expose the native descriptor and DFT reports for both supported SP11 panel
+ * identities through a HIDRAW-only sibling so the established iptsd decoder
+ * can provide the stylus input device. X1E/OLED (0x0c83) is live-qualified;
+ * X1P/LCD (0x0c80) selects the same bounded descriptor validation and DFT
+ * contract but remains pending target hardware qualification. The custom
+ * driver remains the sole owner of panel mode and touch processing.
  */
 static bool g6ts_ipts_hid_bridge = true;
 module_param_named(ipts_hid_bridge, g6ts_ipts_hid_bridge, bool, 0444);
@@ -213,7 +216,7 @@ MODULE_PARM_DESC(ipts_hid_bridge,
 
 /*
  * Phase 83 isolates the private post-mode feature exchanges from the
- * HID-over-SPI sequence used by the known-working SP11 IPTS stack. Target
+ * HID-over-SPI sequence used by the known-working SP11 IPTS stack. X1E target
  * validation with the HIDRAW bridge established this as the production pen
  * path: stop after iptsd's SET_FEATURE 0x05 mode command, while retaining the
  * read-only parameter as a load-time fallback to the Phase 72 mode tail.
@@ -225,11 +228,13 @@ MODULE_PARM_DESC(ipts_minimal_init,
 
 /*
  * Phase 84 matches the generic Linux HID-over-SPI runtime IRQ contract:
- * service one complete response per level-low threaded interrupt. Target
+ * service one complete response per level-low threaded interrupt. X1E target
  * validation established exact IRQ/response accounting with the IPTS pen
- * stream, so make this the default while retaining a load-time fallback.
- * Keep the IRQ masked while the custom driver owns synchronous initialization
- * and recovery, and add no Windows-only delay between header and body reads.
+ * stream. Make this the module-wide default for both supported product IDs
+ * while retaining a load-time fallback; X1P live qualification remains
+ * pending. Keep the IRQ masked while the custom driver owns synchronous
+ * initialization and recovery, and add no Windows-only delay between header
+ * and body reads.
  */
 static bool g6ts_ipts_irq_cadence = true;
 module_param_named(ipts_irq_cadence, g6ts_ipts_irq_cadence, bool, 0444);
