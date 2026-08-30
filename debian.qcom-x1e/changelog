@@ -1,13 +1,19 @@
 linux-qcom-x1e (7.2.0-jg-0sp11v19) resolute; urgency=medium
 
-  * Add an opt-in Phase 84 IPTS IRQ-cadence experiment. When paired with the
-    Phase 83 minimal-init path, consume exactly one successful runtime
-    header/body response per level-low IRQ, matching the generic Linux
-    HID-over-SPI runtime contract without the Windows-only header/body delay.
-  * Keep the experimental IRQ masked while synchronous initialization and
+  * Add the Phase 84 IPTS IRQ-cadence path. When paired with the Phase 83
+    minimal initialization, consume exactly one successful runtime header/body
+    response per level-low IRQ, matching the generic Linux HID-over-SPI
+    runtime contract without the Windows-only header/body delay.
+  * Keep the Phase 84 IRQ masked while synchronous initialization and
     recovery own the transport, then enable it only after input mode is ready.
     Require the validated empty-read quiesce and host-fault recovery guards;
-    leave feature exchanges and the default falling-edge drain loop unchanged.
+    leave feature exchanges and the load-time fallback falling-edge drain loop
+    unchanged.
+  * Promote the complete Phase 84 profile to the driver default after live X1E
+    validation of pressure, two-axis tilt, the barrel button, exact level-low
+    IRQ/report accounting, and a clean error/reset window. Retain all four
+    read-only module parameters as load-time fallbacks, without a global
+    modprobe configuration that could affect an older fallback kernel.
 
  -- Leon Silcott <leon@boasi.io>  Sun, 30 Aug 2026 01:47:29 +0100
 
