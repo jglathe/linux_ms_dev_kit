@@ -213,26 +213,29 @@ MODULE_PARM_DESC(ipts_hid_bridge,
 
 /*
  * Phase 83 isolates the private post-mode feature exchanges from the
- * HID-over-SPI sequence used by the known-working SP11 IPTS stack.  Keep this
- * opt-in: existing installations rely on the Phase 72 mode tail, while this
- * path deliberately stops after iptsd's SET_FEATURE 0x05 mode command.
+ * HID-over-SPI sequence used by the known-working SP11 IPTS stack. Target
+ * validation with the HIDRAW bridge established this as the production pen
+ * path: stop after iptsd's SET_FEATURE 0x05 mode command, while retaining the
+ * read-only parameter as a load-time fallback to the Phase 72 mode tail.
  */
-static bool g6ts_ipts_minimal_init;
+static bool g6ts_ipts_minimal_init = true;
 module_param_named(ipts_minimal_init, g6ts_ipts_minimal_init, bool, 0444);
 MODULE_PARM_DESC(ipts_minimal_init,
-		 "Use SET_FEATURE 0x05-only IPTS initialization; requires ipts_hid_bridge (default: false)");
+		 "Use SET_FEATURE 0x05-only IPTS initialization; requires ipts_hid_bridge (default: true)");
 
 /*
  * Phase 84 matches the generic Linux HID-over-SPI runtime IRQ contract:
- * service one complete response per level-low threaded interrupt. Keep the
- * IRQ masked while the custom driver owns synchronous initialization and
- * recovery, and add no Windows-only delay between header and body reads.
+ * service one complete response per level-low threaded interrupt. Target
+ * validation established exact IRQ/response accounting with the IPTS pen
+ * stream, so make this the default while retaining a load-time fallback.
+ * Keep the IRQ masked while the custom driver owns synchronous initialization
+ * and recovery, and add no Windows-only delay between header and body reads.
  */
-static bool g6ts_ipts_irq_cadence;
+static bool g6ts_ipts_irq_cadence = true;
 module_param_named(ipts_irq_cadence, g6ts_ipts_irq_cadence, bool, 0444);
 MODULE_PARM_DESC(ipts_irq_cadence,
 		 "Service one response per level-low IRQ without the Windows header/body delay; "
-		 "requires ipts_minimal_init, ready_quiesce, and host_fault_recovery (default: false)");
+		 "requires ipts_minimal_init, ready_quiesce, and host_fault_recovery (default: true)");
 
 /*
  * Phase 76 isolates the behavior-only changes from the hardware-validated
@@ -304,10 +307,10 @@ MODULE_PARM_DESC(reset_storm_breaker,
  * explicit and observable.  It uses the already proven cold hardware path;
  * it does not invent another panel command sequence.
  */
-static bool g6ts_host_fault_recovery;
+static bool g6ts_host_fault_recovery = true;
 module_param_named(host_fault_recovery, g6ts_host_fault_recovery, bool, 0444);
 MODULE_PARM_DESC(host_fault_recovery,
-		 "Recover with a cold re-enumeration after an IRQ transport/protocol fault (default: false)");
+		 "Recover with a cold re-enumeration after an IRQ transport/protocol fault (default: true)");
 
 /*
  * Phase 80 live evidence found invalid second headers immediately after valid
@@ -316,10 +319,10 @@ MODULE_PARM_DESC(host_fault_recovery,
  * treats an invalid header as an empty trailing read only if ready deasserted;
  * a still-asserted line remains a real protocol fault handled by Phase 80.
  */
-static bool g6ts_ready_quiesce;
+static bool g6ts_ready_quiesce = true;
 module_param_named(ready_quiesce, g6ts_ready_quiesce, bool, 0444);
 MODULE_PARM_DESC(ready_quiesce,
-		 "Ignore one invalid trailing header after GPIO51 deasserts (default: false)");
+		 "Ignore one invalid trailing header after GPIO51 deasserts (default: true)");
 
 /*
  * Evidence-only cold-attach path.  It follows the byte-exact Windows cold
