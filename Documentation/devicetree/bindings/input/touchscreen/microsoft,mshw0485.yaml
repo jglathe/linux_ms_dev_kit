@@ -36,6 +36,18 @@ properties:
   reset-gpios:
     maxItems: 1
 
+  microsoft,enable-heat-frame-abi:
+    type: boolean
+    description:
+      Opt in to the optional raw heat-frame misc-device ABI. The matching
+      kernel configuration must also be enabled.
+
+  microsoft,enable-iptsd-bridge:
+    type: boolean
+    description:
+      Opt in to the optional HIDRAW-only DFT bridge used by iptsd. The
+      matching kernel configuration must also be enabled.
+
   spi-max-frequency:
     maximum: 40000000
 
@@ -69,6 +81,9 @@ examples:
             interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
             power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
             reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+
+            microsoft,enable-heat-frame-abi;
+            microsoft,enable-iptsd-bridge;
         };
     };
 ...
