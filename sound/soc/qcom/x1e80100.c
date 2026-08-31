@@ -2,6 +2,7 @@
 // Copyright (c) 2023, Linaro Limited
 
 #include <dt-bindings/sound/qcom,q6afe.h>
+#include <linux/err.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/soundwire/sdw.h>
@@ -13,6 +14,7 @@
 
 #include "common.h"
 #include "qdsp6/q6afe.h"
+#include "qdsp6/q6apm.h"
 #include "qdsp6/q6dsp-common.h"
 #include "sdw.h"
 
@@ -165,14 +167,45 @@ static int x1e80100_snd_hw_map_channels(struct x1e80100_snd_data *data,
 	return 0;
 }
 
+static int x1e80100_protection_backend(unsigned int dai_id)
+{
+	switch (dai_id) {
+	case WSA_CODEC_DMA_TX_0:
+		return Q6APM_PROTECTION_BACKEND_VI;
+	case WSA_CODEC_DMA_TX_1:
+		return Q6APM_PROTECTION_BACKEND_CPS;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int x1e80100_set_protection_ready(struct snd_soc_pcm_runtime *rtd,
+					 struct snd_soc_dai *cpu_dai,
+					 int backend, bool ready)
+{
+	int ret;
+
+	ret = q6apm_set_protection_backend_ready(cpu_dai->dev, cpu_dai->id,
+						 backend, ready);
+	if (ret && ret != -ENODEV)
+		dev_warn(rtd->dev,
+			 "failed to update protected backend readiness: %d\n", ret);
+
+	return ret;
+}
+
 static int x1e80100_snd_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct x1e80100_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
+	struct sdw_stream_runtime *sruntime;
 	unsigned int channels = substream->runtime->channels;
 	unsigned int rx_slot[4];
 	unsigned int tx_slot[4];
+	bool ready;
+	int backend;
+	int protection_ret;
 	int ret;
 
 	switch (cpu_dai->id) {
@@ -204,9 +237,50 @@ static int x1e80100_snd_prepare(struct snd_pcm_substream *substream)
 	default:
 		break;
 	}
+	if (data->cfg->protected_speaker_feedback) {
+		backend = x1e80100_protection_backend(cpu_dai->id);
+		if (backend >= 0) {
+			sruntime = qcom_snd_sdw_get_stream(substream);
+			if (IS_ERR_OR_NULL(sruntime)) {
+				data->stream_prepared[cpu_dai->id] = false;
+				ret = x1e80100_set_protection_ready(rtd, cpu_dai,
+								    backend, false);
+				if (ret && ret != -ENODEV)
+					return ret;
+				dev_warn(rtd->dev,
+					 "speaker-feedback backend %d has no SoundWire runtime; using bypass\n",
+					 cpu_dai->id);
+				return 0;
+			}
+		}
+	}
 
-	return qcom_snd_sdw_prepare(substream,
-				    &data->stream_prepared[cpu_dai->id]);
+	ret = qcom_snd_sdw_prepare(substream,
+				   &data->stream_prepared[cpu_dai->id]);
+	if (!data->cfg->protected_speaker_feedback)
+		return ret;
+
+	backend = x1e80100_protection_backend(cpu_dai->id);
+	if (backend < 0)
+		return ret;
+
+	ready = !ret && data->stream_prepared[cpu_dai->id];
+	protection_ret = x1e80100_set_protection_ready(rtd, cpu_dai, backend,
+						       ready);
+	if (!ready) {
+		if (protection_ret)
+			return ret ? ret : protection_ret;
+		dev_warn(rtd->dev,
+			 "speaker-feedback backend %d unavailable; using bypass\n",
+			 cpu_dai->id);
+		return 0;
+	}
+	if (protection_ret && protection_ret != -ENODEV) {
+		qcom_snd_sdw_hw_free(substream, &data->stream_prepared[cpu_dai->id]);
+		return protection_ret;
+	}
+
+	return 0;
 }
 
 static int x1e80100_snd_hw_free(struct snd_pcm_substream *substream)
@@ -214,13 +288,46 @@ static int x1e80100_snd_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct x1e80100_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	int backend;
+	int ret;
+
+	if (data->cfg->protected_speaker_feedback) {
+		backend = x1e80100_protection_backend(cpu_dai->id);
+		if (backend >= 0) {
+			ret = x1e80100_set_protection_ready(rtd, cpu_dai,
+							    backend, false);
+			if (ret && ret != -ENODEV)
+				return ret;
+		}
+	}
 
 	return qcom_snd_sdw_hw_free(substream, &data->stream_prepared[cpu_dai->id]);
 }
 
+static void x1e80100_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct x1e80100_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	int backend;
+	int ret;
+
+	if (data->cfg->protected_speaker_feedback) {
+		backend = x1e80100_protection_backend(cpu_dai->id);
+		if (backend >= 0) {
+			ret = x1e80100_set_protection_ready(rtd, cpu_dai,
+							    backend, false);
+			if (ret && ret != -ENODEV)
+				return;
+		}
+	}
+
+	qcom_snd_sdw_shutdown(substream);
+}
+
 static const struct snd_soc_ops x1e80100_be_ops = {
 	.startup = qcom_snd_sdw_startup,
-	.shutdown = qcom_snd_sdw_shutdown,
+	.shutdown = x1e80100_snd_shutdown,
 	.hw_free = x1e80100_snd_hw_free,
 	.prepare = x1e80100_snd_prepare,
 };

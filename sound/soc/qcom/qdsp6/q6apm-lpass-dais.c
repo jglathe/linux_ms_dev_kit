@@ -6,6 +6,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/device.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <sound/pcm.h>
@@ -23,6 +24,28 @@ struct q6apm_lpass_dai_data {
 	bool is_port_started[APM_PORT_MAX];
 	struct audioreach_module_config module_config[APM_PORT_MAX];
 };
+
+static bool q6apm_lpass_protection_runtime(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+
+	return rtd && rtd->card && rtd->card->dev->of_node &&
+		of_device_is_compatible(rtd->card->dev->of_node,
+					"microsoft,denali-sndcard");
+}
+
+static int q6apm_lpass_graph_id(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+
+	if (!rtd || !rtd->card || !rtd->card->dev->of_node ||
+	    !of_device_is_compatible(rtd->card->dev->of_node,
+				     "microsoft,denali-sndcard"))
+		return dai->id;
+
+	return q6apm_graph_id_for_backend(dai->dev, dai->id);
+}
 
 static int q6dma_set_channel_map(struct snd_soc_dai *dai,
 				 unsigned int tx_num,
@@ -216,8 +239,11 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	struct q6apm_lpass_dai_data *dai_data = dev_get_drvdata(dai->dev);
 	struct audioreach_module_config *cfg = &dai_data->module_config[dai->id];
 	struct q6apm_graph *graph;
-	int graph_id = dai->id;
+	int graph_id = q6apm_lpass_graph_id(substream, dai);
 	int rc;
+
+	if (graph_id < 0)
+		return graph_id;
 
 	if (dai_data->is_port_started[dai->id]) {
 		rc = q6apm_graph_stop(dai_data->graph[dai->id]);
@@ -234,14 +260,17 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	 */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai_data->graph[dai->id] == NULL) {
 		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id,
-					 substream->stream, false);
+					 substream->stream,
+					 q6apm_lpass_protection_runtime(substream));
 		if (IS_ERR(graph)) {
 			dev_err(dai->dev, "Failed to open graph (%d)\n", graph_id);
 			rc = PTR_ERR(graph);
 			return rc;
 		}
-		dai_data->graph[graph_id] = graph;
+		dai_data->graph[dai->id] = graph;
 	}
+	if (q6apm_graph_has_protection(dai_data->graph[dai->id]))
+		return 0;
 
 	cfg->direction = substream->stream;
 	rc = q6apm_graph_media_format_pcm(dai_data->graph[dai->id], cfg);
@@ -271,16 +300,20 @@ static int q6apm_lpass_dai_startup(struct snd_pcm_substream *substream, struct s
 {
 	struct q6apm_lpass_dai_data *dai_data = dev_get_drvdata(dai->dev);
 	struct q6apm_graph *graph;
-	int graph_id = dai->id;
+	int graph_id = q6apm_lpass_graph_id(substream, dai);
 
-	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+	if (graph_id < 0)
+		return graph_id;
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE || graph_id != dai->id) {
 		graph = q6apm_graph_open(dai->dev, NULL, dai->dev, graph_id,
-					 substream->stream, false);
+					 substream->stream,
+					 q6apm_lpass_protection_runtime(substream));
 		if (IS_ERR(graph)) {
 			dev_err(dai->dev, "Failed to open graph (%d)\n", graph_id);
 			return PTR_ERR(graph);
 		}
-		dai_data->graph[graph_id] = graph;
+		dai_data->graph[dai->id] = graph;
 	}
 
 	return 0;

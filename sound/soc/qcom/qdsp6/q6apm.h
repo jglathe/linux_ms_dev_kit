@@ -227,8 +227,18 @@ int q6apm_send_oob_config(struct audioreach_graph *graph,
 			  const void *data, size_t size);
 int q6apm_send_graph_oob_config(struct q6apm_graph *graph,
 				const void *data, size_t size);
+int q6apm_graph_id_for_backend(struct device *dev, int backend_id);
 bool q6apm_graph_has_protection(const struct q6apm_graph *graph);
 int q6apm_graph_configure_protection(struct q6apm_graph *graph);
+
+enum q6apm_protection_backend {
+	Q6APM_PROTECTION_BACKEND_VI,
+	Q6APM_PROTECTION_BACKEND_CPS,
+};
+
+int q6apm_set_protection_backend_ready(struct device *dev, int backend_id,
+				       enum q6apm_protection_backend backend,
+				       bool ready);
 
 /* Callback for graph specific */
 struct audioreach_module *q6apm_find_module_by_mid(struct q6apm_graph *graph,

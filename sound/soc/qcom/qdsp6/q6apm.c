@@ -1045,6 +1045,130 @@ int q6apm_graph_configure_protection(struct q6apm_graph *graph)
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_configure_protection);
 
+static int __q6apm_graph_id_for_backend(struct q6apm *apm, int backend_id)
+{
+	struct audioreach_graph_info *info;
+	struct audioreach_container *container;
+	struct audioreach_sub_graph *sg;
+	struct audioreach_module *module;
+	int graph_id = -ENOENT;
+	int profile;
+	int id;
+
+	mutex_lock(&apm->lock);
+	idr_for_each_entry(&apm->graph_info_idr, info, id) {
+		profile = audioreach_graph_protection_profile(info);
+		if (profile <= 0)
+			continue;
+		list_for_each_entry(sg, &info->sg_list, node) {
+			list_for_each_entry(container, &sg->container_list, node) {
+				list_for_each_entry(module,
+						    &container->modules_list, node) {
+					if (!module->integrated_backend_id ||
+					    module->integrated_backend_id != backend_id)
+						continue;
+					if (graph_id >= 0 && graph_id != info->id) {
+						graph_id = -EEXIST;
+						goto unlock;
+					}
+					graph_id = info->id;
+				}
+			}
+		}
+	}
+
+unlock:
+	mutex_unlock(&apm->lock);
+	return graph_id == -ENOENT ? backend_id : graph_id;
+}
+
+int q6apm_graph_id_for_backend(struct device *dev, int backend_id)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
+
+	return __q6apm_graph_id_for_backend(apm, backend_id);
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_id_for_backend);
+
+int q6apm_set_protection_backend_ready(struct device *dev, int backend_id,
+				       enum q6apm_protection_backend backend,
+				       bool ready)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+	struct audioreach_graph *graph;
+	bool *backend_ready;
+	int graph_id;
+	int ret = 0;
+
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
+
+	graph_id = __q6apm_graph_id_for_backend(apm, backend_id);
+	if (graph_id < 0)
+		return graph_id;
+
+	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
+	graph = idr_find(&apm->graph_idr, graph_id);
+	if (graph && (graph->initializing ||
+		      !kref_get_unless_zero(&graph->refcount)))
+		graph = NULL;
+	spin_unlock(&apm->graph_lock);
+	mutex_unlock(&apm->lock);
+	if (!graph)
+		return -ENODEV;
+	if (!graph->protection_profile) {
+		kref_put(&graph->refcount, q6apm_put_audioreach_graph);
+		return -ENODEV;
+	}
+
+	mutex_lock(&graph->protection_lock);
+	switch (backend) {
+	case Q6APM_PROTECTION_BACKEND_VI:
+		backend_ready = &graph->protection_vi_ready;
+		break;
+	case Q6APM_PROTECTION_BACKEND_CPS:
+		backend_ready = &graph->protection_cps_ready;
+		break;
+	default:
+		ret = -EINVAL;
+		goto unlock;
+	}
+	if (*backend_ready == ready)
+		goto unlock;
+	if (graph->start_count > 0) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+	if (ready && graph->protection_faulted) {
+		ret = -EIO;
+		goto unlock;
+	}
+	/*
+	 * Keep ready=false available after a fault once execution has stopped so
+	 * backend teardown can proceed.
+	 */
+	*backend_ready = ready;
+	graph->protection_configured = false;
+	graph->protection_bypass_confirmed = false;
+
+unlock:
+	mutex_unlock(&graph->protection_lock);
+	kref_put(&graph->refcount, q6apm_put_audioreach_graph);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(q6apm_set_protection_backend_ready);
+
 static const struct audioreach_module *
 q6apm_find_module_by_iid(const struct audioreach_graph_info *info, u32 iid)
 {
