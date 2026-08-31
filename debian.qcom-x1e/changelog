@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.2.2-jg-0sp11v20) resolute; urgency=medium
+
+  * rebased the PR onto jg/ubunt-qcom-x1e-7.2.y
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 31 Aug 2026 09:09:17 +0200
+
 linux-qcom-x1e (7.2.0-jg-0sp11v19) resolute; urgency=medium
 
   * Add the Phase 84 IPTS IRQ-cadence path. When paired with the Phase 83
