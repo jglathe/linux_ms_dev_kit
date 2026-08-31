@@ -26,6 +26,13 @@ description:
 allOf:
   - $ref: /schemas/spi/spi-controller.yaml#
   - $ref: /schemas/soc/qcom/qcom,se-common-props.yaml#
+  - if:
+      required:
+        - qcom,geni-qspi
+    then:
+      required:
+        - dmas
+        - dma-names
 
 properties:
   compatible:
@@ -63,6 +70,13 @@ properties:
 
   power-domains:
     maxItems: 1
+
+  qcom,geni-qspi:
+    type: boolean
+    description:
+      Select protocol-9 quad-SPI operation for the Microsoft Denali touch
+      controller. The serial engine firmware must already be loaded by the
+      platform firmware and the DMA channels must use QCOM_GPI_QSPI.
 
   reg:
     maxItems: 1
