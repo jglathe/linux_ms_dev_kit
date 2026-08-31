@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.2.2-jg-0sp11v21) resolute; urgency=medium
+
+  * Fix the Denali volume-down replay by leaving pon_resin disabled.
+  * Preserve the GPI DMA_PRIVATE capability and GENI SPI tracepoints in the
+    SP11 QSPI port.
+
+ -- Leon Silcott <leon@boasi.io>  Mon, 31 Aug 2026 14:15:14 +0100
+
 linux-qcom-x1e (7.2.2-jg-0sp11v20) resolute; urgency=medium
 
   * rebased the PR onto jg/ubunt-qcom-x1e-7.2.y
