@@ -59,6 +59,13 @@ properties:
       Native WSA data-port-5 channel-enable mask for the VISENSE protection
       sidechain. If absent, the codec default is used.
 
+  qcom,speaker-load-ohms:
+    enum: [4, 8]
+    description: |
+      Nominal speaker load impedance in ohms. A 4-ohm load selects the
+      matching PA gain and PBR thresholds when the amplifier reports a 2S
+      VPHX supply. If absent, the existing 8-ohm defaults are retained.
+
   '#sound-dai-cells':
     enum: [0, 1]
     description: |
