@@ -1126,6 +1126,7 @@
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <1 2 3 7 10 13>;
+		qcom,speaker-load-ohms = <4>;
 		qcom,visense-channel-mask = <3>;
 		qcom,enable-cps;
 		qcom,cps-offset1 = <0>;
@@ -1141,6 +1142,7 @@
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
 		vdd-io-supply = <&vreg_l12b_1p2>;
 		qcom,port-mapping = <4 5 6 7 11 13>;
+		qcom,speaker-load-ohms = <4>;
 		qcom,visense-channel-mask = <3>;
 		qcom,enable-cps;
 		qcom,cps-offset1 = <25>;
