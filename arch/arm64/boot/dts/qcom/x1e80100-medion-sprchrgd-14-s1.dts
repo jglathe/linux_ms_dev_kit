@@ -1250,7 +1250,9 @@
 	gpio-reserved-ranges = <28 4>, /* Unused */
 			       <34 2>, /* Unused */
 			       <44 4>, /* SPI (TPM) */
-			       <72 2>; /* Secure EC I2C connection (?) */
+			       <65 1>, /* EC reset */
+			       <72 2>, /* Secure EC I2C connection (?) */
+			       <238 1>; /* UFS Reset */
 
 	edp_reg_en: edp-reg-en-state {
 		pins = "gpio54";
