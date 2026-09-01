@@ -12,6 +12,10 @@
 #include "q6apm.h"
 #include "audioreach.h"
 
+DEFINE_FREE(q6apm_graph_user, struct q6apm_graph *, q6apm_graph_user_put(_T))
+
+#define AUDIOREACH_DSP_EUNSUPPORTED	3
+
 /* SubGraph Config */
 struct apm_sub_graph_data {
 	struct apm_sub_graph_cfg sub_graph_cfg;
@@ -610,7 +614,8 @@ int audioreach_send_cmd_sync(struct device *dev, gpr_device_t *gdev,
 		rc = -ETIMEDOUT;
 	} else if (result->status > 0) {
 		dev_err(dev, "DSP returned error[%x] %x\n", hdr->opcode, result->status);
-		rc = -EINVAL;
+		rc = result->status == AUDIOREACH_DSP_EUNSUPPORTED ?
+			-EOPNOTSUPP : -EINVAL;
 	} else {
 		/* DSP successfully finished the command */
 		rc = 0;
@@ -622,12 +627,83 @@ err:
 }
 EXPORT_SYMBOL_GPL(audioreach_send_cmd_sync);
 
-int audioreach_graph_send_cmd_sync(struct q6apm_graph *graph, const struct gpr_pkt *pkt,
+int audioreach_graph_send_cmd_sync(struct q6apm_graph *graph, struct gpr_pkt *pkt,
 				   uint32_t rsp_opcode)
 {
+	struct gpr_hdr *hdr = &pkt->hdr;
+	u32 result_status;
+	bool aborted;
+	int ret;
 
-	return audioreach_send_cmd_sync(graph->dev, NULL,  &graph->result, &graph->lock,
-					graph->port, &graph->cmd_wait, pkt, rsp_opcode);
+	if (!q6apm_graph_user_get(graph))
+		return -ESHUTDOWN;
+
+	mutex_lock(&graph->cmd_lock);
+	if (!++graph->cmd_token)
+		graph->cmd_token++;
+	hdr->token = graph->cmd_token;
+
+	spin_lock(&graph->lifecycle_lock);
+	if (graph->dying || graph->detached) {
+		spin_unlock(&graph->lifecycle_lock);
+		ret = -ESHUTDOWN;
+		goto unlock;
+	}
+	spin_lock(&graph->result_lock);
+	graph->result.opcode = 0;
+	graph->result.status = 0;
+	graph->result_token = U32_MAX;
+	graph->pending_opcode = hdr->opcode;
+	graph->pending_rsp_opcode = rsp_opcode;
+	graph->pending_token = hdr->token;
+	graph->cmd_pending = true;
+	spin_unlock(&graph->result_lock);
+	spin_unlock(&graph->lifecycle_lock);
+
+	ret = gpr_send_port_pkt(graph->port, pkt);
+	if (ret >= 0)
+		ret = wait_event_timeout(graph->cmd_wait,
+					 !READ_ONCE(graph->cmd_pending) ||
+					 (((READ_ONCE(graph->result.opcode) ==
+					   hdr->opcode) ||
+					  (rsp_opcode &&
+					   READ_ONCE(graph->result.opcode) ==
+					   rsp_opcode)) &&
+					 READ_ONCE(graph->result_token) ==
+					 hdr->token), 5 * HZ);
+
+	spin_lock(&graph->result_lock);
+	aborted = !graph->cmd_pending || READ_ONCE(graph->dying);
+	if (!ret && graph->result_token == hdr->token &&
+	    (graph->result.opcode == hdr->opcode ||
+	     (rsp_opcode && graph->result.opcode == rsp_opcode)))
+		ret = 1;
+	graph->cmd_pending = false;
+	result_status = graph->result.status;
+	spin_unlock(&graph->result_lock);
+
+	if (aborted) {
+		ret = -ESHUTDOWN;
+		goto unlock;
+	}
+	if (ret < 0)
+		goto unlock;
+	if (!ret) {
+		dev_err(graph->dev, "CMD timeout for [%x] opcode\n", hdr->opcode);
+		ret = -ETIMEDOUT;
+	} else if (result_status > 0) {
+		dev_err(graph->dev, "DSP returned error[%x] %x\n",
+			hdr->opcode, result_status);
+		ret = result_status == AUDIOREACH_DSP_EUNSUPPORTED ?
+			-EOPNOTSUPP : -EINVAL;
+	} else {
+		ret = 0;
+	}
+
+unlock:
+	mutex_unlock(&graph->cmd_lock);
+	q6apm_graph_user_put(graph);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(audioreach_graph_send_cmd_sync);
 
@@ -952,15 +1028,21 @@ static int audioreach_set_compr_media_format(struct media_format *media_fmt_hdr,
 int audioreach_compr_set_param(struct q6apm_graph *graph,
 			       const struct audioreach_module_config *mcfg)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct media_format *header;
 	int rc;
 	void *p;
-	int iid = graph->shm_iid;
+	int iid;
 	int payload_size = sizeof(struct apm_sh_module_media_fmt_cmd);
+	struct gpr_pkt *pkt __free(kfree) = NULL;
 
-	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_cmd_pkt(payload_size,
-					DATA_CMD_WR_SH_MEM_EP_MEDIA_FORMAT,
-					0, graph->port->id, iid);
+	if (!active)
+		return -ESHUTDOWN;
+	iid = graph->shm_iid;
+	pkt = audioreach_alloc_cmd_pkt(payload_size,
+				       DATA_CMD_WR_SH_MEM_EP_MEDIA_FORMAT,
+				       0, graph->port->id, iid);
 	if (IS_ERR(pkt))
 		return -ENOMEM;
 
@@ -1478,10 +1560,18 @@ EXPORT_SYMBOL_GPL(audioreach_setup_push_pull);
 
 int audioreach_shared_memory_send_eos(struct q6apm_graph *graph)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct data_cmd_wr_sh_mem_ep_eos *eos;
-	int iid = graph->shm_iid;
-	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_cmd_pkt(sizeof(*eos),
-					DATA_CMD_WR_SH_MEM_EP_EOS, 0, graph->port->id, iid);
+	struct gpr_pkt *pkt __free(kfree) = NULL;
+	int iid;
+
+	if (!active)
+		return -ESHUTDOWN;
+	iid = graph->shm_iid;
+	pkt = audioreach_alloc_cmd_pkt(sizeof(*eos),
+				       DATA_CMD_WR_SH_MEM_EP_EOS, 0,
+				       graph->port->id, iid);
 	if (IS_ERR(pkt))
 		return PTR_ERR(pkt);
 

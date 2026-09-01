@@ -3,6 +3,7 @@
 #define __Q6APM_H__
 #include <linux/types.h>
 #include <linux/atomic.h>
+#include <linux/completion.h>
 #include <linux/slab.h>
 #include <linux/wait.h>
 #include <linux/kernel.h>
@@ -57,12 +58,26 @@ struct q6apm {
 	/* For Graph OPEN/START/STOP/CLOSE operations */
 	wait_queue_head_t wait;
 	struct gpr_ibasic_rsp_result_t result;
+	u32 result_token;
+	u32 pending_opcode;
+	u32 pending_rsp_opcode;
+	u32 pending_token;
+	u32 cmd_token;
+	bool cmd_pending;
 
 	struct mutex cmd_lock;
 	struct mutex lock;
+	/* Serialize graph-client publication against service removal. */
+	struct mutex client_lock;
+	/* Protect command matching from asynchronous GPR responses. */
+	spinlock_t result_lock;
+	/* Protect graph lifetime during asynchronous GPR responses. */
+	spinlock_t graph_lock;
 	uint32_t state;
 
 	struct list_head widget_list;
+	struct list_head graph_client_list;
+	bool removing;
 	struct idr graph_idr;
 	struct idr graph_info_idr;
 	struct idr sub_graphs_idr;
@@ -87,6 +102,7 @@ struct audioreach_graph {
 	uint32_t id;
 	int state;
 	int start_count;
+	bool initializing;
 	/* Cached Graph data */
 	void *graph;
 	struct kref refcount;
@@ -102,12 +118,31 @@ struct q6apm_graph {
 	uint32_t shm_iid;
 	struct device *dev;
 	struct q6apm *apm;
+	struct list_head node;
+	bool is_push_pull_mode;
+	bool dying;
+	bool detached;
+	unsigned int active_users;
+	/* Protect admission and detach state for graph API users. */
+	spinlock_t lifecycle_lock;
+	wait_queue_head_t users_wait;
+	struct completion detached_done;
 	gpr_port_t *port;
 	struct audioreach_graph_data rx_data;
 	struct audioreach_graph_data tx_data;
 	struct gpr_ibasic_rsp_result_t result;
+	u32 result_token;
+	u32 pending_opcode;
+	u32 pending_rsp_opcode;
+	u32 pending_token;
+	u32 cmd_token;
+	bool cmd_pending;
 	wait_queue_head_t cmd_wait;
+	/* Serialize synchronous commands without blocking data callbacks. */
+	struct mutex cmd_lock;
 	struct mutex lock;
+	/* Protect command matching from asynchronous client responses. */
+	spinlock_t result_lock;
 	struct audioreach_graph *ar_graph;
 	struct audioreach_graph_info *info;
 };
@@ -115,6 +150,8 @@ struct q6apm_graph {
 /* Graph Operations */
 struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
 				     void *priv, int graph_id, int dir);
+bool q6apm_graph_user_get(struct q6apm_graph *graph);
+void q6apm_graph_user_put(struct q6apm_graph *graph);
 int q6apm_graph_close(struct q6apm_graph *graph);
 int q6apm_graph_prepare(struct q6apm_graph *graph);
 int q6apm_graph_start(struct q6apm_graph *graph);
@@ -147,7 +184,7 @@ int q6apm_alloc_fragments(struct q6apm_graph *graph,
 int q6apm_free_fragments(struct q6apm_graph *graph, unsigned int dir);
 int q6apm_unmap_memory_fixed_region(struct device *dev, unsigned int graph_id);
 /* Helpers */
-int q6apm_send_cmd_sync(struct q6apm *apm, const struct gpr_pkt *pkt,
+int q6apm_send_cmd_sync(struct q6apm *apm, struct gpr_pkt *pkt,
 			uint32_t rsp_opcode);
 
 /* Callback for graph specific */

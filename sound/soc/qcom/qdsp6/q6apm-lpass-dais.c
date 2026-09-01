@@ -148,13 +148,26 @@ static void q6apm_lpass_dai_shutdown(struct snd_pcm_substream *substream, struct
 
 	if (dai_data->is_port_started[dai->id]) {
 		rc = q6apm_graph_stop(dai_data->graph[dai->id]);
-		dai_data->is_port_started[dai->id] = false;
-		if (rc < 0)
+		if (rc < 0) {
+			if (rc == -ESHUTDOWN &&
+			    !q6apm_graph_close(dai_data->graph[dai->id])) {
+				dai_data->graph[dai->id] = NULL;
+				dai_data->is_port_started[dai->id] = false;
+				return;
+			}
 			dev_err(dai->dev, "failed to stop APM port (%d)\n", rc);
+			return;
+		}
+		dai_data->is_port_started[dai->id] = false;
 	}
 
 	if (dai_data->graph[dai->id]) {
-		q6apm_graph_close(dai_data->graph[dai->id]);
+		rc = q6apm_graph_close(dai_data->graph[dai->id]);
+		if (rc) {
+			dev_err(dai->dev,
+				"retaining uncertain APM port (%d)\n", rc);
+			return;
+		}
 		dai_data->graph[dai->id] = NULL;
 	}
 }
@@ -193,9 +206,12 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	int rc;
 
 	if (dai_data->is_port_started[dai->id]) {
-		q6apm_graph_stop(dai_data->graph[dai->id]);
+		rc = q6apm_graph_stop(dai_data->graph[dai->id]);
+		if (rc < 0) {
+			dev_err(dai->dev, "failed to stop APM port (%d)\n", rc);
+			return rc;
+		}
 		dai_data->is_port_started[dai->id] = false;
-
 	}
 
 	/**
@@ -227,8 +243,11 @@ static int q6apm_lpass_dai_prepare(struct snd_pcm_substream *substream, struct s
 	return 0;
 err:
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		q6apm_graph_close(dai_data->graph[dai->id]);
-		dai_data->graph[dai->id] = NULL;
+		int close_ret;
+
+		close_ret = q6apm_graph_close(dai_data->graph[dai->id]);
+		if (!close_ret)
+			dai_data->graph[dai->id] = NULL;
 	}
 	return rc;
 }
