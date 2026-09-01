@@ -1416,6 +1416,7 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
+			       <65 1>, /* EC reset */
 			       <72 2>; /* Secure EC I2C connection (?) */
 
 	cam_reg_en: cam-reg-en-state {
