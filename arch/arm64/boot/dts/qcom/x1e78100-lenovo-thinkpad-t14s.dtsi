@@ -1700,6 +1700,7 @@
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* GPIO34 = unused, GPIO35 = TPM interrupt */
 			       <44 4>, /* SPI11 (Nuvoton NPCT760 TPM) */
+			       <65 1>, /* EC reset */
 			       <72 2>, /* I2C18 (Secure EC I2C connection) */
 			       <238 1>; /* UFS Reset (unused) */
 
