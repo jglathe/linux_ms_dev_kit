@@ -55,12 +55,6 @@
 		#sound-dai-cells = <1>;
 	};
 
-	camera {
-		compatible = "regulator-dummy-consumer";
-
-		vdd-supply = <&vreg_cam_5p0>;
-	};
-
 	hdmi-bridge {
 		compatible = "parade,ps185hdm";
 
@@ -362,23 +356,6 @@
 				remote-endpoint = <&pmic_glink_ss1_sbu>;
 			};
 		};
-	};
-
-	vreg_cam_5p0: regulator-cam-5p0 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_CAM_5P0";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-
-		gpio = <&tlmm 44 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&cam_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	vreg_edp_3p3: regulator-edp-3p3 {
@@ -1307,14 +1284,9 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
+			       <44 4>, /* SPI (TPM) */
+			       <65 1>, /* EC reset */
 			       <72 2>; /* Secure EC I2C connection (?) */
-
-	cam_reg_en: cam-reg-en-state {
-		pins = "gpio44";
-		function = "gpio";
-		drive-strength = <16>;
-		bias-disable;
-	};
 
 	eusb3_reset_n: eusb3-reset-n-state {
 		pins = "gpio6";
