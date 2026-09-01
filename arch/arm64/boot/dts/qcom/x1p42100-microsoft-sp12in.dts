@@ -1010,7 +1010,8 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
-				   <44 4>; /* SPI (TPM) */
+			       <44 4>, /* SPI (TPM) */
+			       <65 1>; /* EC reset */
 
 	edp_reg_en: edp-reg-en-state {
 		pins = "gpio70";
