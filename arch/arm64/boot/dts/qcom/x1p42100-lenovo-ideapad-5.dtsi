@@ -1156,6 +1156,8 @@
 
 &tlmm {
 	gpio-reserved-ranges = <34 2>, /* Unused */
+			       <44 4>, /* SPI (TPM) */
+			       <65 1>, /* EC reset */
 			       <72 2>; /* Secure EC I2C connection (?) */
 
 	eusb3_reset_n: eusb3-reset-n-state {
