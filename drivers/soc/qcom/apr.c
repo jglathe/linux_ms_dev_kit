@@ -74,15 +74,35 @@ int apr_send_pkt(struct apr_device *adev, struct apr_pkt *pkt)
 }
 EXPORT_SYMBOL_GPL(apr_send_pkt);
 
-void gpr_free_port(gpr_port_t *port)
+static void pkt_router_svc_put(struct pkt_router_svc *svc)
 {
-	struct packet_router *gpr = port->pr;
+	if (refcount_dec_and_test(&svc->callback_refs))
+		complete(&svc->callbacks_drained);
+}
+
+static void pkt_router_svc_remove(struct pkt_router_svc *svc)
+{
+	struct packet_router *pr = svc->pr;
 	unsigned long flags;
 
-	spin_lock_irqsave(&gpr->svcs_lock, flags);
-	idr_remove(&gpr->svcs_idr, port->id);
-	spin_unlock_irqrestore(&gpr->svcs_lock, flags);
+	spin_lock_irqsave(&pr->svcs_lock, flags);
+	idr_remove(&pr->svcs_idr, svc->id);
+	spin_unlock_irqrestore(&pr->svcs_lock, flags);
 
+	if (!refcount_dec_and_test(&svc->callback_refs))
+		wait_for_completion(&svc->callbacks_drained);
+}
+
+/**
+ * gpr_free_port() - unregister a dynamic GPR port after callbacks drain
+ * @port: dynamic port returned by gpr_alloc_port()
+ *
+ * Context: process context, and never from @port's own callback.
+ */
+void gpr_free_port(gpr_port_t *port)
+{
+	might_sleep();
+	pkt_router_svc_remove(port);
 	kfree(port);
 }
 EXPORT_SYMBOL_GPL(gpr_free_port);
@@ -105,6 +125,8 @@ gpr_port_t *gpr_alloc_port(struct apr_device *gdev, struct device *dev,
 	svc->priv = priv;
 	svc->dev = dev;
 	spin_lock_init(&svc->lock);
+	refcount_set(&svc->callback_refs, 1);
+	init_completion(&svc->callbacks_drained);
 
 	spin_lock(&pr->svcs_lock);
 	id = idr_alloc_cyclic(&pr->svcs_idr, svc, GPR_DYNAMIC_PORT_START,
@@ -191,7 +213,7 @@ static int apr_do_rx_callback(struct packet_router *apr, struct apr_rx_buf *abuf
 {
 	uint16_t hdr_size, msg_type, ver, svc_id;
 	struct pkt_router_svc *svc;
-	struct apr_device *adev;
+	struct apr_device *adev = NULL;
 	struct apr_driver *adrv = NULL;
 	struct apr_resp_pkt resp;
 	struct apr_hdr *hdr;
@@ -232,6 +254,8 @@ static int apr_do_rx_callback(struct packet_router *apr, struct apr_rx_buf *abuf
 	svc_id = hdr->dest_svc;
 	spin_lock_irqsave(&apr->svcs_lock, flags);
 	svc = idr_find(&apr->svcs_idr, svc_id);
+	if (svc && !refcount_inc_not_zero(&svc->callback_refs))
+		svc = NULL;
 	if (svc && svc->dev->driver) {
 		adev = svc_to_apr_device(svc);
 		adrv = to_apr_driver(adev->dev.driver);
@@ -239,6 +263,8 @@ static int apr_do_rx_callback(struct packet_router *apr, struct apr_rx_buf *abuf
 	spin_unlock_irqrestore(&apr->svcs_lock, flags);
 
 	if (!adrv || !adev) {
+		if (svc)
+			pkt_router_svc_put(svc);
 		dev_err(apr->dev, "APR: service is not registered (%d)\n",
 			svc_id);
 		return -EINVAL;
@@ -255,6 +281,7 @@ static int apr_do_rx_callback(struct packet_router *apr, struct apr_rx_buf *abuf
 		resp.payload = buf + hdr_size;
 
 	adrv->callback(adev, &resp);
+	pkt_router_svc_put(svc);
 
 	return 0;
 }
@@ -298,6 +325,8 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
 
 	spin_lock_irqsave(&gpr->svcs_lock, flags);
 	svc = idr_find(&gpr->svcs_idr, hdr->dest_port);
+	if (svc && !refcount_inc_not_zero(&svc->callback_refs))
+		svc = NULL;
 	spin_unlock_irqrestore(&gpr->svcs_lock, flags);
 
 	if (!svc) {
@@ -308,6 +337,7 @@ static int gpr_do_rx_callback(struct packet_router *gpr, struct apr_rx_buf *abuf
 
 	if (svc->callback)
 		svc->callback(&resp, svc->priv, 0);
+	pkt_router_svc_put(svc);
 
 	return 0;
 }
@@ -378,13 +408,10 @@ static void apr_device_remove(struct device *dev)
 {
 	struct apr_device *adev = to_apr_device(dev);
 	struct apr_driver *adrv = to_apr_driver(dev->driver);
-	struct packet_router *apr = dev_get_drvdata(adev->dev.parent);
 
+	pkt_router_svc_remove(&adev->svc);
 	if (adrv->remove)
 		adrv->remove(adev);
-	spin_lock(&apr->svcs_lock);
-	idr_remove(&apr->svcs_idr, adev->svc.id);
-	spin_unlock(&apr->svcs_lock);
 }
 
 static int apr_uevent(const struct device *dev, struct kobj_uevent_env *env)
@@ -428,6 +455,8 @@ static int apr_add_device(struct device *dev, struct device_node *np,
 	svc->priv = adev;
 	svc->dev = dev;
 	spin_lock_init(&svc->lock);
+	refcount_set(&svc->callback_refs, 1);
+	init_completion(&svc->callbacks_drained);
 
 	adev->domain_id = domain_id;
 
@@ -458,7 +487,7 @@ static int apr_add_device(struct device *dev, struct device_node *np,
 	spin_unlock(&apr->svcs_lock);
 	if (ret < 0) {
 		dev_err(dev, "idr_alloc failed: %d\n", ret);
-		goto out;
+		goto free_adev;
 	}
 
 	/* Protection domain is optional, it does not exist on older platforms */
@@ -466,7 +495,7 @@ static int apr_add_device(struct device *dev, struct device_node *np,
 					    1, &adev->service_path);
 	if (ret < 0 && ret != -EINVAL) {
 		dev_err(dev, "Failed to read second value of qcom,protection-domain\n");
-		goto out;
+		goto remove_svc;
 	}
 
 	dev_info(dev, "Adding APR/GPR dev: %s\n", dev_name(&adev->dev));
@@ -474,10 +503,16 @@ static int apr_add_device(struct device *dev, struct device_node *np,
 	ret = device_register(&adev->dev);
 	if (ret) {
 		dev_err(dev, "device_register failed: %d\n", ret);
+		pkt_router_svc_remove(svc);
 		put_device(&adev->dev);
 	}
 
-out:
+	return ret;
+
+remove_svc:
+	pkt_router_svc_remove(svc);
+free_adev:
+	kfree(adev);
 	return ret;
 }
 
