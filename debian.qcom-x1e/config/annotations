@@ -12145,6 +12145,8 @@ CONFIG_TOUCHSCREEN_MELFAS_MIP4                  policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MMS114                       policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MSG2638                      policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_MSHW0485                     policy<{'arm64': 'm'}>
+CONFIG_TOUCHSCREEN_MSHW0485_HEAT_FRAME          policy<{'arm64': 'y'}>
+CONFIG_TOUCHSCREEN_MSHW0485_IPTSD               policy<{'arm64': 'y'}>
 CONFIG_TOUCHSCREEN_MTOUCH                       policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_NOVATEK_NVT_TS               policy<{'arm64': 'm'}>
 CONFIG_TOUCHSCREEN_PENMOUNT                     policy<{'arm64': 'm'}>
