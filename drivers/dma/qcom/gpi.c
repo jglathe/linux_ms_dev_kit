@@ -9,6 +9,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_dma.h>
 #include <linux/platform_device.h>
 #include <linux/dma/qcom-gpi-dma.h>
@@ -484,6 +485,7 @@ struct gpi_dev {
 	u32 max_gpii; /* maximum # of gpii instances available per gpi block */
 	u32 gpii_mask; /* gpii instances available for apps */
 	u32 ev_factor; /* ev ring length factor */
+	bool is_denali;
 	struct gpii *gpiis;
 };
 
@@ -562,9 +564,32 @@ static inline struct gpi_desc *to_gpi_desc(struct virt_dma_desc *vd)
 	return container_of(vd, struct gpi_desc, vd);
 }
 
+static bool gchan_is_denali_qspi(const struct gchan *gchan)
+{
+	return gchan->gpii->gpi_dev->is_denali &&
+	       gchan->protocol == QCOM_GPI_QSPI;
+}
+
+static bool gpii_has_denali_qspi(struct gpii *gpii)
+{
+	int i;
+
+	if (!gpii->gpi_dev->is_denali)
+		return false;
+
+	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++)
+		if (gpii->gchan[i].protocol == QCOM_GPI_QSPI)
+			return true;
+
+	return false;
+}
+
 static bool gpii_has_active_qspi(struct gpii *gpii)
 {
 	int i;
+
+	if (!gpii->gpi_dev->is_denali)
+		return false;
 
 	for (i = 0; i < MAX_CHANNELS_PER_GPII; i++)
 		if (gpii->gchan[i].protocol == QCOM_GPI_QSPI &&
@@ -821,7 +846,7 @@ static inline void gpi_write_ev_db(struct gpii *gpii,
 	phys_addr_t p_wp;
 
 	p_wp = ring->phys_addr + (wp - ring->base);
-	if (gpii_has_active_qspi(gpii)) {
+	if (gpii_has_denali_qspi(gpii)) {
 		gpi_write_reg(gpii, gpii->ev_cntxt_db_reg + 4,
 			      upper_32_bits(p_wp));
 		/* Commit the high half before ringing the low doorbell. */
@@ -1125,7 +1150,7 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 		 * There is no work left to complete, so this is expected ring
 		 * housekeeping rather than a channel error.
 		 */
-		if (gchan->protocol == QCOM_GPI_QSPI &&
+		if (gchan_is_denali_qspi(gchan) &&
 		    compl_event->code == MSM_GPI_TCE_EOT) {
 			dev_dbg_ratelimited(gpii->gpi_dev->dev,
 					    "discarding late QSPI EOT side:%s ptr:%pa len:%u\n",
@@ -1152,7 +1177,7 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 	 * been queued, that address aliases its first CONFIG TRE.  Never attribute
 	 * such an event to the new descriptor or advance its software ring RP.
 	 */
-	if (gchan->protocol == QCOM_GPI_QSPI &&
+	if (gchan_is_denali_qspi(gchan) &&
 	    compl_event->code == MSM_GPI_TCE_EOT) {
 		void *last_tre = gpi_desc->db;
 		phys_addr_t last_tre_phys;
@@ -1184,7 +1209,7 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 	smp_wmb();
 
 	chid = compl_event->chid;
-	if (gchan->protocol == QCOM_GPI_QSPI) {
+	if (gchan_is_denali_qspi(gchan)) {
 		if (compl_event->code == MSM_GPI_TCE_EOB) {
 			gpii->ieob_set = true;
 			return;
@@ -1220,7 +1245,7 @@ static void gpi_process_xfer_compl_event(struct gchan *gchan,
 	 * wedges both channels.  The SP11 code already carries a single deferred
 	 * descriptor slot; populate it and let QUP_NOTIF_EV_TYPE retire it.
 	 */
-	if (gchan->protocol == QCOM_GPI_QSPI &&
+	if (gchan_is_denali_qspi(gchan) &&
 	    gchan->chid == GPI_TX_CHAN &&
 	    compl_event->code == MSM_GPI_TCE_EOT) {
 		if (gpii->qspi_deferred_vd) {
@@ -1692,7 +1717,7 @@ static int gpi_terminate_all(struct dma_chan *chan)
 
 	mutex_lock(&gpii->ctrl_lock);
 
-	if (gchan->protocol == QCOM_GPI_QSPI)
+	if (gchan_is_denali_qspi(gchan))
 		gpi_qspi_clear_deferred(gpii);
 
 	/*
@@ -2449,6 +2474,7 @@ static int gpi_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	gpi_dev->dev = &pdev->dev;
+	gpi_dev->is_denali = of_machine_is_compatible("microsoft,denali");
 	gpi_dev->regs = devm_platform_get_and_ioremap_resource(pdev, 0, &gpi_dev->res);
 	if (IS_ERR(gpi_dev->regs))
 		return PTR_ERR(gpi_dev->regs);
