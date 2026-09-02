@@ -649,8 +649,6 @@ static struct audioreach_module *audioreach_parse_common_tokens(struct q6apm *ap
 			break;
 		case AR_TKN_U32_MODULE_MAX_IP_PORTS:
 			max_ip_port = le32_to_cpu(mod_elem->value);
-			if (max_ip_port > AR_MAX_MOD_LINKS)
-				return ERR_PTR(-EINVAL);
 			break;
 		case AR_TKN_U32_MODULE_MAX_OP_PORTS:
 			max_op_port = le32_to_cpu(mod_elem->value);
