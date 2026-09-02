@@ -1,3 +1,19 @@
+linux-qcom-x1e (7.2.2-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
+  * arm64: dts: qcom: x1p42100-hp-omnibook-5: Rewrite as dedicated DT [Jay Sim <jsim3368@gmail.com>]
+  * arm64: dts: qcom: x1p42100-hp-omnibook-5: Advertise data-role = "host" [Jay Sim <jsim3368@gmail.com>]
+  * arm64: dts: qcom: x1-denali: add volume-up key [Leon Silcott <leon@boasi.io>]
+  * arm64: dts: qcom: x1-denali: add volume-down key [Leon Silcott <leon@boasi.io>]
+  * Ubuntu: change default generation to nostubble
+  * arm64: dts: qcom: hamoa: Mark the EC reset gpio as reserved on all boards  whole series [Abel Vesa <abel.vesa@oss.qualcomm.com>]
+  * drm: handle IRQ_HPD events correctly  whole series [Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>] 
+    [https://lore.kernel.org/all/20260608-hpd-irq-events-v4-0-30b62b335487@oss.qualcomm.com/]
+  * drm/msm/dp: Handle IRQ HPD as a sink request [Xilin Wu <sophon@radxa.com>]
+  * drm/msm/dp: Mark the link bad when an active sink is replugged [Xilin Wu <sophon@radxa.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 02 Sep 2026 11:01:07 +0200
+
 linux-qcom-x1e (7.2.2-jg-0) resolute; urgency=medium
 
   * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
