@@ -7,5 +7,6 @@
 #define QCOM_GPI_SPI		1
 #define QCOM_GPI_UART		2
 #define QCOM_GPI_I2C		3
+#define QCOM_GPI_QSPI		4
 
 #endif /* __DT_BINDINGS_DMA_QCOM_GPI_H__ */

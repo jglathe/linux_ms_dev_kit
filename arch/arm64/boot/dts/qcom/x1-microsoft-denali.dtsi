@@ -731,6 +731,10 @@
 	};
 };
 
+&gpi_dma1 {
+	status = "okay";
+};
+
 &gpu {
 	status = "okay";
 };
@@ -1095,6 +1099,36 @@
 	vdd3-supply = <&vreg_l8b_3p0>;
 };
 
+&spi10 {
+	qcom,geni-qspi;
+
+	dmas = <&gpi_dma1 0 2 QCOM_GPI_QSPI>,
+	       <&gpi_dma1 1 2 QCOM_GPI_QSPI>;
+	dma-names = "tx", "rx";
+
+	pinctrl-0 = <&qup_spi10_data_clk>,
+		    <&qup_spi10_cs>,
+		    <&g6ts_qspi_data23>;
+	pinctrl-names = "default";
+
+	status = "okay";
+
+	touchscreen@0 {
+		compatible = "microsoft,mshw0485";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <51 IRQ_TYPE_LEVEL_LOW>;
+		interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
+		power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-0 = <&g6ts_interrupt>, <&g6ts_reset_power>;
+		pinctrl-names = "default";
+	};
+};
+
 &swr0 {
 	status = "okay";
 
@@ -1129,6 +1163,26 @@
 &tlmm {
 	gpio-reserved-ranges = <44 4>, /* SPI (TPM) */
 			       <238 1>; /* UFS Reset */
+
+	g6ts_interrupt: g6ts-interrupt-state {
+		pins = "gpio51";
+		function = "gpio";
+		bias-pull-up;
+	};
+
+	g6ts_qspi_data23: g6ts-qspi-data23-state {
+		pins = "gpio49", "gpio50";
+		function = "qup1_se2";
+		drive-strength = <6>;
+		bias-disable;
+	};
+
+	g6ts_reset_power: g6ts-reset-power-state {
+		pins = "gpio48", "gpio64";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
 
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio2";
