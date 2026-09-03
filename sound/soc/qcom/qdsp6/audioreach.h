@@ -8,6 +8,7 @@
 #include <sound/soc.h>
 struct q6apm;
 struct q6apm_graph;
+struct audioreach_graph;
 
 /* Module IDs */
 #define MODULE_ID_WR_SHARED_MEM_EP	0x07001000
@@ -157,6 +158,7 @@ struct apm_module_prop_cfg {
 } __packed;
 
 #define APM_PARAM_ID_MODULE_CONN		0x08001004
+#define APM_PARAM_ID_MODULE_CTRL_LINK_CFG	0x08001061
 
 struct apm_param_id_module_conn {
 	uint32_t num_connections;
@@ -821,6 +823,7 @@ struct audioreach_graph_info {
 	uint32_t src_mod_op_port_id;
 	uint32_t dst_mod_inst_id;
 	uint32_t dst_mod_ip_port_id;
+	bool internal_vmixer_connection;
 };
 
 struct audioreach_sub_graph {
@@ -841,6 +844,9 @@ struct audioreach_container {
 	uint32_t graph_pos;
 	uint32_t stack_size;
 	uint32_t proc_domain;
+	u32 parent_container_id;
+	u32 heap_id;
+	bool has_extended_properties;
 	struct list_head node;
 
 	uint32_t num_modules;
@@ -887,12 +893,25 @@ struct audioreach_module {
 	uint32_t log_code;
 	uint32_t log_tap_point_id;
 	uint32_t log_mode;
+	bool speaker_protection_bypass;
+	u32 integrated_backend_id;
 
 	/* bookkeeping */
 	struct list_head node;
 	struct audioreach_container *container;
 	struct snd_soc_dapm_widget *widget;
 	struct audioreach_module_priv_data *data;
+	struct audioreach_module_priv_data *ctrl_link_data;
+	struct audioreach_module_priv_data *graph_cal_data;
+	struct audioreach_module_priv_data *render_ep_data;
+	struct audioreach_module_priv_data *sp_tag_data;
+	struct audioreach_module_priv_data *spvi_tag_data;
+	struct audioreach_module_priv_data *vi_ep_data;
+	struct audioreach_module_priv_data *protection_dynamic_data;
+	struct audioreach_module_priv_data *volume_gain_data;
+	struct audioreach_module_priv_data *volume_filter_data;
+	struct audioreach_module_priv_data *volume_mute_data;
+	struct audioreach_module_priv_data *channel_mixer_data;
 };
 
 struct audioreach_module_config {
@@ -925,6 +944,15 @@ void *audioreach_alloc_pkt(int payload_size, uint32_t opcode,
 			   uint32_t dest_port);
 void *audioreach_alloc_graph_pkt(struct q6apm *apm,
 				 const struct audioreach_graph_info *info);
+const struct audioreach_module_priv_data *
+audioreach_graph_find_data(const struct audioreach_graph_info *info, u32 type);
+const struct audioreach_module *
+audioreach_graph_find_module(const struct audioreach_graph_info *info, u32 mid);
+int audioreach_graph_protection_profile(const struct audioreach_graph_info *info);
+int audioreach_graph_protection_oob_size(const struct audioreach_graph_info *info,
+					 size_t *size);
+int audioreach_send_protected_graph_calibration(struct audioreach_graph *graph);
+int audioreach_configure_protection(struct q6apm_graph *graph);
 /* Topology specific */
 int audioreach_tplg_init(struct snd_soc_component *component);
 
@@ -933,7 +961,7 @@ void audioreach_graph_free_buf(struct q6apm_graph *graph);
 int audioreach_send_cmd_sync(struct device *dev, gpr_device_t *gdev, struct gpr_ibasic_rsp_result_t *result,
 			     struct mutex *cmd_lock, gpr_port_t *port, wait_queue_head_t *cmd_wait,
 			     const struct gpr_pkt *pkt, uint32_t rsp_opcode);
-int audioreach_graph_send_cmd_sync(struct q6apm_graph *graph, const struct gpr_pkt *pkt,
+int audioreach_graph_send_cmd_sync(struct q6apm_graph *graph, struct gpr_pkt *pkt,
 				   uint32_t rsp_opcode);
 int audioreach_set_media_format(struct q6apm_graph *graph,
 				const struct audioreach_module *module,

@@ -6,6 +6,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/cleanup.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/hwmon.h>
@@ -26,6 +27,8 @@
 #include <sound/soc-dapm.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
+
+#include "lpass-wsa-macro.h"
 
 #define WSA884X_BASE			0x3000
 #define WSA884X_ANA_BG_TSADC_BASE       (WSA884X_BASE + 0x0001)
@@ -155,6 +158,7 @@
 #define WSA884X_BBM_CTL			(WSA884X_ANA_SPK_TOP_BASE + 0x28)
 #define WSA884X_TOP_MISC1		(WSA884X_ANA_SPK_TOP_BASE + 0x29)
 #define WSA884X_DAC_VCM_CTRL_REG7	(WSA884X_ANA_SPK_TOP_BASE + 0x2a)
+#define WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK	0x02
 #define WSA884X_TOP_BIAS_REG5		(WSA884X_ANA_SPK_TOP_BASE + 0x2b)
 #define WSA884X_DRV_LF_MISC_CTL2	(WSA884X_ANA_SPK_TOP_BASE + 0x2c)
 #define WSA884X_SPK_TOP_SPARE_TUNE_2	(WSA884X_ANA_SPK_TOP_BASE + 0x2d)
@@ -297,6 +301,7 @@
 #define WSA884X_PA_FSM_TIMER1		(WSA884X_DIG_CTRL0_BASE + 0x34)
 #define WSA884X_PA_FSM_STA0		(WSA884X_DIG_CTRL0_BASE + 0x35)
 #define WSA884X_PA_FSM_STA1		(WSA884X_DIG_CTRL0_BASE + 0x36)
+#define WSA884X_PA_ERROR_MASK		GENMASK(4, 0)
 #define WSA884X_PA_FSM_ERR_CTL		(WSA884X_DIG_CTRL0_BASE + 0x37)
 #define WSA884X_PA_FSM_ERR_COND0	(WSA884X_DIG_CTRL0_BASE + 0x38)
 #define WSA884X_PA_FSM_ERR_COND1	(WSA884X_DIG_CTRL0_BASE + 0x39)
@@ -437,7 +442,9 @@
 #define WSA884X_CLSH_CTL_0_INPUT_EN_SHIFT		1
 #define WSA884X_CLSH_CTL_0_CLSH_EN_SHIFT		0
 #define WSA884X_CLSH_CTL_1		(WSA884X_DIG_CTRL0_BASE + 0xd1)
+#define WSA884X_CLSH_CTL_1_SLR_MAX_MASK	GENMASK(7, 4)
 #define WSA884X_CLSH_V_HD_PA		(WSA884X_DIG_CTRL0_BASE + 0xd2)
+#define WSA884X_CLSH_V_HD_PA_MASK	GENMASK(4, 0)
 #define WSA884X_CLSH_V_PA_MIN		(WSA884X_DIG_CTRL0_BASE + 0xd3)
 #define WSA884X_CLSH_OVRD_VAL		(WSA884X_DIG_CTRL0_BASE + 0xd4)
 #define WSA884X_CLSH_HARD_MAX		(WSA884X_DIG_CTRL0_BASE + 0xd5)
@@ -731,8 +738,11 @@ struct wsa884x_priv {
 	struct regulator_bulk_data supplies[WSA884X_SUPPLIES_NUM];
 	struct sdw_slave *slave;
 	struct sdw_stream_config sconfig;
-	struct sdw_stream_runtime *sruntime;
+	struct sdw_stream_runtime *sruntime[3];
 	struct sdw_port_config port_config[WSA884X_MAX_SWR_PORTS];
+	u8 cps_offset1;
+	u8 visense_channel_mask;
+	bool protected_feedback;
 	struct gpio_desc *sd_n;
 	struct reset_control *sd_reset;
 	bool port_prepared[WSA884X_MAX_SWR_PORTS];
@@ -747,6 +757,16 @@ struct wsa884x_priv {
 	struct mutex sp_lock;
 	unsigned int temperature;
 	bool pa_on;
+	unsigned int supply_config;
+	unsigned int speaker_load_ohms;
+	bool protection_pa_reported;
+};
+
+enum wsa884x_supply_config {
+	WSA884X_SUPPLY_EXT_ABOVE_3S,
+	WSA884X_SUPPLY_1S,
+	WSA884X_SUPPLY_2S,
+	WSA884X_SUPPLY_3S,
 };
 
 enum {
@@ -870,6 +890,29 @@ static struct sdw_dpn_prop wsa884x_sink_dpn_prop[WSA884X_MAX_SWR_PORTS] = {
 		.simple_ch_prep_sm = true,
 		.read_only_wordlength = true,
 	}
+};
+
+static struct sdw_dpn_prop wsa884x_source_dpn_prop[] = {
+	{
+		.num = WSA884X_PORT_VISENSE + 1,
+		.type = SDW_DPN_SIMPLE,
+		.min_ch = 1,
+		.max_ch = 1,
+		.simple_ch_prep_sm = true,
+		.read_only_wordlength = true,
+	},
+	{
+		.num = WSA884X_PORT_CPS + 1,
+		.type = SDW_DPN_SIMPLE,
+		.min_ch = 1,
+		.max_ch = 2,
+		.simple_ch_prep_sm = true,
+		.read_only_wordlength = false,
+		.simple_transport_registers =
+			SDW_DPN_SIMPLE_TRANSPORT_BLOCKCTRL3 |
+			SDW_DPN_SIMPLE_TRANSPORT_SAMPLECTRL2 |
+			SDW_DPN_SIMPLE_TRANSPORT_HCTRL,
+	},
 };
 
 static const struct sdw_port_config wsa884x_pconfig[WSA884X_MAX_SWR_PORTS] = {
@@ -1457,10 +1500,25 @@ static const struct reg_sequence wsa884x_reg_init[] = {
 	{ WSA884X_OTP_REG_40, FIELD_PREP_CONST(WSA884X_OTP_REG_40_ISENSE_RESCAL_MASK, 0x8) },
 };
 
+static bool wsa884x_uses_2s_4ohm_profile(struct wsa884x_priv *wsa884x)
+{
+	return wsa884x->speaker_load_ohms == 4 &&
+	       wsa884x->supply_config == WSA884X_SUPPLY_2S;
+}
+
 static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 {
 	struct regmap *regmap = wsa884x->regmap;
 	unsigned int min_gain, igain, vgain, comp_offset;
+
+	if (wsa884x_uses_2s_4ohm_profile(wsa884x) &&
+	    wsa884x->dev_mode == WSA884X_SPEAKER) {
+		comp_offset = COMP_OFFSET0;
+		min_gain = G_0_DB;
+		igain = ISENSE_6_DB;
+		vgain = VSENSE_M21_DB;
+		goto apply;
+	}
 
 	/*
 	 * Downstream sets gain parameters customized per boards per use-case.
@@ -1484,6 +1542,7 @@ static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 		vgain = VSENSE_M24_DB;
 	}
 
+apply:
 	regmap_update_bits(regmap, WSA884X_ISENSE2,
 			   WSA884X_ISENSE2_ISENSE_GAIN_CTL_MASK,
 			   FIELD_PREP(WSA884X_ISENSE2_ISENSE_GAIN_CTL_MASK, igain));
@@ -1509,18 +1568,121 @@ static void wsa884x_set_gain_parameters(struct wsa884x_priv *wsa884x)
 	}
 }
 
+static void wsa884x_apply_2s_4ohm_profile(struct wsa884x_priv *wsa884x)
+{
+	static const struct reg_sequence pbr_thresholds[] = {
+		{ WSA884X_CLSH_VTH1, WSA884X_VTH_TO_REG(808) },
+		{ WSA884X_CLSH_VTH2, WSA884X_VTH_TO_REG(839) },
+		{ WSA884X_CLSH_VTH3, WSA884X_VTH_TO_REG(894) },
+		{ WSA884X_CLSH_VTH4, WSA884X_VTH_TO_REG(925) },
+		{ WSA884X_CLSH_VTH5, WSA884X_VTH_TO_REG(973) },
+		{ WSA884X_CLSH_VTH6, WSA884X_VTH_TO_REG(996) },
+		{ WSA884X_CLSH_VTH7, WSA884X_VTH_TO_REG(1051) },
+		{ WSA884X_CLSH_VTH8, WSA884X_VTH_TO_REG(1114) },
+		{ WSA884X_CLSH_VTH9, WSA884X_VTH_TO_REG(1184) },
+		{ WSA884X_CLSH_VTH10, WSA884X_VTH_TO_REG(1255) },
+		{ WSA884X_CLSH_VTH11, WSA884X_VTH_TO_REG(1318) },
+		{ WSA884X_CLSH_VTH12, WSA884X_VTH_TO_REG(1467) },
+		{ WSA884X_CLSH_VTH13, WSA884X_VTH_TO_REG(1616) },
+		{ WSA884X_CLSH_VTH14, WSA884X_VTH_TO_REG(1788) },
+		{ WSA884X_CLSH_VTH15, WSA884X_VTH_TO_REG(2000) },
+	};
+	struct regmap *regmap = wsa884x->regmap;
+
+	if (wsa884x->speaker_load_ohms != 4)
+		return;
+
+	if (!wsa884x_uses_2s_4ohm_profile(wsa884x)) {
+		/*
+		 * A SoundWire detach leaves the cached profile values behind.  Put
+		 * every fixed 2S override back on the upstream defaults when a
+		 * subsequent status read does not confirm 2S.  wsa884x_reg_init
+		 * restores the PBR thresholds before this function is called.
+		 */
+		regmap_write(regmap, WSA884X_OCP_CTL, 0xc6);
+		regmap_update_bits(regmap, WSA884X_CLSH_CTL_1,
+				   WSA884X_CLSH_CTL_1_SLR_MAX_MASK,
+				   FIELD_PREP(WSA884X_CLSH_CTL_1_SLR_MAX_MASK, 0x8));
+		regmap_update_bits(regmap, WSA884X_CLSH_V_HD_PA,
+				   WSA884X_CLSH_V_HD_PA_MASK,
+				   FIELD_PREP(WSA884X_CLSH_V_HD_PA_MASK, 0xc));
+		regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG2, 0x00);
+		regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG3, 0x00);
+		regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG4, 0x00);
+		regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG5, 0x00);
+		regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG6, 0x00);
+		regmap_update_bits(regmap, WSA884X_DAC_VCM_CTRL_REG7,
+				   WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK, 0);
+		regmap_write(regmap, WSA884X_UVLO_PROG, 0x99);
+		regmap_write(regmap, WSA884X_PA_FSM_TIMER0, 0x80);
+		regmap_write(regmap, WSA884X_UVLO_DEGLITCH_CTL, 0x05);
+		regmap_write(regmap, WSA884X_UVLO_PROG1, 0x70);
+		regmap_update_bits(regmap, WSA884X_TOP_CTRL1,
+				   WSA884X_TOP_CTRL1_OCP_LOWVBAT_ITH_EN_MASK,
+				   WSA884X_TOP_CTRL1_OCP_LOWVBAT_ITH_EN_MASK);
+		return;
+	}
+
+	regmap_write(regmap, WSA884X_OCP_CTL, 0xf6);
+	regmap_multi_reg_write(regmap, pbr_thresholds,
+			       ARRAY_SIZE(pbr_thresholds));
+	regmap_update_bits(regmap, WSA884X_CLSH_CTL_1,
+			   WSA884X_CLSH_CTL_1_SLR_MAX_MASK,
+			   FIELD_PREP(WSA884X_CLSH_CTL_1_SLR_MAX_MASK, 0x2));
+	regmap_update_bits(regmap, WSA884X_CLSH_V_HD_PA,
+			   WSA884X_CLSH_V_HD_PA_MASK,
+			   FIELD_PREP(WSA884X_CLSH_V_HD_PA_MASK, 0x13));
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG2, 0x06);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG3, 0x14);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG4, 0x19);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG5, 0x1b);
+	regmap_write(regmap, WSA884X_DAC_VCM_CTRL_REG6, 0x1c);
+	regmap_update_bits(regmap, WSA884X_DAC_VCM_CTRL_REG7,
+			   WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK,
+			   WSA884X_DAC_VCM_CTRL_REG7_FINAL_OVERRIDE_MASK);
+	regmap_write(regmap, WSA884X_UVLO_PROG, 0x77);
+	regmap_write(regmap, WSA884X_PA_FSM_TIMER0, 0xc0);
+	regmap_write(regmap, WSA884X_UVLO_DEGLITCH_CTL, 0x1d);
+	regmap_write(regmap, WSA884X_UVLO_PROG1, 0x40);
+	regmap_update_bits(regmap, WSA884X_TOP_CTRL1,
+			   WSA884X_TOP_CTRL1_OCP_LOWVBAT_ITH_EN_MASK, 0);
+}
+
 static void wsa884x_init(struct wsa884x_priv *wsa884x)
 {
 	unsigned int wo_ctl_0;
+	unsigned int supply_config;
 	unsigned int variant = 0;
 
 	if (!regmap_read(wsa884x->regmap, WSA884X_OTP_REG_0, &variant))
 		variant = variant & WSA884X_OTP_REG_0_ID_MASK;
 
+	/* Never reuse a prior attach's supply status if this read fails. */
+	wsa884x->supply_config = WSA884X_SUPPLY_1S;
+	if (wsa884x->speaker_load_ohms == 4) {
+		if (regmap_read(wsa884x->regmap, WSA884X_VPHX_SYS_EN_STATUS,
+				&supply_config)) {
+			dev_warn(wsa884x->dev,
+				 "cannot read VPHX supply configuration; retaining defaults\n");
+		} else {
+			wsa884x->supply_config = supply_config;
+			if (supply_config == WSA884X_SUPPLY_2S)
+				dev_dbg(wsa884x->dev,
+					"selected 2S 4-ohm speaker profile\n");
+			else
+				dev_warn(wsa884x->dev,
+					 "4-ohm profile requires 2S VPHX; retaining defaults\n");
+		}
+	}
+
 	regmap_multi_reg_write(wsa884x->regmap, wsa884x_reg_init,
 			       ARRAY_SIZE(wsa884x_reg_init));
+	wsa884x_apply_2s_4ohm_profile(wsa884x);
 
 	wo_ctl_0 = 0xc;
+	if (wsa884x_uses_2s_4ohm_profile(wsa884x))
+		wo_ctl_0 |= FIELD_PREP(WSA884X_ANA_WO_CTL_0_VPHX_SYS_EN_MASK,
+				     WSA884X_SUPPLY_2S);
 	wo_ctl_0 |= FIELD_PREP(WSA884X_ANA_WO_CTL_0_DAC_CM_CLAMP_EN_MASK,
 			       WSA884X_ANA_WO_CTL_0_DAC_CM_CLAMP_EN_MODE_SPEAKER);
 	/* Assume that compander is enabled by default unless it is haptics sku */
@@ -1654,6 +1816,16 @@ static int wsa884x_codec_probe(struct snd_soc_component *comp)
 	return 0;
 }
 
+static void wsa884x_codec_remove(struct snd_soc_component *comp)
+{
+	struct wsa884x_priv *wsa884x = snd_soc_component_get_drvdata(comp);
+
+	if (wsa884x->protection_pa_reported) {
+		wsa_macro_protection_pa_event(comp, false);
+		wsa884x->protection_pa_reported = false;
+	}
+}
+
 static void wsa884x_spkr_post_pmu(struct snd_soc_component *component,
 				  struct wsa884x_priv *wsa884x)
 {
@@ -1677,7 +1849,8 @@ static void wsa884x_spkr_post_pmu(struct snd_soc_component *component,
 
 	if (wsa884x->port_enable[WSA884X_PORT_PBR]) {
 		curr_ovrd_en = 0x0;
-		curr_limit = 0x15;
+		curr_limit = wsa884x_uses_2s_4ohm_profile(wsa884x) ?
+			     0x11 : 0x15;
 	} else {
 		curr_ovrd_en = 0x1;
 		if (wsa884x->dev_mode == WSA884X_RECEIVER)
@@ -1760,6 +1933,7 @@ static const struct snd_soc_dapm_route wsa884x_audio_map[] = {
 static const struct snd_soc_component_driver wsa884x_component_drv = {
 	.name = "WSA884x",
 	.probe = wsa884x_codec_probe,
+	.remove = wsa884x_codec_remove,
 	.controls = wsa884x_snd_controls,
 	.num_controls = ARRAY_SIZE(wsa884x_snd_controls),
 	.dapm_widgets = wsa884x_dapm_widgets,
@@ -1773,22 +1947,77 @@ static int wsa884x_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
+	struct sdw_port_config port_config[WSA884X_MAX_SWR_PORTS];
+	struct sdw_stream_config sconfig = {
+		.ch_count = 1,
+		.bps = 1,
+		.type = SDW_STREAM_PDM,
+	};
+	int active_ports = 0;
 	int i;
 
-	wsa884x->active_ports = 0;
+	if (dai->id && !wsa884x_uses_2s_4ohm_profile(wsa884x))
+		return -ENODEV;
+
+	if (!wsa884x->protected_feedback) {
+		wsa884x->active_ports = 0;
+		for (i = 0; i < WSA884X_MAX_SWR_PORTS; i++) {
+			if (!wsa884x->port_enable[i])
+				continue;
+
+			wsa884x->port_config[wsa884x->active_ports] =
+				wsa884x_pconfig[i];
+			wsa884x->active_ports++;
+		}
+
+		wsa884x->sconfig.frame_rate = params_rate(params);
+
+		return sdw_stream_add_slave(wsa884x->slave, &wsa884x->sconfig,
+					    wsa884x->port_config,
+					    wsa884x->active_ports,
+					    wsa884x->sruntime[0]);
+	}
+
 	for (i = 0; i < WSA884X_MAX_SWR_PORTS; i++) {
 		if (!wsa884x->port_enable[i])
 			continue;
 
-		wsa884x->port_config[wsa884x->active_ports] = wsa884x_pconfig[i];
-		wsa884x->active_ports++;
+		if (dai->id == 0) {
+			if (i != WSA884X_PORT_DAC &&
+			    i != WSA884X_PORT_COMP &&
+			    i != WSA884X_PORT_BOOST)
+				continue;
+		} else if (dai->id == 1) {
+			if (i != WSA884X_PORT_VISENSE)
+				continue;
+		} else if (dai->id == 2) {
+			if (i != WSA884X_PORT_CPS)
+				continue;
+		} else {
+			continue;
+		}
+
+		port_config[active_ports] = wsa884x_pconfig[i];
+		if (i == WSA884X_PORT_VISENSE)
+			port_config[active_ports].ch_mask =
+				wsa884x->visense_channel_mask;
+		if (i == WSA884X_PORT_CPS) {
+			port_config[active_ports].transport_params_override_mask =
+				SDW_PORT_CONFIG_OVERRIDE_OFFSET1;
+			port_config[active_ports].transport_params_override.offset1 =
+				wsa884x->cps_offset1;
+		}
+		active_ports++;
 	}
 
-	wsa884x->sconfig.frame_rate = params_rate(params);
+	if (!active_ports)
+		return -ENODEV;
 
-	return sdw_stream_add_slave(wsa884x->slave, &wsa884x->sconfig,
-				    wsa884x->port_config, wsa884x->active_ports,
-				    wsa884x->sruntime);
+	sconfig.frame_rate = params_rate(params);
+	sconfig.direction = dai->id == 0 ? SDW_DATA_DIR_RX : SDW_DATA_DIR_TX;
+
+	return sdw_stream_add_slave(wsa884x->slave, &sconfig, port_config,
+				    active_ports, wsa884x->sruntime[dai->id]);
 }
 
 static int wsa884x_hw_free(struct snd_pcm_substream *substream,
@@ -1796,30 +2025,80 @@ static int wsa884x_hw_free(struct snd_pcm_substream *substream,
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
 
-	sdw_stream_remove_slave(wsa884x->slave, wsa884x->sruntime);
+	sdw_stream_remove_slave(wsa884x->slave, wsa884x->sruntime[dai->id]);
 
 	return 0;
+}
+
+static void wsa884x_disable_pa(struct snd_soc_component *component)
+{
+	snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
+				      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK, 0x0);
+	snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
+				      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK, 0x0);
 }
 
 static int wsa884x_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
 {
 	struct snd_soc_component *component = dai->component;
+	struct wsa884x_priv *wsa884x = snd_soc_component_get_drvdata(component);
+	unsigned int pa_status = 0;
+	int ret;
+
+	if (dai->id != 0)
+		return 0;
 
 	if (mute) {
-		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
-					      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
-					      0x0);
-		snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
-					      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
-					      0x0);
+		if (wsa884x->protection_pa_reported) {
+			wsa_macro_protection_pa_event(component, false);
+			wsa884x->protection_pa_reported = false;
+		}
+
+		wsa884x_disable_pa(component);
 
 	} else {
-		snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
-					      WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
-					      0x1);
-		snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
-					      WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
-					      0x1);
+		ret = snd_soc_component_write_field(component, WSA884X_DRE_CTL_1,
+						    WSA884X_DRE_CTL_1_CSR_GAIN_EN_MASK,
+						    0x1);
+		if (ret < 0) {
+			wsa884x_disable_pa(component);
+			return ret;
+		}
+
+		ret = snd_soc_component_write_field(component, WSA884X_PA_FSM_EN,
+						    WSA884X_PA_FSM_EN_GLOBAL_PA_EN_MASK,
+						    0x1);
+		if (ret < 0) {
+			wsa884x_disable_pa(component);
+			return ret;
+		}
+
+		if (!wsa884x->protection_pa_reported &&
+		    wsa884x_uses_2s_4ohm_profile(wsa884x) &&
+		    wsa884x->protected_feedback) {
+			usleep_range(1000, 1100);
+			ret = regmap_read(wsa884x->regmap, WSA884X_PA_FSM_STA1,
+					  &pa_status);
+			if (ret || (pa_status & WSA884X_PA_ERROR_MASK)) {
+				wsa884x_disable_pa(component);
+				if (ret)
+					dev_err(wsa884x->dev,
+						"cannot read protected PA status: %pe\n",
+						ERR_PTR(ret));
+				else
+					dev_err(wsa884x->dev,
+						"protected PA start failed: status %#x\n",
+						pa_status);
+				return ret ?: -EIO;
+			}
+
+			if (!wsa_macro_protection_pa_event(component, true)) {
+				wsa884x_disable_pa(component);
+				return -ENODEV;
+			}
+
+			wsa884x->protection_pa_reported = true;
+		}
 	}
 
 	return 0;
@@ -1830,7 +2109,7 @@ static int wsa884x_set_stream(struct snd_soc_dai *dai,
 {
 	struct wsa884x_priv *wsa884x = dev_get_drvdata(dai->dev);
 
-	wsa884x->sruntime = stream;
+	wsa884x->sruntime[dai->id] = stream;
 
 	return 0;
 }
@@ -1846,12 +2125,41 @@ static const struct snd_soc_dai_ops wsa884x_dai_ops = {
 static struct snd_soc_dai_driver wsa884x_dais[] = {
 	{
 		.name = "SPKR",
+		.id = 0,
 		.playback = {
 			.stream_name = "SPKR Playback",
 			.rates = WSA884X_RATES | WSA884X_FRAC_RATES,
 			.formats = WSA884X_FORMATS,
 			.rate_min = 8000,
 			.rate_max = 384000,
+			.channels_min = 1,
+			.channels_max = 1,
+		},
+		.ops = &wsa884x_dai_ops,
+	},
+	{
+		.name = "SPKR_VI",
+		.id = 1,
+		.playback = {
+			.stream_name = "SPKR VI Protection",
+			.rates = SNDRV_PCM_RATE_8000,
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			.rate_min = 8000,
+			.rate_max = 8000,
+			.channels_min = 1,
+			.channels_max = 1,
+		},
+		.ops = &wsa884x_dai_ops,
+	},
+	{
+		.name = "SPKR_CPS",
+		.id = 2,
+		.playback = {
+			.stream_name = "SPKR CPS Protection",
+			.rates = SNDRV_PCM_RATE_24000,
+			.formats = SNDRV_PCM_FMTBIT_S32_LE,
+			.rate_min = 24000,
+			.rate_max = 24000,
 			.channels_min = 1,
 			.channels_max = 1,
 		},
@@ -2046,6 +2354,9 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	struct device *dev = &pdev->dev;
 	struct wsa884x_priv *wsa884x;
 	unsigned int i;
+	u32 cps_offset1;
+	u32 speaker_load_ohms;
+	u32 visense_channel_mask;
 	int ret;
 
 	wsa884x = devm_kzalloc(dev, sizeof(*wsa884x), GFP_KERNEL);
@@ -2079,10 +2390,42 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	wsa884x->slave = pdev;
 	wsa884x->dev = dev;
 	wsa884x->dev_mode = WSA884X_SPEAKER;
+	wsa884x->speaker_load_ohms = 8;
+	wsa884x->supply_config = WSA884X_SUPPLY_1S;
+	if (!of_property_read_u32(dev->of_node, "qcom,speaker-load-ohms",
+				  &speaker_load_ohms)) {
+		if (speaker_load_ohms != 4 && speaker_load_ohms != 8)
+			return dev_err_probe(dev, -EINVAL,
+					     "invalid qcom,speaker-load-ohms\n");
+		wsa884x->speaker_load_ohms = speaker_load_ohms;
+	}
 	wsa884x->sconfig.ch_count = 1;
 	wsa884x->sconfig.bps = 1;
 	wsa884x->sconfig.direction = SDW_DATA_DIR_RX;
 	wsa884x->sconfig.type = SDW_STREAM_PDM;
+	wsa884x->visense_channel_mask =
+		wsa884x_pconfig[WSA884X_PORT_VISENSE].ch_mask;
+	wsa884x->protected_feedback =
+		of_property_read_bool(dev->of_node, "qcom,enable-cps");
+	if (wsa884x->protected_feedback) {
+		ret = of_property_read_u32(dev->of_node,
+					   "qcom,visense-channel-mask",
+					   &visense_channel_mask);
+		if (!ret) {
+			if (!visense_channel_mask || visense_channel_mask > U8_MAX)
+				return dev_err_probe(dev, -EINVAL,
+						     "invalid qcom,visense-channel-mask\n");
+			wsa884x->visense_channel_mask = visense_channel_mask;
+		}
+
+		ret = of_property_read_u32(dev->of_node, "qcom,cps-offset1",
+					   &cps_offset1);
+		if (ret || cps_offset1 > U8_MAX)
+			return dev_err_probe(dev, ret ?: -ERANGE,
+					     "invalid qcom,cps-offset1\n");
+		wsa884x->cps_offset1 = cps_offset1;
+		wsa884x->port_enable[WSA884X_PORT_CPS] = true;
+	}
 
 	/*
 	 * Port map index starts with 0, however the data port for this codec
@@ -2092,7 +2435,17 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 					WSA884X_MAX_SWR_PORTS))
 		dev_dbg(dev, "Static Port mapping not specified\n");
 
-	pdev->prop.sink_ports = GENMASK(WSA884X_MAX_SWR_PORTS - 1, 0);
+	if (wsa884x->protected_feedback) {
+		pdev->prop.sink_ports = BIT(WSA884X_PORT_DAC + 1) |
+					BIT(WSA884X_PORT_COMP + 1) |
+					BIT(WSA884X_PORT_BOOST + 1) |
+					BIT(WSA884X_PORT_PBR + 1);
+		pdev->prop.source_ports = BIT(WSA884X_PORT_VISENSE + 1) |
+					  BIT(WSA884X_PORT_CPS + 1);
+		pdev->prop.src_dpn_prop = wsa884x_source_dpn_prop;
+	} else {
+		pdev->prop.sink_ports = GENMASK(WSA884X_MAX_SWR_PORTS - 1, 0);
+	}
 	pdev->prop.simple_clk_stop_capable = true;
 	pdev->prop.sink_dpn_prop = wsa884x_sink_dpn_prop;
 	pdev->prop.scp_int1_mask = SDW_SCP_INT1_BUS_CLASH | SDW_SCP_INT1_PARITY;
@@ -2131,7 +2484,8 @@ static int wsa884x_probe(struct sdw_slave *pdev,
 	return devm_snd_soc_register_component(dev,
 					       &wsa884x_component_drv,
 					       wsa884x_dais,
-					       ARRAY_SIZE(wsa884x_dais));
+					       wsa884x->protected_feedback ?
+					       ARRAY_SIZE(wsa884x_dais) : 1);
 }
 
 static int wsa884x_runtime_suspend(struct device *dev)

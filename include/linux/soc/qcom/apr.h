@@ -3,6 +3,8 @@
 #ifndef __QCOM_APR_H_
 #define __QCOM_APR_H_
 
+#include <linux/completion.h>
+#include <linux/refcount.h>
 #include <linux/spinlock.h>
 #include <linux/device.h>
 #include <linux/device-id/apr.h>
@@ -129,6 +131,8 @@ struct pkt_router_svc {
 	gpr_port_cb callback;
 	struct packet_router *pr;
 	spinlock_t lock;
+	refcount_t callback_refs;
+	struct completion callbacks_drained;
 	int id;
 	void *priv;
 };

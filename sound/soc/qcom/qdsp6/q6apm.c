@@ -3,6 +3,7 @@
 
 #include <dt-bindings/soc/qcom,gpr.h>
 #include <linux/delay.h>
+#include <linux/dma-mapping.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -17,8 +18,14 @@
 #include <sound/pcm.h>
 #include "audioreach.h"
 #include "q6apm.h"
+#include "q6dsp-errno.h"
 
 /* Graph Management */
+#define APM_MMAP_TOKEN_MAP_TYPE_OOB		BIT(17)
+#define APM_MMAP_TOKEN_OOB_SEQ_SHIFT		18
+#define APM_MMAP_TOKEN_OOB_SEQ_MASK		GENMASK(31, 18)
+#define Q6APM_DSP_SID_MASK			GENMASK(3, 0)
+
 struct apm_graph_mgmt_cmd {
 	struct apm_module_param_data param_data;
 	uint32_t num_sub_graphs;
@@ -28,68 +35,528 @@ struct apm_graph_mgmt_cmd {
 #define APM_GRAPH_MGMT_PSIZE(p, n) ALIGN(struct_size(p, sub_graph_id_list, n), 8)
 
 static struct q6apm *g_apm;
+static DEFINE_MUTEX(g_apm_lock);
+static atomic_t q6apm_mmap_token_seq = ATOMIC_INIT(0);
 
-int q6apm_send_cmd_sync(struct q6apm *apm, const struct gpr_pkt *pkt,
-			uint32_t rsp_opcode)
+static int audioreach_graph_mgmt_cmd(struct audioreach_graph *graph,
+				     u32 opcode);
+
+bool q6apm_graph_user_get(struct q6apm_graph *graph)
 {
-	gpr_device_t *gdev = apm->gdev;
+	unsigned long flags;
+	bool acquired = false;
 
-	return audioreach_send_cmd_sync(&gdev->dev, gdev, &apm->result, &apm->lock,
-					NULL, &apm->wait, pkt, rsp_opcode);
+	if (!graph)
+		return false;
+
+	spin_lock_irqsave(&graph->lifecycle_lock, flags);
+	if (!graph->dying && !graph->detached) {
+		graph->active_users++;
+		acquired = true;
+	}
+	spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+
+	return acquired;
 }
 
-static struct audioreach_graph *q6apm_get_audioreach_graph(struct q6apm *apm, uint32_t graph_id)
+void q6apm_graph_user_put(struct q6apm_graph *graph)
+{
+	unsigned long flags;
+	bool wake = false;
+
+	if (!graph)
+		return;
+
+	spin_lock_irqsave(&graph->lifecycle_lock, flags);
+	if (WARN_ON(!graph->active_users)) {
+		spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+		return;
+	}
+	wake = --graph->active_users == 0;
+	spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+
+	if (wake)
+		wake_up(&graph->users_wait);
+}
+
+DEFINE_FREE(q6apm_graph_user, struct q6apm_graph *, q6apm_graph_user_put(_T))
+
+static void q6apm_graph_abort_cmd(struct q6apm_graph *graph)
+{
+	spin_lock(&graph->result_lock);
+	graph->cmd_pending = false;
+	spin_unlock(&graph->result_lock);
+	wake_up(&graph->cmd_wait);
+}
+
+static void q6apm_graph_mark_dying(struct q6apm_graph *graph)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&graph->lifecycle_lock, flags);
+	graph->dying = true;
+	spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+	q6apm_graph_abort_cmd(graph);
+}
+
+static void q6apm_graph_wait_users(struct q6apm_graph *graph)
+{
+	wait_event(graph->users_wait, !READ_ONCE(graph->active_users));
+}
+
+int q6apm_send_cmd_sync(struct q6apm *apm, struct gpr_pkt *pkt,
+			uint32_t rsp_opcode)
+{
+	struct gpr_hdr *hdr = &pkt->hdr;
+	gpr_device_t *gdev = apm->gdev;
+	u32 result_status;
+	bool aborted;
+	int ret;
+
+	mutex_lock(&apm->lock);
+	if (READ_ONCE(apm->removing)) {
+		ret = -ESHUTDOWN;
+		goto unlock;
+	}
+	if (!hdr->token) {
+		do {
+			hdr->token = ++apm->cmd_token;
+		} while (!hdr->token);
+	}
+	spin_lock(&apm->result_lock);
+	apm->result.opcode = 0;
+	apm->result.status = 0;
+	apm->result_token = U32_MAX;
+	apm->pending_opcode = hdr->opcode;
+	apm->pending_rsp_opcode = rsp_opcode;
+	apm->pending_token = hdr->token;
+	apm->cmd_pending = true;
+	spin_unlock(&apm->result_lock);
+
+	ret = gpr_send_pkt(gdev, pkt);
+	if (ret >= 0)
+		ret = wait_event_timeout(apm->wait,
+					 !READ_ONCE(apm->cmd_pending) ||
+					 (((READ_ONCE(apm->result.opcode) ==
+					   hdr->opcode) ||
+					  (rsp_opcode &&
+					   READ_ONCE(apm->result.opcode) ==
+					   rsp_opcode)) &&
+					 READ_ONCE(apm->result_token) ==
+					 hdr->token), 5 * HZ);
+
+	spin_lock(&apm->result_lock);
+	aborted = !apm->cmd_pending || apm->removing;
+	if (!ret && apm->result_token == hdr->token &&
+	    (apm->result.opcode == hdr->opcode ||
+	     (rsp_opcode && apm->result.opcode == rsp_opcode)))
+		ret = 1;
+	apm->cmd_pending = false;
+	result_status = apm->result.status;
+	spin_unlock(&apm->result_lock);
+
+	if (aborted) {
+		ret = -ESHUTDOWN;
+		goto unlock;
+	}
+	if (ret < 0)
+		goto unlock;
+	if (!ret) {
+		dev_err(&gdev->dev, "CMD timeout for [%x] opcode\n",
+			hdr->opcode);
+		ret = -ETIMEDOUT;
+	} else if (result_status > 0) {
+		dev_err(&gdev->dev, "DSP returned error[%x] %x\n",
+			hdr->opcode, result_status);
+		ret = result_status == ADSP_EUNSUPPORTED ?
+			-EOPNOTSUPP : -EINVAL;
+	} else {
+		ret = 0;
+	}
+
+unlock:
+	mutex_unlock(&apm->lock);
+	return ret;
+}
+
+static phys_addr_t q6apm_dsp_addr(struct device *dev, dma_addr_t dma_addr)
+{
+	struct of_phandle_args args;
+	phys_addr_t dsp_addr = dma_addr;
+
+	if (!dev->of_node ||
+	    of_parse_phandle_with_fixed_args(dev->of_node, "iommus", 1, 0,
+					     &args))
+		return dsp_addr;
+
+	dsp_addr |= (phys_addr_t)(args.args[0] & Q6APM_DSP_SID_MASK) << 32;
+	of_node_put(args.np);
+
+	return dsp_addr;
+}
+
+static u32 q6apm_next_mmap_token(u32 graph_id, u32 map_type)
+{
+	u32 sequence;
+
+	sequence = (u32)atomic_inc_return(&q6apm_mmap_token_seq) <<
+		   APM_MMAP_TOKEN_OOB_SEQ_SHIFT;
+
+	return (graph_id & APM_MMAP_TOKEN_GID_MASK) | map_type |
+		(sequence & APM_MMAP_TOKEN_OOB_SEQ_MASK);
+}
+
+static int q6apm_map_oob_buffer(struct audioreach_graph *graph, size_t data_size)
+{
+	struct apm_shared_map_region_payload *region;
+	struct apm_cmd_shared_mem_map_regions *cmd;
+	struct gpr_pkt *pkt __free(kfree) = NULL;
+	u32 opcode = APM_CMD_SHARED_MEM_MAP_REGIONS;
+	int payload_size = sizeof(*cmd) + sizeof(*region);
+	bool map_uncertain;
+	bool mapped;
+	void *payload;
+	int ret;
+
+	if (!graph->dma_dev)
+		return -ENODEV;
+	if (!data_size || data_size > U32_MAX - (PAGE_SIZE - 1))
+		return -E2BIG;
+	graph->oob_token = q6apm_next_mmap_token(graph->id,
+						 APM_MMAP_TOKEN_MAP_TYPE_OOB);
+
+	graph->oob_size = PAGE_ALIGN(data_size);
+	graph->oob_virt = dma_alloc_coherent(graph->dma_dev, graph->oob_size,
+					     &graph->oob_dma, GFP_KERNEL);
+	if (!graph->oob_virt)
+		return -ENOMEM;
+	graph->oob_dsp_addr = q6apm_dsp_addr(graph->dma_dev, graph->oob_dma);
+
+	pkt = audioreach_alloc_apm_cmd_pkt(payload_size, opcode, graph->oob_token);
+	if (IS_ERR(pkt)) {
+		ret = PTR_ERR(pkt);
+		goto free_buffer;
+	}
+
+	payload = (u8 *)pkt + GPR_HDR_SIZE;
+	cmd = payload;
+	cmd->mem_pool_id = APM_MEMORY_MAP_SHMEM8_4K_POOL;
+	cmd->num_regions = 1;
+	cmd->property_flag = 0;
+	region = payload + sizeof(*cmd);
+	region->shm_addr_lsw = lower_32_bits(graph->oob_dsp_addr);
+	region->shm_addr_msw = upper_32_bits(graph->oob_dsp_addr);
+	region->mem_size_bytes = graph->oob_size;
+
+	graph->oob_map_uncertain = true;
+	ret = q6apm_send_cmd_sync(graph->apm, pkt,
+				  APM_CMD_RSP_SHARED_MEM_MAP_REGIONS);
+	spin_lock(&graph->apm->graph_lock);
+	mapped = graph->oob_mem_map_handle;
+	map_uncertain = graph->oob_map_uncertain;
+	spin_unlock(&graph->apm->graph_lock);
+	if (mapped)
+		return 0;
+	if (!map_uncertain) {
+		if (!ret)
+			ret = -EIO;
+		goto free_buffer;
+	}
+	if (!ret)
+		ret = -EIO;
+
+	/*
+	 * A timeout does not prove that the DSP failed to map the buffer. Keep
+	 * it allocated; teardown retains it unless a correlated response makes
+	 * the mapping state certain.
+	 */
+	return ret;
+
+free_buffer:
+	dma_free_coherent(graph->dma_dev, graph->oob_size, graph->oob_virt,
+			  graph->oob_dma);
+	graph->oob_virt = NULL;
+	graph->oob_dma = 0;
+	graph->oob_dsp_addr = 0;
+	graph->oob_size = 0;
+	return ret;
+}
+
+static int q6apm_unmap_oob_buffer(struct audioreach_graph *graph)
+{
+	struct apm_cmd_shared_mem_unmap_regions *cmd;
+	u32 opcode = APM_CMD_SHARED_MEM_UNMAP_REGIONS;
+	u32 mem_map_handle;
+	bool map_uncertain;
+	int ret = 0;
+
+	mutex_lock(&graph->oob_lock);
+	if (graph->oob_transfer_uncertain) {
+		ret = -EAGAIN;
+		goto unlock;
+	}
+
+	spin_lock(&graph->apm->graph_lock);
+	map_uncertain = graph->oob_map_uncertain;
+	if (map_uncertain)
+		mem_map_handle = 0;
+	else
+		mem_map_handle = graph->oob_mem_map_handle;
+	spin_unlock(&graph->apm->graph_lock);
+	if (map_uncertain) {
+		ret = -EAGAIN;
+		goto unlock;
+	}
+
+	if (mem_map_handle) {
+		struct gpr_pkt *pkt __free(kfree) = NULL;
+
+		pkt = audioreach_alloc_apm_cmd_pkt(sizeof(*cmd), opcode, graph->oob_token);
+
+		if (IS_ERR(pkt)) {
+			ret = PTR_ERR(pkt);
+		} else {
+			cmd = (void *)pkt + GPR_HDR_SIZE;
+			cmd->mem_map_handle = mem_map_handle;
+			ret = q6apm_send_cmd_sync(graph->apm, pkt, opcode);
+		}
+		if (ret)
+			goto unlock;
+		spin_lock(&graph->apm->graph_lock);
+		mem_map_handle = graph->oob_mem_map_handle;
+		spin_unlock(&graph->apm->graph_lock);
+		if (mem_map_handle) {
+			ret = -EIO;
+			goto unlock;
+		}
+	}
+
+	if (graph->oob_virt) {
+		dma_free_coherent(graph->dma_dev, graph->oob_size,
+				  graph->oob_virt, graph->oob_dma);
+		graph->oob_virt = NULL;
+		graph->oob_dma = 0;
+		graph->oob_dsp_addr = 0;
+		graph->oob_size = 0;
+	}
+
+unlock:
+	mutex_unlock(&graph->oob_lock);
+	return ret;
+}
+
+static int __q6apm_send_oob_config(struct audioreach_graph *graph,
+				   struct q6apm_graph *client,
+				   const void *data, size_t size)
+{
+	struct apm_cmd_header *cmd;
+	struct gpr_pkt *pkt;
+	int ret;
+
+	if (!data || !size || size > graph->oob_size ||
+	    !graph->oob_virt || !graph->oob_mem_map_handle)
+		return -EINVAL;
+
+	mutex_lock(&graph->oob_lock);
+	if (graph->oob_transfer_uncertain) {
+		ret = -EIO;
+		goto unlock;
+	}
+	memset(graph->oob_virt, 0, graph->oob_size);
+	memcpy(graph->oob_virt, data, size);
+	dma_wmb();
+
+	if (client)
+		pkt = audioreach_alloc_cmd_pkt(0, APM_CMD_SET_CFG, 0,
+					       client->port->id,
+					       APM_MODULE_INSTANCE_ID);
+	else
+		pkt = audioreach_alloc_apm_cmd_pkt(0, APM_CMD_SET_CFG, 0);
+	if (IS_ERR(pkt)) {
+		ret = PTR_ERR(pkt);
+		goto unlock;
+	}
+
+	cmd = (void *)pkt + GPR_HDR_SIZE;
+	cmd->payload_address_lsw = lower_32_bits(graph->oob_dsp_addr);
+	cmd->payload_address_msw = upper_32_bits(graph->oob_dsp_addr);
+	cmd->mem_map_handle = graph->oob_mem_map_handle;
+	cmd->payload_size = size;
+
+	if (client)
+		ret = audioreach_graph_send_cmd_sync(client, pkt, 0);
+	else
+		ret = q6apm_send_cmd_sync(graph->apm, pkt, 0);
+	kfree(pkt);
+	if (ret == -ETIMEDOUT)
+		graph->oob_transfer_uncertain = true;
+
+unlock:
+	mutex_unlock(&graph->oob_lock);
+	return ret;
+}
+
+int q6apm_send_oob_config(struct audioreach_graph *graph,
+			  const void *data, size_t size)
+{
+	return __q6apm_send_oob_config(graph, NULL, data, size);
+}
+
+int q6apm_send_graph_oob_config(struct q6apm_graph *graph,
+				const void *data, size_t size)
+{
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
+	if (!graph->ar_graph)
+		return -ENODEV;
+
+	return __q6apm_send_oob_config(graph->ar_graph, graph, data, size);
+}
+
+static struct audioreach_graph *
+q6apm_get_audioreach_graph(struct q6apm *apm, u32 graph_id,
+			   bool enable_protection)
 {
 	struct audioreach_graph_info *info;
 	struct audioreach_graph *graph;
+	struct device *dma_dev;
+	bool graph_faulted;
+	bool mode_mismatch;
+	size_t oob_size;
 	int id;
 
 	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
 	graph = idr_find(&apm->graph_idr, graph_id);
+	graph_faulted = graph &&
+		(READ_ONCE(graph->protection_faulted) ||
+		 (enable_protection && READ_ONCE(graph->protection_malformed)));
+	mode_mismatch = graph && !graph->initializing &&
+		((enable_protection && graph->protection_profile) !=
+		 graph->protection_runtime);
+	if (graph && (graph->initializing ||
+		      graph_faulted ||
+		      mode_mismatch ||
+		      !kref_get_unless_zero(&graph->refcount))) {
+		spin_unlock(&apm->graph_lock);
+		mutex_unlock(&apm->lock);
+		return ERR_PTR(mode_mismatch ? -EBUSY :
+			       graph_faulted ? -EIO : -EBUSY);
+	}
+	spin_unlock(&apm->graph_lock);
+	info = idr_find(&apm->graph_info_idr, graph_id);
+	dma_dev = !graph && info ? get_device(apm->dma_dev) : NULL;
 	mutex_unlock(&apm->lock);
 
-	if (graph) {
-		kref_get(&graph->refcount);
+	if (graph)
 		return graph;
-	}
-
-	info = idr_find(&apm->graph_info_idr, graph_id);
 
 	if (!info)
 		return ERR_PTR(-ENODEV);
 
 	graph = kzalloc_obj(*graph);
-	if (!graph)
+	if (!graph) {
+		put_device(dma_dev);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	graph->apm = apm;
 	graph->info = info;
 	graph->id = graph_id;
+	graph->dma_dev = dma_dev;
+	graph->initializing = true;
+	mutex_init(&graph->oob_lock);
+	mutex_init(&graph->protection_lock);
 
 	graph->graph = audioreach_alloc_graph_pkt(apm, info);
 	if (IS_ERR(graph->graph)) {
 		void *err = graph->graph;
 
+		put_device(graph->dma_dev);
 		kfree(graph);
 		return ERR_CAST(err);
 	}
 
+	kref_init(&graph->refcount);
 	mutex_lock(&apm->lock);
-	id = idr_alloc(&apm->graph_idr, graph, graph_id, graph_id + 1, GFP_KERNEL);
+	spin_lock(&apm->graph_lock);
+	id = idr_alloc(&apm->graph_idr, graph, graph_id, graph_id + 1,
+		       GFP_ATOMIC);
+	spin_unlock(&apm->graph_lock);
 	if (id < 0) {
 		dev_err(apm->dev, "Unable to allocate graph id (%d)\n", graph_id);
 		kfree(graph->graph);
+		put_device(graph->dma_dev);
 		kfree(graph);
 		mutex_unlock(&apm->lock);
 		return ERR_PTR(id);
 	}
 	mutex_unlock(&apm->lock);
 
-	kref_init(&graph->refcount);
+	id = q6apm_send_cmd_sync(apm, graph->graph, 0);
+	if (id == -ETIMEDOUT) {
+		dev_err(apm->dev,
+			"retaining graph %u after uncertain GRAPH_OPEN\n",
+			graph_id);
+		return ERR_PTR(id);
+	}
+	if (id)
+		goto remove_graph;
 
-	q6apm_send_cmd_sync(apm, graph->graph, 0);
+	id = audioreach_graph_protection_oob_size(info, &oob_size);
+	if (id < 0) {
+		graph->protection_profile = true;
+		graph->protection_malformed = true;
+		if (enable_protection) {
+			graph->protection_runtime = true;
+			graph->protection_faulted = true;
+			dev_warn(apm->dev,
+				 "protected topology is incomplete (%d); refusing runtime\n",
+				 id);
+		}
+		goto graph_ready;
+	}
+	if (oob_size) {
+		graph->protection_profile = true;
+		if (!enable_protection)
+			goto graph_ready;
+		graph->protection_runtime = true;
+		id = q6apm_map_oob_buffer(graph, oob_size);
+		if (id) {
+			dev_warn(apm->dev,
+				 "protected OOB map failed (%d); using bypass\n", id);
+			goto graph_ready;
+		}
+		id = audioreach_send_protected_graph_calibration(graph);
+		if (id) {
+			dev_warn(apm->dev,
+				 "protected graph calibration failed (%d); using bypass\n",
+				 id);
+			q6apm_unmap_oob_buffer(graph);
+			goto graph_ready;
+		}
+		graph->protection_available = true;
+	}
 
+graph_ready:
+	spin_lock(&apm->graph_lock);
+	graph->initializing = false;
+	spin_unlock(&apm->graph_lock);
 	return graph;
+
+remove_graph:
+	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
+	idr_remove(&apm->graph_idr, graph->id);
+	spin_unlock(&apm->graph_lock);
+	mutex_unlock(&apm->lock);
+	kfree(graph->graph);
+	put_device(graph->dma_dev);
+	kfree(graph);
+	return ERR_PTR(id);
 }
 
 static int audioreach_graph_mgmt_cmd(struct audioreach_graph *graph, uint32_t opcode)
@@ -121,21 +588,81 @@ static int audioreach_graph_mgmt_cmd(struct audioreach_graph *graph, uint32_t op
 	return q6apm_send_cmd_sync(apm, pkt, 0);
 }
 
+static int audioreach_graph_client_mgmt_cmd(struct q6apm_graph *graph,
+					    u32 opcode)
+{
+	struct audioreach_graph_info *info = graph->info;
+	int num_sub_graphs = info->num_sub_graphs;
+	struct apm_module_param_data *param_data;
+	struct apm_graph_mgmt_cmd *mgmt_cmd;
+	struct gpr_pkt *pkt __free(kfree) = NULL;
+	struct audioreach_sub_graph *sg;
+	int payload_size;
+	int i = 0;
+	u32 dest = APM_MODULE_INSTANCE_ID;
+
+	payload_size = APM_GRAPH_MGMT_PSIZE(mgmt_cmd, num_sub_graphs);
+	pkt = audioreach_alloc_cmd_pkt(payload_size, opcode, 0, graph->port->id, dest);
+	if (IS_ERR(pkt))
+		return PTR_ERR(pkt);
+
+	mgmt_cmd = (void *)pkt + GPR_HDR_SIZE + APM_CMD_HDR_SIZE;
+	mgmt_cmd->num_sub_graphs = num_sub_graphs;
+	param_data = &mgmt_cmd->param_data;
+	param_data->module_instance_id = APM_MODULE_INSTANCE_ID;
+	param_data->param_id = APM_PARAM_ID_SUB_GRAPH_LIST;
+	param_data->param_size = payload_size - APM_MODULE_PARAM_DATA_SIZE;
+
+	/* FullIO emits the graph's required run-state order in this list. */
+	list_for_each_entry(sg, &info->sg_list, node)
+		mgmt_cmd->sub_graph_id_list[i++] = sg->sub_graph_id;
+
+	return audioreach_graph_send_cmd_sync(graph, pkt, 0);
+}
+
 static void q6apm_put_audioreach_graph(struct kref *ref)
 {
 	struct audioreach_graph *graph;
 	struct q6apm *apm;
+	int close_ret;
+	int unmap_ret = 0;
 
 	graph = container_of(ref, struct audioreach_graph, refcount);
 	apm = graph->apm;
 
-	audioreach_graph_mgmt_cmd(graph, APM_CMD_GRAPH_CLOSE);
+	/* Stop all DSP users before releasing their OOB mapping. */
+	close_ret = graph->close_confirmed ? 0 :
+		audioreach_graph_mgmt_cmd(graph, APM_CMD_GRAPH_CLOSE);
+	if (close_ret && graph->protection_runtime) {
+		/* Keep the ID reserved until reboot or a proven reset hook. */
+		spin_lock(&apm->graph_lock);
+		graph->initializing = true;
+		kref_init(&graph->refcount);
+		spin_unlock(&apm->graph_lock);
+		dev_err(apm->dev,
+			"retaining graph %u after uncertain GRAPH_CLOSE (%d)\n",
+			graph->id, close_ret);
+		return;
+	}
+
+	mutex_lock(&graph->oob_lock);
+	graph->oob_transfer_uncertain = false;
+	mutex_unlock(&graph->oob_lock);
+	unmap_ret = q6apm_unmap_oob_buffer(graph);
 
 	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
 	graph = idr_remove(&apm->graph_idr, graph->id);
+	spin_unlock(&apm->graph_lock);
 	mutex_unlock(&apm->lock);
 
 	kfree(graph->graph);
+	if (graph->oob_virt)
+		dev_err(apm->dev,
+			"retaining protected OOB DMA buffer after teardown failure (close %d, unmap %d)\n",
+			close_ret, unmap_ret);
+	else
+		put_device(graph->dma_dev);
 	kfree(graph);
 }
 
@@ -154,10 +681,14 @@ static int q6apm_get_apm_state(struct q6apm *apm)
 
 bool q6apm_is_adsp_ready(void)
 {
-	if (g_apm)
-		return q6apm_get_apm_state(g_apm);
+	bool ready = false;
 
-	return false;
+	mutex_lock(&g_apm_lock);
+	if (g_apm)
+		ready = q6apm_get_apm_state(g_apm);
+	mutex_unlock(&g_apm_lock);
+
+	return ready;
 }
 EXPORT_SYMBOL_GPL(q6apm_is_adsp_ready);
 
@@ -184,16 +715,28 @@ static struct audioreach_module *__q6apm_find_module_by_mid(struct q6apm *apm,
 int q6apm_graph_media_format_shmem(struct q6apm_graph *graph,
 				   struct audioreach_module_config *cfg)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_module *module;
 
+	if (!active)
+		return -ESHUTDOWN;
 	if (cfg->direction == SNDRV_PCM_STREAM_CAPTURE) {
-		module = q6apm_find_module_by_mid(graph, MODULE_ID_SH_MEM_PUSH_MODE);
+		module = __q6apm_find_module_by_mid(graph->apm,
+						    graph->info,
+						    MODULE_ID_SH_MEM_PUSH_MODE);
 		if (!module)
-			module = q6apm_find_module_by_mid(graph, MODULE_ID_RD_SHARED_MEM_EP);
+			module = __q6apm_find_module_by_mid(graph->apm,
+							    graph->info,
+							    MODULE_ID_RD_SHARED_MEM_EP);
 	} else {
-		module = q6apm_find_module_by_mid(graph, MODULE_ID_SH_MEM_PULL_MODE);
+		module = __q6apm_find_module_by_mid(graph->apm,
+						    graph->info,
+						    MODULE_ID_SH_MEM_PULL_MODE);
 		if (!module)
-			module = q6apm_find_module_by_mid(graph, MODULE_ID_WR_SHARED_MEM_EP);
+			module = __q6apm_find_module_by_mid(graph->apm,
+							    graph->info,
+							    MODULE_ID_WR_SHARED_MEM_EP);
 	}
 
 	if (!module) {
@@ -216,9 +759,15 @@ static int __q6apm_map_memory_fixed_region(struct device *dev, unsigned int grap
 	uint32_t buf_sz;
 	void *p;
 	uint32_t pos_mask = is_pos_buf ? APM_MMAP_TOKEN_MAP_TYPE_POS_BUF : 0;
+	u32 token = q6apm_next_mmap_token(graph_id, pos_mask);
 	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_apm_cmd_pkt(payload_size,
-					APM_CMD_SHARED_MEM_MAP_REGIONS, (graph_id | pos_mask));
+					APM_CMD_SHARED_MEM_MAP_REGIONS, token);
 
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
 	if (IS_ERR(pkt))
 		return PTR_ERR(pkt);
 
@@ -271,10 +820,14 @@ EXPORT_SYMBOL_GPL(q6apm_map_memory_fixed_region);
 int q6apm_alloc_fragments(struct q6apm_graph *graph, unsigned int dir, phys_addr_t phys,
 				size_t period_sz, unsigned int periods)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_graph_data *data;
 	struct audio_buffer *buf;
 	int cnt;
 
+	if (!active)
+		return -ESHUTDOWN;
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
 		data = &graph->rx_data;
 	else
@@ -326,8 +879,15 @@ static int __q6apm_unmap_memory_fixed_region(struct device *dev, unsigned int gr
 	struct q6apm *apm = dev_get_drvdata(dev->parent);
 	struct audioreach_graph_info *info;
 	uint32_t mem_map_handle;
+	u32 map_type = is_pos_buf ? APM_MMAP_TOKEN_MAP_TYPE_POS_BUF : 0;
+	u32 token = q6apm_next_mmap_token(graph_id, map_type);
 	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_apm_cmd_pkt(sizeof(*cmd),
-						APM_CMD_SHARED_MEM_UNMAP_REGIONS, graph_id);
+						APM_CMD_SHARED_MEM_UNMAP_REGIONS, token);
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
 	if (IS_ERR(pkt))
 		return PTR_ERR(pkt);
 
@@ -366,6 +926,11 @@ EXPORT_SYMBOL_GPL(q6apm_unmap_pos_buffer);
 
 int q6apm_free_fragments(struct q6apm_graph *graph, unsigned int dir)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
 	audioreach_graph_free_buf(graph);
 
 	return 0;
@@ -374,9 +939,14 @@ EXPORT_SYMBOL_GPL(q6apm_free_fragments);
 
 int q6apm_remove_initial_silence(struct device *dev, struct q6apm_graph *graph, uint32_t samples)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_module *module;
 
-	module = q6apm_find_module_by_mid(graph, MODULE_ID_PLACEHOLDER_DECODER);
+	if (!active)
+		return -ESHUTDOWN;
+	module = __q6apm_find_module_by_mid(graph->apm, graph->info,
+					    MODULE_ID_PLACEHOLDER_DECODER);
 	if (!module)
 		return -ENODEV;
 
@@ -386,9 +956,14 @@ EXPORT_SYMBOL_GPL(q6apm_remove_initial_silence);
 
 int q6apm_remove_trailing_silence(struct device *dev, struct q6apm_graph *graph, uint32_t samples)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_module *module;
 
-	module = q6apm_find_module_by_mid(graph, MODULE_ID_PLACEHOLDER_DECODER);
+	if (!active)
+		return -ESHUTDOWN;
+	module = __q6apm_find_module_by_mid(graph->apm, graph->info,
+					    MODULE_ID_PLACEHOLDER_DECODER);
 	if (!module)
 		return -ENODEV;
 
@@ -398,9 +973,14 @@ EXPORT_SYMBOL_GPL(q6apm_remove_trailing_silence);
 
 int q6apm_enable_compress_module(struct device *dev, struct q6apm_graph *graph, bool en)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_module *module;
 
-	module = q6apm_find_module_by_mid(graph, MODULE_ID_PLACEHOLDER_DECODER);
+	if (!active)
+		return -ESHUTDOWN;
+	module = __q6apm_find_module_by_mid(graph->apm, graph->info,
+					    MODULE_ID_PLACEHOLDER_DECODER);
 	if (!module)
 		return -ENODEV;
 
@@ -411,10 +991,15 @@ EXPORT_SYMBOL_GPL(q6apm_enable_compress_module);
 int q6apm_set_real_module_id(struct device *dev, struct q6apm_graph *graph,
 			     uint32_t codec_id)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_module *module;
 	uint32_t module_id;
 
-	module = q6apm_find_module_by_mid(graph, MODULE_ID_PLACEHOLDER_DECODER);
+	if (!active)
+		return -ESHUTDOWN;
+	module = __q6apm_find_module_by_mid(graph->apm, graph->info,
+					    MODULE_ID_PLACEHOLDER_DECODER);
 	if (!module)
 		return -ENODEV;
 
@@ -440,13 +1025,241 @@ int q6apm_set_real_module_id(struct device *dev, struct q6apm_graph *graph,
 }
 EXPORT_SYMBOL_GPL(q6apm_set_real_module_id);
 
+bool q6apm_graph_has_protection(const struct q6apm_graph *graph)
+{
+	return graph && READ_ONCE(graph->protection_runtime);
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_has_protection);
+
+int q6apm_graph_configure_protection(struct q6apm_graph *graph)
+{
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
+	if (!q6apm_graph_has_protection(graph))
+		return 0;
+
+	return audioreach_configure_protection(graph);
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_configure_protection);
+
+static int __q6apm_graph_id_for_backend(struct q6apm *apm, int backend_id)
+{
+	struct audioreach_graph_info *info;
+	struct audioreach_container *container;
+	struct audioreach_sub_graph *sg;
+	struct audioreach_module *module;
+	int graph_id = -ENOENT;
+	int profile;
+	int id;
+
+	mutex_lock(&apm->lock);
+	idr_for_each_entry(&apm->graph_info_idr, info, id) {
+		profile = audioreach_graph_protection_profile(info);
+		if (profile <= 0)
+			continue;
+		list_for_each_entry(sg, &info->sg_list, node) {
+			list_for_each_entry(container, &sg->container_list, node) {
+				list_for_each_entry(module,
+						    &container->modules_list, node) {
+					if (!module->integrated_backend_id ||
+					    module->integrated_backend_id != backend_id)
+						continue;
+					if (graph_id >= 0 && graph_id != info->id) {
+						graph_id = -EEXIST;
+						goto unlock;
+					}
+					graph_id = info->id;
+				}
+			}
+		}
+	}
+
+unlock:
+	mutex_unlock(&apm->lock);
+	return graph_id == -ENOENT ? backend_id : graph_id;
+}
+
+int q6apm_graph_id_for_backend(struct device *dev, int backend_id)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
+
+	return __q6apm_graph_id_for_backend(apm, backend_id);
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_id_for_backend);
+
+int q6apm_set_protection_backend_ready(struct device *dev, int backend_id,
+				       enum q6apm_protection_backend backend,
+				       bool ready)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+	struct audioreach_graph *graph;
+	bool *backend_ready;
+	int graph_id;
+	int ret = 0;
+
+	if (!apm)
+		return -ENODEV;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return -ESHUTDOWN;
+
+	graph_id = __q6apm_graph_id_for_backend(apm, backend_id);
+	if (graph_id < 0)
+		return graph_id;
+
+	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
+	graph = idr_find(&apm->graph_idr, graph_id);
+	if (graph && (graph->initializing ||
+		      !kref_get_unless_zero(&graph->refcount)))
+		graph = NULL;
+	spin_unlock(&apm->graph_lock);
+	mutex_unlock(&apm->lock);
+	if (!graph)
+		return -ENODEV;
+	if (!graph->protection_profile) {
+		kref_put(&graph->refcount, q6apm_put_audioreach_graph);
+		return -ENODEV;
+	}
+
+	mutex_lock(&graph->protection_lock);
+	switch (backend) {
+	case Q6APM_PROTECTION_BACKEND_VI:
+		backend_ready = &graph->protection_vi_ready;
+		break;
+	case Q6APM_PROTECTION_BACKEND_CPS:
+		backend_ready = &graph->protection_cps_ready;
+		break;
+	default:
+		ret = -EINVAL;
+		goto unlock;
+	}
+	if (*backend_ready == ready)
+		goto unlock;
+	if (graph->start_count > 0) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+	if (ready && graph->protection_faulted) {
+		ret = -EIO;
+		goto unlock;
+	}
+	/*
+	 * Keep ready=false available after a fault once execution has stopped so
+	 * backend teardown can proceed.
+	 */
+	*backend_ready = ready;
+	graph->protection_configured = false;
+	graph->protection_bypass_confirmed = false;
+
+unlock:
+	mutex_unlock(&graph->protection_lock);
+	kref_put(&graph->refcount, q6apm_put_audioreach_graph);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(q6apm_set_protection_backend_ready);
+
+static const struct audioreach_module *
+q6apm_find_module_by_iid(const struct audioreach_graph_info *info, u32 iid)
+{
+	struct audioreach_container *container;
+	struct audioreach_sub_graph *sg;
+	struct audioreach_module *module;
+
+	list_for_each_entry(sg, &info->sg_list, node)
+		list_for_each_entry(container, &sg->container_list, node)
+			list_for_each_entry(module, &container->modules_list, node)
+				if (module->instance_id == iid)
+					return module;
+
+	return NULL;
+}
+
+static unsigned int
+q6apm_graph_module_count(const struct audioreach_graph_info *info)
+{
+	struct audioreach_container *container;
+	struct audioreach_sub_graph *sg;
+	unsigned int count = 0;
+
+	list_for_each_entry(sg, &info->sg_list, node)
+		list_for_each_entry(container, &sg->container_list, node)
+			count += container->num_modules;
+
+	return count;
+}
+
+static int q6apm_protected_media_format_pcm(struct q6apm_graph *graph,
+					    struct audioreach_module_config *cfg)
+{
+	const struct audioreach_module *source;
+	const struct audioreach_module *module;
+	unsigned int limit, step;
+	bool pcm_configured = false;
+	int ret;
+
+	if (cfg->direction != SNDRV_PCM_STREAM_PLAYBACK ||
+	    cfg->sample_rate != 48000 || cfg->bit_width != 16 ||
+	    cfg->num_channels != 2)
+		return -EINVAL;
+
+	source = audioreach_graph_find_module(graph->info,
+					      MODULE_ID_SH_MEM_PULL_MODE);
+	if (IS_ERR_OR_NULL(source))
+		return source ? PTR_ERR(source) : -ENODEV;
+
+	module = source;
+	limit = q6apm_graph_module_count(graph->info);
+	for (step = 0; step < limit; step++) {
+		if (module->module_id == MODULE_ID_PCM_CNV) {
+			if (pcm_configured)
+				return -EEXIST;
+			ret = audioreach_set_media_format(graph, module, cfg);
+			if (ret)
+				return ret;
+			pcm_configured = true;
+		} else if (module->module_id == MODULE_ID_MFC) {
+			if (!pcm_configured)
+				return -EINVAL;
+			return audioreach_set_media_format(graph, module, cfg);
+		}
+
+		if (module->num_connections != 1)
+			return -EINVAL;
+		module = q6apm_find_module_by_iid(graph->info,
+						  module->dst_mod_inst_id[0]);
+		if (!module)
+			return -ENODEV;
+	}
+
+	return -ELOOP;
+}
+
 int q6apm_graph_media_format_pcm(struct q6apm_graph *graph, struct audioreach_module_config *cfg)
 {
-	struct audioreach_graph_info *info = graph->info;
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph_info *info;
 	struct audioreach_sub_graph *sgs;
 	struct audioreach_container *container;
 	struct audioreach_module *module;
 	int ret;
+
+	if (!active)
+		return -ESHUTDOWN;
+	info = graph->info;
+	if (q6apm_graph_has_protection(graph))
+		return q6apm_protected_media_format_pcm(graph, cfg);
 
 	list_for_each_entry(sgs, &info->sg_list, node) {
 		list_for_each_entry(container, &sgs->container_list, node) {
@@ -472,11 +1285,18 @@ EXPORT_SYMBOL_GPL(q6apm_graph_media_format_pcm);
 int q6apm_write_async(struct q6apm_graph *graph, uint32_t len, uint32_t msw_ts,
 		      uint32_t lsw_ts, uint32_t wflags)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct apm_data_cmd_wr_sh_mem_ep_data_buffer_v2 *write_buffer;
 	struct audio_buffer *ab;
+	int ret;
 
-	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_pkt(sizeof(*write_buffer),
-					DATA_CMD_WR_SH_MEM_EP_DATA_BUFFER_V2,
+	struct gpr_pkt *pkt __free(kfree) = NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
+	pkt = audioreach_alloc_pkt(sizeof(*write_buffer),
+				   DATA_CMD_WR_SH_MEM_EP_DATA_BUFFER_V2,
 					graph->rx_data.dsp_buf | (len << APM_WRITE_TOKEN_LEN_SHIFT),
 					graph->port->id, graph->shm_iid);
 	if (IS_ERR(pkt))
@@ -502,18 +1322,26 @@ int q6apm_write_async(struct q6apm_graph *graph, uint32_t len, uint32_t msw_ts,
 
 	mutex_unlock(&graph->lock);
 
-	return gpr_send_port_pkt(graph->port, pkt);
+	ret = gpr_send_port_pkt(graph->port, pkt);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(q6apm_write_async);
 
 int q6apm_read(struct q6apm_graph *graph)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct data_cmd_rd_sh_mem_ep_data_buffer_v2 *read_buffer;
 	struct audioreach_graph_data *port;
 	struct audio_buffer *ab;
+	int ret;
 
-	struct gpr_pkt *pkt __free(kfree) = audioreach_alloc_pkt(sizeof(*read_buffer),
-					DATA_CMD_RD_SH_MEM_EP_DATA_BUFFER_V2,
+	struct gpr_pkt *pkt __free(kfree) = NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
+	pkt = audioreach_alloc_pkt(sizeof(*read_buffer),
+				   DATA_CMD_RD_SH_MEM_EP_DATA_BUFFER_V2,
 					graph->tx_data.dsp_buf, graph->port->id, graph->shm_iid);
 	if (IS_ERR(pkt))
 		return PTR_ERR(pkt);
@@ -536,14 +1364,19 @@ int q6apm_read(struct q6apm_graph *graph)
 
 	mutex_unlock(&graph->lock);
 
-	return gpr_send_port_pkt(graph->port, pkt);
+	ret = gpr_send_port_pkt(graph->port, pkt);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(q6apm_read);
 
 int q6apm_get_hw_pointer(struct q6apm_graph *graph, int dir)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 	struct audioreach_graph_data *data;
 
+	if (!active)
+		return 0;
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
 		data = &graph->rx_data;
 	else
@@ -553,6 +1386,32 @@ int q6apm_get_hw_pointer(struct q6apm_graph *graph, int dir)
 }
 EXPORT_SYMBOL_GPL(q6apm_get_hw_pointer);
 
+static bool q6apm_graph_try_complete_cmd(struct q6apm_graph *graph,
+					 const struct gpr_hdr *hdr, u32 opcode,
+					 u32 status, bool basic_response)
+{
+	bool expected;
+
+	spin_lock(&graph->result_lock);
+	expected = graph->cmd_pending && graph->pending_token == hdr->token &&
+		   (graph->pending_opcode == opcode ||
+		    graph->pending_rsp_opcode == opcode);
+	if (expected && basic_response && !status &&
+	    graph->pending_rsp_opcode && graph->pending_rsp_opcode != opcode)
+		expected = false;
+	if (expected) {
+		graph->result.status = status;
+		graph->result_token = hdr->token;
+		graph->result.opcode = opcode;
+	}
+	spin_unlock(&graph->result_lock);
+
+	if (expected)
+		wake_up(&graph->cmd_wait);
+
+	return expected;
+}
+
 static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 {
 	struct data_cmd_rsp_rd_sh_mem_ep_data_buffer_done_v2 *rd_done;
@@ -561,11 +1420,16 @@ static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 	const struct gpr_ibasic_rsp_result_t *result;
 	struct q6apm_graph *graph = priv;
 	const struct gpr_hdr *hdr = &data->hdr;
-	struct device *dev = graph->dev;
+	struct device *dev;
 	uint32_t client_event;
+	bool expected;
 	phys_addr_t phys;
 	int token;
 
+	if (!q6apm_graph_user_get(graph))
+		return 0;
+
+	dev = graph->dev;
 	result = data->payload;
 
 	switch (hdr->opcode) {
@@ -597,8 +1461,6 @@ static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 		atomic_set(&graph->rx_data.hw_ptr, token + 1);
 		if (lower_32_bits(phys) == done->buf_addr_lsw &&
 		    upper_32_bits(phys) == done->buf_addr_msw) {
-			graph->result.opcode = hdr->opcode;
-			graph->result.status = done->status;
 			if (graph->cb)
 				graph->cb(client_event, hdr->token, data->payload, graph->priv);
 		} else {
@@ -624,8 +1486,6 @@ static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 
 		if (upper_32_bits(phys) == rd_done->buf_addr_msw &&
 		    lower_32_bits(phys) == rd_done->buf_addr_lsw) {
-			graph->result.opcode = hdr->opcode;
-			graph->result.status = rd_done->status;
 			if (graph->cb)
 				graph->cb(client_event, hdr->token, data->payload, graph->priv);
 		} else {
@@ -644,12 +1504,15 @@ static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 		case DATA_CMD_WR_SH_MEM_EP_MEDIA_FORMAT:
 		case APM_CMD_REGISTER_MODULE_EVENTS:
 		case APM_CMD_SET_CFG:
-			graph->result.opcode = result->opcode;
-			graph->result.status = result->status;
-			if (result->status)
+		case APM_CMD_GRAPH_START:
+		case APM_CMD_GRAPH_STOP:
+		case APM_CMD_GRAPH_FLUSH:
+			expected = q6apm_graph_try_complete_cmd(graph, hdr,
+								result->opcode,
+								result->status, true);
+			if (expected && result->status)
 				dev_err(dev, "Error (%d) Processing 0x%08x cmd\n",
 					result->status, result->opcode);
-			wake_up(&graph->cmd_wait);
 			break;
 		default:
 			break;
@@ -658,12 +1521,18 @@ static int graph_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 	default:
 		break;
 	}
+	q6apm_graph_user_put(graph);
 	return 0;
 }
 
 int q6apm_register_watermark_event(struct q6apm_graph *graph, int water_mark_level_bytes,
 				   int num_levels)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
 	return audioreach_shmem_register_event(graph, water_mark_level_bytes, num_levels);
 }
 EXPORT_SYMBOL_GPL(q6apm_register_watermark_event);
@@ -671,7 +1540,13 @@ EXPORT_SYMBOL_GPL(q6apm_register_watermark_event);
 int q6apm_push_pull_config(struct q6apm_graph *graph, phys_addr_t bphys,
 			   phys_addr_t pphys, uint32_t size)
 {
-	struct audioreach_graph_info *info = graph->info;
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph_info *info;
+
+	if (!active)
+		return -ESHUTDOWN;
+	info = graph->info;
 
 	return audioreach_setup_push_pull(graph, bphys, pphys, info->mem_map_handle,
 					  info->pos_buf_mem_map_handle, size);
@@ -684,6 +1559,11 @@ bool q6apm_is_graph_in_push_pull_mode_from_id(struct device *dev, unsigned int g
 	struct q6apm *apm = dev_get_drvdata(dev->parent);
 	struct audioreach_module *module;
 
+	if (!apm)
+		return false;
+	guard(mutex)(&apm->client_lock);
+	if (apm->removing)
+		return false;
 	info = idr_find(&apm->graph_info_idr, graph_id);
 	if (!info)
 		return false;
@@ -700,7 +1580,7 @@ EXPORT_SYMBOL_GPL(q6apm_is_graph_in_push_pull_mode_from_id);
 
 bool q6apm_is_graph_in_push_pull_mode(struct q6apm_graph *graph)
 {
-	return graph->info->is_push_pull_mode;
+	return graph && READ_ONCE(graph->is_push_pull_mode);
 }
 EXPORT_SYMBOL_GPL(q6apm_is_graph_in_push_pull_mode);
 
@@ -716,17 +1596,33 @@ static int q6apm_graph_get_module_iid(struct q6apm_graph *graph, uint32_t mid)
 }
 
 struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
-				     void *priv, int graph_id, int dir)
+				     void *priv, int graph_id, int dir,
+				     bool enable_protection)
 {
 	struct q6apm *apm = dev_get_drvdata(dev->parent);
 	struct audioreach_graph *ar_graph;
 	struct q6apm_graph *graph;
 	int ret, iid = 0;
 
-	ar_graph = q6apm_get_audioreach_graph(apm, graph_id);
+	if (!apm)
+		return ERR_PTR(-ENODEV);
+
+	mutex_lock(&apm->client_lock);
+	if (apm->removing) {
+		ret = -ESHUTDOWN;
+		goto unlock_clients;
+	}
+
+	ar_graph = q6apm_get_audioreach_graph(apm, graph_id,
+					      enable_protection);
 	if (IS_ERR(ar_graph)) {
 		dev_err(dev, "No graph found with id %d\n", graph_id);
-		return ERR_CAST(ar_graph);
+		ret = PTR_ERR(ar_graph);
+		goto unlock_clients;
+	}
+	if (enable_protection && ar_graph->protection_malformed) {
+		ret = -EINVAL;
+		goto put_ar_graph;
 	}
 
 	graph = kzalloc_obj(*graph);
@@ -741,7 +1637,12 @@ struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
 	graph->info = ar_graph->info;
 	graph->ar_graph = ar_graph;
 	graph->id = ar_graph->id;
-	graph->dev = dev;
+	graph->dev = get_device(dev);
+	graph->protection_profile = ar_graph->protection_profile;
+	graph->protection_runtime = ar_graph->protection_runtime;
+	spin_lock_init(&graph->lifecycle_lock);
+	init_waitqueue_head(&graph->users_wait);
+	init_completion(&graph->detached_done);
 
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK) {
 		iid = q6apm_graph_get_module_iid(graph, MODULE_ID_SH_MEM_PULL_MODE);
@@ -757,11 +1658,14 @@ struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
 		else
 			graph->info->is_push_pull_mode = true;
 	}
+	graph->is_push_pull_mode = graph->info->is_push_pull_mode;
 
 	if (iid > 0)
 		graph->shm_iid = iid;
 
 	mutex_init(&graph->lock);
+	mutex_init(&graph->cmd_lock);
+	spin_lock_init(&graph->result_lock);
 	init_waitqueue_head(&graph->cmd_wait);
 
 	graph->port = gpr_alloc_port(apm->gdev, dev, graph_callback, graph);
@@ -769,24 +1673,119 @@ struct q6apm_graph *q6apm_graph_open(struct device *dev, q6apm_cb cb,
 		ret = PTR_ERR(graph->port);
 		goto free_graph;
 	}
+	list_add_tail(&graph->node, &apm->graph_client_list);
+	mutex_unlock(&apm->client_lock);
 
 	return graph;
 
 free_graph:
+	put_device(graph->dev);
 	kfree(graph);
 put_ar_graph:
 	kref_put(&ar_graph->refcount, q6apm_put_audioreach_graph);
+	mutex_unlock(&apm->client_lock);
+	return ERR_PTR(ret);
+
+unlock_clients:
+	mutex_unlock(&apm->client_lock);
 	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_open);
 
 int q6apm_graph_close(struct q6apm_graph *graph)
 {
-	struct audioreach_graph *ar_graph = graph->ar_graph;
+	struct audioreach_graph *ar_graph;
+	struct q6apm *apm;
+	unsigned long flags;
+	int active_refs = 0;
+	int close_ret;
+	bool retain_graph = false;
+	bool final_protected;
+	bool retain_dma;
+	bool detached;
+	bool dying;
 
+retry:
+	spin_lock_irqsave(&graph->lifecycle_lock, flags);
+	detached = graph->detached;
+	dying = graph->dying;
+	retain_dma = graph->retain_dma_on_detach;
+	apm = graph->apm;
+	spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+	if (detached) {
+		if (retain_dma)
+			return -EBUSY;
+		put_device(graph->dev);
+		kfree(graph);
+		return 0;
+	}
+	if (dying) {
+		wait_for_completion(&graph->detached_done);
+		goto retry;
+	}
+	if (!apm)
+		return -ESHUTDOWN;
+
+	mutex_lock(&apm->client_lock);
+	spin_lock_irqsave(&graph->lifecycle_lock, flags);
+	if (graph->dying || graph->detached) {
+		spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+		mutex_unlock(&apm->client_lock);
+		goto retry;
+	}
+	spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+	ar_graph = graph->ar_graph;
+
+	if (graph->protection_runtime) {
+		mutex_lock(&ar_graph->protection_lock);
+		active_refs = ar_graph->start_count;
+		retain_graph = ar_graph->execution_uncertain ||
+			       (ar_graph->protection_faulted && active_refs > 0);
+		mutex_unlock(&ar_graph->protection_lock);
+	}
+	if (retain_graph) {
+		graph->retained = true;
+		mutex_unlock(&apm->client_lock);
+		dev_err(graph->dev,
+			"retaining uncertain DSP client with %d active references\n",
+			active_refs);
+		return -EBUSY;
+	}
+
+	q6apm_graph_mark_dying(graph);
+	q6apm_graph_wait_users(graph);
+	final_protected = graph->protection_runtime &&
+			  kref_read(&ar_graph->refcount) == 1;
+	if (final_protected) {
+		close_ret = audioreach_graph_mgmt_cmd(ar_graph,
+						      APM_CMD_GRAPH_CLOSE);
+		if (close_ret) {
+			mutex_lock(&ar_graph->protection_lock);
+			ar_graph->protection_faulted = true;
+			ar_graph->execution_uncertain = true;
+			ar_graph->dma_quarantined = true;
+			mutex_unlock(&ar_graph->protection_lock);
+			spin_lock_irqsave(&graph->lifecycle_lock, flags);
+			graph->dying = false;
+			spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+			graph->retained = true;
+			mutex_unlock(&apm->client_lock);
+			dev_err(graph->dev,
+				"retaining protected client after GRAPH_CLOSE failure (%d)\n",
+				close_ret);
+			return close_ret;
+		}
+		mutex_lock(&ar_graph->protection_lock);
+		ar_graph->close_confirmed = true;
+		mutex_unlock(&ar_graph->protection_lock);
+	}
+	list_del_init(&graph->node);
+	gpr_free_port(graph->port);
+	graph->port = NULL;
 	graph->ar_graph = NULL;
 	kref_put(&ar_graph->refcount, q6apm_put_audioreach_graph);
-	gpr_free_port(graph->port);
+	mutex_unlock(&apm->client_lock);
+	put_device(graph->dev);
 	kfree(graph);
 
 	return 0;
@@ -795,19 +1794,75 @@ EXPORT_SYMBOL_GPL(q6apm_graph_close);
 
 int q6apm_graph_prepare(struct q6apm_graph *graph)
 {
-	return audioreach_graph_mgmt_cmd(graph->ar_graph, APM_CMD_GRAPH_PREPARE);
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph *ar_graph;
+	bool protected = q6apm_graph_has_protection(graph);
+	int ret;
+
+	if (!active)
+		return -ESHUTDOWN;
+	ar_graph = graph->ar_graph;
+	ret = audioreach_graph_mgmt_cmd(ar_graph, APM_CMD_GRAPH_PREPARE);
+	if (protected) {
+		mutex_lock(&ar_graph->protection_lock);
+		ar_graph->prepared = !ret;
+		ar_graph->prepare_uncertain = ret == -ETIMEDOUT;
+		mutex_unlock(&ar_graph->protection_lock);
+	}
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_prepare);
 
 int q6apm_graph_start(struct q6apm_graph *graph)
 {
-	struct audioreach_graph *ar_graph = graph->ar_graph;
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph *ar_graph;
+	bool protected = q6apm_graph_has_protection(graph);
 	int ret = 0;
 
-	if (ar_graph->start_count == 0)
-		ret = audioreach_graph_mgmt_cmd(ar_graph, APM_CMD_GRAPH_START);
+	if (!active)
+		return -ESHUTDOWN;
+	ar_graph = graph->ar_graph;
+	if (protected)
+		mutex_lock(&ar_graph->protection_lock);
+	if (protected && ar_graph->protection_faulted) {
+		ret = -EIO;
+		goto unlock;
+	}
+	if (protected && !ar_graph->protection_configured &&
+	    !ar_graph->protection_bypass_confirmed) {
+		ret = -EAGAIN;
+		goto unlock;
+	}
+	if (protected && (!ar_graph->prepared ||
+			  ar_graph->prepare_uncertain)) {
+		ret = -EAGAIN;
+		goto unlock;
+	}
+	if (ar_graph->start_count == 0) {
+		if (protected)
+			ret = audioreach_graph_client_mgmt_cmd(graph, APM_CMD_GRAPH_START);
+		else
+			ret = audioreach_graph_mgmt_cmd(ar_graph,
+							APM_CMD_GRAPH_START);
+	}
 
-	ar_graph->start_count++;
+	if (!ret)
+		ar_graph->start_count++;
+	else if (protected) {
+		ar_graph->protection_faulted = true;
+		if (ret == -ETIMEDOUT) {
+			ar_graph->start_count = 1;
+			ar_graph->execution_uncertain = true;
+		}
+	}
+
+unlock:
+	if (protected)
+		mutex_unlock(&ar_graph->protection_lock);
 
 	return ret;
 }
@@ -815,17 +1870,149 @@ EXPORT_SYMBOL_GPL(q6apm_graph_start);
 
 int q6apm_graph_stop(struct q6apm_graph *graph)
 {
-	struct audioreach_graph *ar_graph = graph->ar_graph;
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph *ar_graph;
+	bool protected = q6apm_graph_has_protection(graph);
+	int ret;
 
-	if (--ar_graph->start_count > 0)
-		return 0;
+	if (!active)
+		return -ESHUTDOWN;
+	ar_graph = graph->ar_graph;
+	if (protected)
+		mutex_lock(&ar_graph->protection_lock);
+	if (ar_graph->start_count <= 0) {
+		ret = 0;
+		goto unlock;
+	}
+	if (--ar_graph->start_count > 0) {
+		ret = 0;
+		goto unlock;
+	}
 
-	return audioreach_graph_mgmt_cmd(ar_graph, APM_CMD_GRAPH_STOP);
+	if (protected)
+		ret = audioreach_graph_client_mgmt_cmd(graph, APM_CMD_GRAPH_STOP);
+	else
+		ret = audioreach_graph_mgmt_cmd(ar_graph, APM_CMD_GRAPH_STOP);
+	if (ret)
+		ar_graph->start_count++;
+	if (ret && protected) {
+		ar_graph->protection_faulted = true;
+		ar_graph->execution_uncertain = true;
+	} else if (protected) {
+		ar_graph->execution_uncertain = false;
+		ar_graph->protection_configured = false;
+		ar_graph->protection_bypass_confirmed = false;
+		ar_graph->prepared = false;
+		ar_graph->prepare_uncertain = false;
+	}
+
+unlock:
+	if (protected)
+		mutex_unlock(&ar_graph->protection_lock);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_stop);
 
+bool q6apm_graph_execution_uncertain(struct q6apm_graph *graph)
+{
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph *ar_graph;
+	bool uncertain;
+
+	if (!active)
+		return false;
+	if (!q6apm_graph_has_protection(graph))
+		return false;
+	ar_graph = graph->ar_graph;
+
+	mutex_lock(&ar_graph->protection_lock);
+	uncertain = ar_graph->execution_uncertain;
+	mutex_unlock(&ar_graph->protection_lock);
+
+	return uncertain;
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_execution_uncertain);
+
+void q6apm_graph_quarantine_dma(struct q6apm_graph *graph)
+{
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+	struct audioreach_graph *ar_graph;
+
+	if (!active)
+		return;
+	if (!q6apm_graph_has_protection(graph))
+		return;
+	ar_graph = graph->ar_graph;
+
+	mutex_lock(&ar_graph->protection_lock);
+	ar_graph->dma_quarantined = true;
+	mutex_unlock(&ar_graph->protection_lock);
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_quarantine_dma);
+
+bool q6apm_graph_dma_quarantined(struct device *dev, unsigned int graph_id)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+	struct audioreach_graph *graph;
+	bool quarantined = false;
+
+	if (!apm)
+		return false;
+
+	guard(mutex)(&apm->client_lock);
+	mutex_lock(&apm->lock);
+	spin_lock(&apm->graph_lock);
+	graph = idr_find(&apm->graph_idr, graph_id);
+	if (graph && !kref_get_unless_zero(&graph->refcount))
+		graph = NULL;
+	spin_unlock(&apm->graph_lock);
+	mutex_unlock(&apm->lock);
+	if (!graph)
+		return false;
+
+	mutex_lock(&graph->protection_lock);
+	quarantined = graph->dma_quarantined;
+	mutex_unlock(&graph->protection_lock);
+	kref_put(&graph->refcount, q6apm_put_audioreach_graph);
+
+	return quarantined;
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_dma_quarantined);
+
+bool q6apm_graph_id_has_protection(struct device *dev, unsigned int graph_id)
+{
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+	struct audioreach_graph_info *info;
+	int profile = 0;
+
+	if (!apm)
+		return false;
+	guard(mutex)(&apm->client_lock);
+	mutex_lock(&apm->lock);
+	info = idr_find(&apm->graph_info_idr, graph_id);
+	if (info)
+		profile = audioreach_graph_protection_profile(info);
+	mutex_unlock(&apm->lock);
+
+	/* A malformed partial declaration is protected and must fail closed. */
+	return profile != 0;
+}
+EXPORT_SYMBOL_GPL(q6apm_graph_id_has_protection);
+
 int q6apm_graph_flush(struct q6apm_graph *graph)
 {
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
+
+	if (!active)
+		return -ESHUTDOWN;
+	if (q6apm_graph_has_protection(graph))
+		return audioreach_graph_client_mgmt_cmd(graph,
+							  APM_CMD_GRAPH_FLUSH);
+
 	return audioreach_graph_mgmt_cmd(graph->ar_graph, APM_CMD_GRAPH_FLUSH);
 }
 EXPORT_SYMBOL_GPL(q6apm_graph_flush);
@@ -863,11 +2050,15 @@ static int apm_probe(gpr_device_t *gdev)
 	dev_set_drvdata(dev, apm);
 
 	mutex_init(&apm->lock);
+	mutex_init(&apm->client_lock);
+	spin_lock_init(&apm->result_lock);
+	spin_lock_init(&apm->graph_lock);
 	apm->dev = dev;
 	apm->gdev = gdev;
 	init_waitqueue_head(&apm->wait);
 
 	INIT_LIST_HEAD(&apm->widget_list);
+	INIT_LIST_HEAD(&apm->graph_client_list);
 	idr_init(&apm->graph_idr);
 	idr_init(&apm->graph_info_idr);
 	idr_init(&apm->sub_graphs_idr);
@@ -875,7 +2066,9 @@ static int apm_probe(gpr_device_t *gdev)
 
 	idr_init(&apm->modules_idr);
 
+	mutex_lock(&g_apm_lock);
 	g_apm = apm;
+	mutex_unlock(&g_apm_lock);
 
 	q6apm_get_apm_state(apm);
 
@@ -892,45 +2085,208 @@ static int apm_probe(gpr_device_t *gdev)
 	return ret;
 }
 
+static void q6apm_abort_global_cmd(struct q6apm *apm)
+{
+	spin_lock(&apm->result_lock);
+	apm->cmd_pending = false;
+	spin_unlock(&apm->result_lock);
+	wake_up(&apm->wait);
+}
+
+static void q6apm_detach_graph_clients(struct q6apm *apm)
+{
+	struct q6apm_graph *graph, *next;
+	LIST_HEAD(detaching);
+
+	mutex_lock(&apm->client_lock);
+	apm->removing = true;
+	list_for_each_entry(graph, &apm->graph_client_list, node)
+		q6apm_graph_mark_dying(graph);
+	list_splice_init(&apm->graph_client_list, &detaching);
+	mutex_unlock(&apm->client_lock);
+	q6apm_abort_global_cmd(apm);
+	/* Drain the command thread awakened by the abort before teardown. */
+	mutex_lock(&apm->lock);
+	mutex_unlock(&apm->lock);
+
+	list_for_each_entry_safe(graph, next, &detaching, node) {
+		struct audioreach_graph *ar_graph = graph->ar_graph;
+		unsigned long flags;
+		bool retain_dma = false;
+
+		list_del_init(&graph->node);
+		q6apm_graph_wait_users(graph);
+		gpr_free_port(graph->port);
+
+		if (ar_graph && graph->protection_runtime) {
+			mutex_lock(&ar_graph->protection_lock);
+			retain_dma = ar_graph->start_count > 0 ||
+				     ar_graph->execution_uncertain ||
+				     ar_graph->dma_quarantined;
+			if (retain_dma)
+				ar_graph->dma_quarantined = true;
+			mutex_unlock(&ar_graph->protection_lock);
+		}
+
+		spin_lock_irqsave(&graph->lifecycle_lock, flags);
+		graph->port = NULL;
+		graph->ar_graph = NULL;
+		graph->info = NULL;
+		graph->apm = NULL;
+		graph->retain_dma_on_detach = retain_dma;
+		graph->detached = true;
+		spin_unlock_irqrestore(&graph->lifecycle_lock, flags);
+		complete_all(&graph->detached_done);
+		/* The ALSA owner releases the detached client on its close path. */
+	}
+}
+
+static void q6apm_remove_graph_state(struct q6apm *apm)
+{
+	struct audioreach_graph *ar_graph;
+	int id = 0;
+
+	guard(mutex)(&apm->client_lock);
+	while ((ar_graph = idr_get_next(&apm->graph_idr, &id))) {
+		idr_remove(&apm->graph_idr, id);
+		if (ar_graph->oob_virt) {
+			dev_err(apm->dev,
+				"retaining graph %u OOB DMA until reboot after service removal\n",
+				ar_graph->id);
+			/* Keep the DMA descriptor and its device reference pinned. */
+		} else {
+			kfree(ar_graph->graph);
+			put_device(ar_graph->dma_dev);
+			kfree(ar_graph);
+		}
+		id++;
+	}
+}
+
 static void apm_remove(gpr_device_t *gdev)
 {
+	struct q6apm *apm = dev_get_drvdata(&gdev->dev);
+
+	mutex_lock(&g_apm_lock);
+	if (g_apm == apm)
+		g_apm = NULL;
+	mutex_unlock(&g_apm_lock);
+	q6apm_detach_graph_clients(apm);
 	of_platform_depopulate(&gdev->dev);
 	snd_soc_unregister_component(&gdev->dev);
+	q6apm_remove_graph_state(apm);
 }
 
 struct audioreach_module *q6apm_find_module_by_mid(struct q6apm_graph *graph, uint32_t mid)
 {
-	struct audioreach_graph_info *info = graph->info;
-	struct q6apm *apm = graph->apm;
+	struct q6apm_graph *active __free(q6apm_graph_user) =
+		q6apm_graph_user_get(graph) ? graph : NULL;
 
-	return __q6apm_find_module_by_mid(apm, info, mid);
+	if (!active)
+		return NULL;
 
+	return __q6apm_find_module_by_mid(graph->apm, graph->info, mid);
+}
+
+static bool __q6apm_cmd_response_expected(struct q6apm *apm,
+					  const struct gpr_hdr *hdr,
+					  u32 opcode, u32 status,
+					  bool basic_response)
+{
+	bool expected;
+
+	expected = apm->cmd_pending && apm->pending_token == hdr->token &&
+		   (apm->pending_opcode == opcode ||
+		    apm->pending_rsp_opcode == opcode);
+	if (expected && basic_response && !status &&
+	    apm->pending_rsp_opcode && apm->pending_rsp_opcode != opcode)
+		expected = false;
+	return expected;
+}
+
+static bool q6apm_try_complete_cmd(struct q6apm *apm,
+				   const struct gpr_hdr *hdr, u32 opcode,
+				   u32 status, bool basic_response)
+{
+	bool expected;
+
+	spin_lock(&apm->result_lock);
+	expected = __q6apm_cmd_response_expected(apm, hdr, opcode, status,
+						 basic_response);
+	if (expected) {
+		apm->result.status = status;
+		apm->result_token = hdr->token;
+		apm->result.opcode = opcode;
+	}
+	spin_unlock(&apm->result_lock);
+
+	if (expected)
+		wake_up(&apm->wait);
+
+	return expected;
 }
 
 static int apm_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 {
 	gpr_device_t *gdev = priv;
-	struct audioreach_graph_info *info;
+	struct audioreach_graph *graph = NULL;
+	struct audioreach_graph_info *info = NULL;
 	struct q6apm *apm = dev_get_drvdata(&gdev->dev);
 	struct apm_cmd_rsp_shared_mem_map_regions *rsp;
 	struct device *dev = &gdev->dev;
 	struct gpr_ibasic_rsp_result_t *result;
 	const struct gpr_hdr *hdr = &data->hdr;
-	int graph_id, is_pos_buf;
+	bool expected;
+	int graph_id, is_oob, is_pos_buf;
 
 	result = data->payload;
 
 	switch (hdr->opcode) {
 	case APM_CMD_RSP_GET_SPF_STATE:
-		apm->result.opcode = hdr->opcode;
-		apm->result.status = 0;
-		/* First word of result it state */
-		apm->state = result->opcode;
-		wake_up(&apm->wait);
+		/* First word of result is the state. */
+		spin_lock(&apm->result_lock);
+		expected = __q6apm_cmd_response_expected(apm, hdr, hdr->opcode,
+							 0, false);
+		if (expected) {
+			apm->state = result->opcode;
+			apm->result.status = 0;
+			apm->result_token = hdr->token;
+			apm->result.opcode = hdr->opcode;
+		}
+		spin_unlock(&apm->result_lock);
+		if (expected)
+			wake_up(&apm->wait);
 		break;
 	case GPR_BASIC_RSP_RESULT:
 		switch (result->opcode) {
 		case APM_CMD_SHARED_MEM_MAP_REGIONS:
+			spin_lock(&apm->result_lock);
+			expected = __q6apm_cmd_response_expected(apm, hdr,
+								 result->opcode,
+								 result->status, true);
+			if (expected && result->status &&
+			    (hdr->token & APM_MMAP_TOKEN_MAP_TYPE_OOB)) {
+				graph_id = hdr->token & APM_MMAP_TOKEN_GID_MASK;
+				spin_lock(&apm->graph_lock);
+				graph = idr_find(&apm->graph_idr, graph_id);
+				if (graph && graph->oob_token == hdr->token)
+					graph->oob_map_uncertain = false;
+				spin_unlock(&apm->graph_lock);
+			}
+			if (expected) {
+				apm->result.status = result->status;
+				apm->result_token = hdr->token;
+				apm->result.opcode = result->opcode;
+			}
+			spin_unlock(&apm->result_lock);
+			if (expected) {
+				wake_up(&apm->wait);
+				if (result->status)
+					dev_err(dev,
+						"Error (%d) Processing 0x%08x cmd\n",
+						result->status, result->opcode);
+			}
+			break;
 		case APM_CMD_GRAPH_START:
 		case APM_CMD_GRAPH_OPEN:
 		case APM_CMD_GRAPH_PREPARE:
@@ -938,50 +2294,110 @@ static int apm_callback(const struct gpr_resp_pkt *data, void *priv, int op)
 		case APM_CMD_GRAPH_FLUSH:
 		case APM_CMD_GRAPH_STOP:
 		case APM_CMD_SET_CFG:
-			apm->result.opcode = result->opcode;
-			apm->result.status = result->status;
-			if (result->status)
+			expected = q6apm_try_complete_cmd(apm, hdr,
+							  result->opcode,
+							  result->status, true);
+			if (expected && result->status)
 				dev_err(dev, "Error (%d) Processing 0x%08x cmd\n", result->status,
 					result->opcode);
-			wake_up(&apm->wait);
 			break;
 		case APM_CMD_SHARED_MEM_UNMAP_REGIONS:
-			apm->result.opcode = hdr->opcode;
-			apm->result.status = 0;
-			rsp = data->payload;
+			if (result->status) {
+				expected = q6apm_try_complete_cmd(apm, hdr,
+								  result->opcode,
+								  result->status,
+								  true);
+				if (expected) {
+					dev_err(dev,
+						"Error (%d) Processing 0x%08x cmd\n",
+						result->status, result->opcode);
+				}
+				break;
+			}
 
-			info = idr_find(&apm->graph_info_idr, hdr->token);
-			if (info)
-				info->mem_map_handle = 0;
-			else
-				dev_err(dev, "Error (%d) Processing 0x%08x cmd\n", result->status,
-					result->opcode);
-
-			wake_up(&apm->wait);
+			graph_id = hdr->token & APM_MMAP_TOKEN_GID_MASK;
+			is_oob = hdr->token & APM_MMAP_TOKEN_MAP_TYPE_OOB;
+			is_pos_buf =
+				hdr->token & APM_MMAP_TOKEN_MAP_TYPE_POS_BUF;
+			spin_lock(&apm->result_lock);
+			expected = __q6apm_cmd_response_expected(apm, hdr,
+								 result->opcode,
+								 0, true);
+			if (is_oob && expected) {
+				spin_lock(&apm->graph_lock);
+				graph = idr_find(&apm->graph_idr, graph_id);
+				if (graph && graph->oob_token == hdr->token)
+					graph->oob_mem_map_handle = 0;
+				else
+					graph = NULL;
+				spin_unlock(&apm->graph_lock);
+			} else if (expected) {
+				info = idr_find(&apm->graph_info_idr, graph_id);
+				if (info && is_pos_buf)
+					info->pos_buf_mem_map_handle = 0;
+				else if (info)
+					info->mem_map_handle = 0;
+			}
+			if (expected) {
+				apm->result.status = 0;
+				apm->result_token = hdr->token;
+				apm->result.opcode = result->opcode;
+			}
+			spin_unlock(&apm->result_lock);
+			if (expected) {
+				wake_up(&apm->wait);
+				if ((!is_oob && !info) || (is_oob && !graph))
+					dev_err(dev,
+						"no mapping for 0x%08x response token 0x%08x\n",
+						result->opcode, hdr->token);
+			}
 			break;
 		default:
 			break;
 		}
 		break;
 	case APM_CMD_RSP_SHARED_MEM_MAP_REGIONS:
-		apm->result.opcode = hdr->opcode;
-		apm->result.status = 0;
 		rsp = data->payload;
 		graph_id = hdr->token & APM_MMAP_TOKEN_GID_MASK;
+		is_oob = hdr->token & APM_MMAP_TOKEN_MAP_TYPE_OOB;
 		is_pos_buf = hdr->token & APM_MMAP_TOKEN_MAP_TYPE_POS_BUF;
 
-		info = idr_find(&apm->graph_info_idr, graph_id);
-		if (info) {
+		spin_lock(&apm->result_lock);
+		expected = __q6apm_cmd_response_expected(apm, hdr, hdr->opcode,
+							 0, false);
+		if (is_oob && expected) {
+			spin_lock(&apm->graph_lock);
+			graph = idr_find(&apm->graph_idr, graph_id);
+			if (graph && graph->oob_token == hdr->token) {
+				graph->oob_mem_map_handle = rsp->mem_map_handle;
+				graph->oob_map_uncertain = false;
+			} else {
+				graph = NULL;
+			}
+			spin_unlock(&apm->graph_lock);
+		} else if (expected) {
+			info = idr_find(&apm->graph_info_idr, graph_id);
+		}
+		if (!is_oob && info) {
 			if (is_pos_buf)
 				info->pos_buf_mem_map_handle = rsp->mem_map_handle;
 			else
 				info->mem_map_handle = rsp->mem_map_handle;
-		} else {
-			dev_err(dev, "Error (%d) Processing 0x%08x cmd\n", result->status,
-				result->opcode);
 		}
 
-		wake_up(&apm->wait);
+		if (expected) {
+			apm->result.status = 0;
+			apm->result_token = hdr->token;
+			apm->result.opcode = hdr->opcode;
+		}
+		spin_unlock(&apm->result_lock);
+		if (expected)
+			wake_up(&apm->wait);
+		if (expected && ((!is_oob && !info) || (is_oob && !graph))) {
+			dev_err(dev,
+				"no graph for 0x%08x response token 0x%08x\n",
+				hdr->opcode, hdr->token);
+		}
 		break;
 	default:
 		break;

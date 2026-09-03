@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2020, Linaro Limited
 
+#include <linux/of.h>
+#include <linux/slab.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
@@ -694,6 +696,7 @@ struct snd_soc_dai_driver *q6dsp_audio_ports_set_config(struct device *dev,
 				struct q6dsp_audio_port_dai_driver_config *cfg,
 				int *num_dais)
 {
+	struct snd_soc_dai_driver *dais = q6dsp_audio_fe_dais;
 	int i;
 
 	for (i = 0; i  < ARRAY_SIZE(q6dsp_audio_fe_dais); i++) {
@@ -729,6 +732,43 @@ struct snd_soc_dai_driver *q6dsp_audio_ports_set_config(struct device *dev,
 	}
 
 	*num_dais = ARRAY_SIZE(q6dsp_audio_fe_dais);
-	return q6dsp_audio_fe_dais;
+	if (!of_machine_is_compatible("microsoft,denali") ||
+	    !of_device_is_compatible(dev->of_node, "qcom,q6apm-lpass-dais"))
+		return dais;
+
+	dais = devm_kmemdup(dev, q6dsp_audio_fe_dais, sizeof(q6dsp_audio_fe_dais), GFP_KERNEL);
+	if (!dais)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < *num_dais; i++) {
+		switch (dais[i].id) {
+		case WSA_CODEC_DMA_TX_0:
+			dais[i].playback = (struct snd_soc_pcm_stream) {
+				.stream_name = "WSA_CODEC_DMA_TX_0 Protection",
+				.rates = SNDRV_PCM_RATE_8000,
+				.formats = SNDRV_PCM_FMTBIT_S32_LE,
+				.channels_min = 2,
+				.channels_max = 2,
+				.rate_min = 8000,
+				.rate_max = 8000,
+			};
+			break;
+		case WSA_CODEC_DMA_TX_1:
+			dais[i].playback = (struct snd_soc_pcm_stream) {
+				.stream_name = "WSA_CODEC_DMA_TX_1 Protection",
+				.rates = SNDRV_PCM_RATE_24000,
+				.formats = SNDRV_PCM_FMTBIT_S32_LE,
+				.channels_min = 2,
+				.channels_max = 2,
+				.rate_min = 24000,
+				.rate_max = 24000,
+			};
+			break;
+		default:
+			break;
+		}
+	}
+
+	return dais;
 }
 EXPORT_SYMBOL_GPL(q6dsp_audio_ports_set_config);

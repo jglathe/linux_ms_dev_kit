@@ -62,6 +62,65 @@ int sdw_find_row_index(int row)
 }
 EXPORT_SYMBOL(sdw_find_row_index);
 
+static int sdw_program_simple_ext(struct sdw_bus *bus, struct sdw_slave *slave,
+				  struct sdw_transport_params *t_params,
+				  u32 registers)
+{
+	u32 blockctrl3, samplectrl2, hctrl, offsetctrl2;
+	u16 wbuf;
+	int ret;
+
+	if (bus->params.next_bank) {
+		blockctrl3 = SDW_DPN_BLOCKCTRL3_B1(t_params->port_num);
+		samplectrl2 = SDW_DPN_SAMPLECTRL2_B1(t_params->port_num);
+		hctrl = SDW_DPN_HCTRL_B1(t_params->port_num);
+		offsetctrl2 = SDW_DPN_OFFSETCTRL2_B1(t_params->port_num);
+	} else {
+		blockctrl3 = SDW_DPN_BLOCKCTRL3_B0(t_params->port_num);
+		samplectrl2 = SDW_DPN_SAMPLECTRL2_B0(t_params->port_num);
+		hctrl = SDW_DPN_HCTRL_B0(t_params->port_num);
+		offsetctrl2 = SDW_DPN_OFFSETCTRL2_B0(t_params->port_num);
+	}
+
+	if (registers & SDW_DPN_SIMPLE_TRANSPORT_BLOCKCTRL3) {
+		ret = sdw_write_no_pm(slave, blockctrl3, t_params->blk_pkg_mode);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (registers & SDW_DPN_SIMPLE_TRANSPORT_SAMPLECTRL2) {
+		wbuf = FIELD_GET(SDW_DPN_SAMPLECTRL_HIGH,
+				 t_params->sample_interval - 1);
+		ret = sdw_write_no_pm(slave, samplectrl2, wbuf);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (registers & SDW_DPN_SIMPLE_TRANSPORT_HCTRL) {
+		wbuf = FIELD_PREP(SDW_DPN_HCTRL_HSTART, t_params->hstart);
+		wbuf |= FIELD_PREP(SDW_DPN_HCTRL_HSTOP, t_params->hstop);
+		ret = sdw_write_no_pm(slave, hctrl, wbuf);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (registers & SDW_DPN_SIMPLE_TRANSPORT_OFFSETCTRL2) {
+		ret = sdw_write_no_pm(slave, offsetctrl2, t_params->offset2);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+static void sdw_apply_slave_transport_overrides(struct sdw_port_runtime *p_rt)
+{
+	if (p_rt->transport_params_override_mask &
+	    SDW_PORT_CONFIG_OVERRIDE_OFFSET1)
+		p_rt->transport_params.offset1 =
+			p_rt->transport_params_override.offset1;
+}
+
 static int _sdw_program_slave_port_params(struct sdw_bus *bus,
 					  struct sdw_slave *slave,
 					  struct sdw_transport_params *t_params,
@@ -137,12 +196,19 @@ static int sdw_program_slave_port_params(struct sdw_bus *bus,
 	struct sdw_slave_prop *slave_prop = &s_rt->slave->prop;
 	u32 addr1, addr2, addr3, addr4, addr5, addr6;
 	enum sdw_dpn_type port_type;
+	u32 simple_transport_registers = 0;
 	bool read_only_wordlength;
 	int ret;
 	u8 wbuf;
 
 	if (s_rt->slave->is_mockup_device)
 		return 0;
+
+	/* Bus compute_params() establishes the common master schedule. Apply
+	 * explicitly requested slave-only deltas immediately before the slave is
+	 * programmed so master transport state remains shared.
+	 */
+	sdw_apply_slave_transport_overrides(p_rt);
 
 	if (t_params->port_num) {
 		struct sdw_dpn_prop *dpn_prop;
@@ -154,6 +220,7 @@ static int sdw_program_slave_port_params(struct sdw_bus *bus,
 
 		read_only_wordlength = dpn_prop->read_only_wordlength;
 		port_type = dpn_prop->type;
+		simple_transport_registers = dpn_prop->simple_transport_registers;
 	} else {
 		read_only_wordlength = false;
 		port_type = SDW_DPN_FULL;
@@ -239,7 +306,14 @@ static int sdw_program_slave_port_params(struct sdw_bus *bus,
 		}
 	}
 
-	if (port_type != SDW_DPN_SIMPLE) {
+	if (port_type == SDW_DPN_SIMPLE && simple_transport_registers) {
+		ret = sdw_program_simple_ext(bus, s_rt->slave, t_params,
+					     simple_transport_registers);
+		if (ret < 0)
+			dev_err(&s_rt->slave->dev,
+				"Extended SIMPLE transport reg write failed for port: %d\n",
+				t_params->port_num);
+	} else if (port_type != SDW_DPN_SIMPLE) {
 		ret = _sdw_program_slave_port_params(bus, s_rt->slave,
 						     t_params, port_type);
 		if (ret < 0)
@@ -983,6 +1057,10 @@ static int sdw_port_config(struct sdw_port_runtime *p_rt,
 {
 	p_rt->ch_mask = port_config[port_index].ch_mask;
 	p_rt->num = port_config[port_index].num;
+	p_rt->transport_params_override_mask =
+		port_config[port_index].transport_params_override_mask;
+	p_rt->transport_params_override =
+		port_config[port_index].transport_params_override;
 
 	/*
 	 * TODO: Check port capabilities for requested configuration

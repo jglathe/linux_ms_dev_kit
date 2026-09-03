@@ -2,11 +2,13 @@
 // Copyright (c) 2021, Linaro Limited
 
 #include <linux/init.h>
+#include <linux/bitmap.h>
 #include <linux/err.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/wait.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <linux/spinlock.h>
@@ -55,6 +57,8 @@ enum stream_state {
 	Q6APM_STREAM_IDLE = 0,
 	Q6APM_STREAM_STOPPED,
 	Q6APM_STREAM_RUNNING,
+	Q6APM_STREAM_UNCERTAIN,
+	Q6APM_STREAM_QUARANTINED,
 };
 
 struct q6apm_dai_rtd {
@@ -80,12 +84,65 @@ struct q6apm_dai_rtd {
 	enum stream_state state;
 	struct q6apm_graph *graph;
 	spinlock_t lock;
+	/* Serialize callback admission against terminal DMA quarantine. */
+	spinlock_t callback_lock;
+	atomic_t callback_users;
+	wait_queue_head_t callback_wait;
+	bool callbacks_quarantined;
 	bool notify_on_drain;
 };
 
 struct q6apm_dai_data {
 	long long sid;
+	DECLARE_BITMAP(protected_graphs, APM_PORT_MAX);
 };
+
+static bool q6apm_denali_rtd(const struct snd_soc_pcm_runtime *rtd)
+{
+	return rtd && rtd->card &&
+		rtd->card->dev->of_node &&
+		of_device_is_compatible(rtd->card->dev->of_node,
+					"microsoft,denali-sndcard");
+}
+
+static bool q6apm_denali_card(struct snd_pcm_substream *substream)
+{
+	return q6apm_denali_rtd(snd_soc_substream_to_rtd(substream));
+}
+
+static bool q6apm_denali_protection_runtime(struct snd_pcm_substream *substream,
+					    struct q6apm_graph *graph)
+{
+	return q6apm_denali_card(substream) &&
+		q6apm_graph_has_protection(graph);
+}
+
+static bool q6apm_denali_protected_graph(struct snd_soc_component *component,
+					 struct snd_soc_pcm_runtime *rtd,
+					 unsigned int graph_id)
+{
+	return q6apm_denali_rtd(rtd) && graph_id < APM_PORT_MAX &&
+		q6apm_graph_id_has_protection(component->dev, graph_id);
+}
+
+static void q6apm_latch_protected_graph(struct snd_soc_component *component,
+					unsigned int graph_id)
+{
+	struct q6apm_dai_data *pdata = snd_soc_component_get_drvdata(component);
+
+	if (pdata && graph_id < APM_PORT_MAX)
+		set_bit(graph_id, pdata->protected_graphs);
+}
+
+static bool q6apm_protected_graph_latched(struct snd_soc_component *component,
+					  struct snd_soc_pcm_runtime *rtd,
+					  unsigned int graph_id)
+{
+	struct q6apm_dai_data *pdata = snd_soc_component_get_drvdata(component);
+
+	return pdata && q6apm_denali_rtd(rtd) && graph_id < APM_PORT_MAX &&
+		test_bit(graph_id, pdata->protected_graphs);
+}
 
 static const struct snd_pcm_hardware q6apm_dai_hardware_capture = {
 	.info =                 (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -127,10 +184,36 @@ static const struct snd_pcm_hardware q6apm_dai_hardware_playback = {
 	.fifo_size =            0,
 };
 
+static bool q6apm_dai_callback_get(struct q6apm_dai_rtd *prtd)
+{
+	unsigned long flags;
+	bool acquired = false;
+
+	spin_lock_irqsave(&prtd->callback_lock, flags);
+	if (!prtd->callbacks_quarantined) {
+		atomic_inc(&prtd->callback_users);
+		acquired = true;
+	}
+	spin_unlock_irqrestore(&prtd->callback_lock, flags);
+
+	return acquired;
+}
+
+static void q6apm_dai_callback_put(struct q6apm_dai_rtd *prtd)
+{
+	if (atomic_dec_and_test(&prtd->callback_users))
+		wake_up(&prtd->callback_wait);
+}
+
 static void event_handler(uint32_t opcode, uint32_t token, void *payload, void *priv)
 {
 	struct q6apm_dai_rtd *prtd = priv;
-	struct snd_pcm_substream *substream = prtd->substream;
+	struct snd_pcm_substream *substream;
+
+	if (!q6apm_dai_callback_get(prtd))
+		return;
+
+	substream = prtd->substream;
 
 	switch (opcode) {
 	case APM_CLIENT_EVENT_WATERMARK_EVENT:
@@ -152,6 +235,8 @@ static void event_handler(uint32_t opcode, uint32_t token, void *payload, void *
 	default:
 		break;
 	}
+
+	q6apm_dai_callback_put(prtd);
 }
 
 static void event_handler_compr(uint32_t opcode, uint32_t token,
@@ -219,6 +304,7 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 	struct audioreach_module_config cfg;
 	struct device *dev = component->dev;
 	struct q6apm_dai_data *pdata;
+	bool protected;
 	int ret;
 
 	pdata = snd_soc_component_get_drvdata(component);
@@ -229,6 +315,9 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 		dev_err(dev, "%s: private data null or audio client freed\n", __func__);
 		return -EINVAL;
 	}
+	if (prtd->state == Q6APM_STREAM_QUARANTINED)
+		return -EIO;
+	protected = q6apm_denali_protection_runtime(substream, prtd->graph);
 
 	cfg.direction = substream->stream;
 	cfg.sample_rate = runtime->rate;
@@ -238,7 +327,15 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 	audioreach_set_default_channel_mapping(cfg.channel_map, runtime->channels);
 	if (prtd->state) {
 		/* clear the previous setup if any  */
-		q6apm_graph_stop(prtd->graph);
+		if (!protected || prtd->state == Q6APM_STREAM_RUNNING ||
+		    prtd->state == Q6APM_STREAM_UNCERTAIN) {
+			ret = q6apm_graph_stop(prtd->graph);
+			if (ret) {
+				dev_err(dev, "Failed to stop Graph %d\n", ret);
+				return ret;
+			}
+			prtd->state = Q6APM_STREAM_STOPPED;
+		}
 		q6apm_free_fragments(prtd->graph, substream->stream);
 	}
 
@@ -285,6 +382,14 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 		return ret;
 	}
 
+	if (protected) {
+		ret = q6apm_graph_configure_protection(prtd->graph);
+		if (ret < 0) {
+			dev_err(dev, "Failed to configure protected graph %d\n", ret);
+			return ret;
+		}
+	}
+
 	ret = q6apm_graph_prepare(prtd->graph);
 	if (ret) {
 		dev_err(dev, "Failed to prepare Graph %d\n", ret);
@@ -293,6 +398,8 @@ static int q6apm_dai_prepare(struct snd_soc_component *component,
 
 	ret = q6apm_graph_start(prtd->graph);
 	if (ret) {
+		if (q6apm_graph_execution_uncertain(prtd->graph))
+			prtd->state = Q6APM_STREAM_UNCERTAIN;
 		dev_err(dev, "Failed to Start Graph %d\n", ret);
 		return ret;
 	}
@@ -340,8 +447,12 @@ static int q6apm_dai_trigger(struct snd_soc_component *component,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct q6apm_dai_rtd *prtd = runtime->private_data;
+	bool protected;
 	int ret = 0;
 
+	protected = q6apm_denali_protection_runtime(substream, prtd->graph);
+	if (prtd->state == Q6APM_STREAM_QUARANTINED)
+		return -EIO;
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -349,6 +460,13 @@ static int q6apm_dai_trigger(struct snd_soc_component *component,
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* TODO support be handled via SoftPause Module */
+		if (protected &&
+		    (prtd->state == Q6APM_STREAM_RUNNING ||
+		     prtd->state == Q6APM_STREAM_UNCERTAIN)) {
+			ret = q6apm_graph_stop(prtd->graph);
+			if (ret)
+				break;
+		}
 		prtd->state = Q6APM_STREAM_STOPPED;
 		prtd->queue_ptr = 0;
 		prtd->last_pos_index = 0;
@@ -364,6 +482,11 @@ static int q6apm_dai_trigger(struct snd_soc_component *component,
 	return ret;
 }
 
+static void q6apm_dai_quarantine_buffer(struct snd_soc_component *component,
+					struct snd_pcm_substream *substream,
+					struct q6apm_dai_rtd *prtd,
+					int reason);
+
 static int q6apm_dai_open(struct snd_soc_component *component,
 			  struct snd_pcm_substream *substream)
 {
@@ -373,7 +496,7 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 	struct device *dev = component->dev;
 	struct q6apm_dai_data *pdata;
 	struct q6apm_dai_rtd *prtd;
-	int graph_id, ret;
+	int close_ret, graph_id, ret;
 
 	graph_id = cpu_dai->driver->id;
 
@@ -388,8 +511,13 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 		return -ENOMEM;
 
 	spin_lock_init(&prtd->lock);
+	spin_lock_init(&prtd->callback_lock);
+	atomic_set(&prtd->callback_users, 0);
+	init_waitqueue_head(&prtd->callback_wait);
 	prtd->substream = substream;
-	prtd->graph = q6apm_graph_open(dev, event_handler, prtd, graph_id, substream->stream);
+	prtd->graph = q6apm_graph_open(dev, event_handler, prtd,
+				       graph_id, substream->stream,
+				       q6apm_denali_card(substream));
 	if (IS_ERR(prtd->graph)) {
 		dev_err(dev, "%s: Could not allocate memory\n", __func__);
 		ret = PTR_ERR(prtd->graph);
@@ -447,9 +575,72 @@ static int q6apm_dai_open(struct snd_soc_component *component,
 
 	return 0;
 err:
+	if (!IS_ERR_OR_NULL(prtd->graph)) {
+		close_ret = q6apm_graph_close(prtd->graph);
+		if (close_ret) {
+			q6apm_dai_quarantine_buffer(component, substream, prtd,
+						    close_ret);
+			return ret;
+		}
+	}
 	kfree(prtd);
 
 	return ret;
+}
+
+static void q6apm_dai_quarantine_buffer(struct snd_soc_component *component,
+					struct snd_pcm_substream *substream,
+					struct q6apm_dai_rtd *prtd, int reason)
+{
+	unsigned long flags;
+
+	if (prtd->state == Q6APM_STREAM_QUARANTINED)
+		return;
+
+	spin_lock_irqsave(&prtd->callback_lock, flags);
+	prtd->callbacks_quarantined = true;
+	spin_unlock_irqrestore(&prtd->callback_lock, flags);
+	wait_event(prtd->callback_wait,
+		   !atomic_read(&prtd->callback_users));
+
+	q6apm_graph_quarantine_dma(prtd->graph);
+	snd_pcm_set_runtime_buffer(substream, NULL);
+	/* DSP ownership is uncertain, so ALSA must never reclaim mapped pages. */
+	if (substream->dma_buffer.area && substream->dma_buffer.dev.dev)
+		get_device(substream->dma_buffer.dev.dev);
+	substream->dma_buffer.area = NULL;
+	substream->dma_buffer.addr = 0;
+	substream->dma_buffer.bytes = 0;
+	prtd->state = Q6APM_STREAM_QUARANTINED;
+	dev_err(component->dev,
+		"retaining protected client and DMA buffer after unconfirmed stop (%d)\n",
+		reason);
+}
+
+static int q6apm_dai_hw_free(struct snd_soc_component *component,
+			     struct snd_pcm_substream *substream)
+{
+	struct q6apm_dai_rtd *prtd = substream->runtime->private_data;
+	bool protected;
+	int ret;
+
+	if (!prtd)
+		return 0;
+	protected = q6apm_denali_protection_runtime(substream, prtd->graph);
+	if (prtd->state == Q6APM_STREAM_QUARANTINED)
+		return -EIO;
+	if (prtd->state != Q6APM_STREAM_UNCERTAIN &&
+	    (!protected || prtd->state != Q6APM_STREAM_RUNNING))
+		return 0;
+
+	ret = q6apm_graph_stop(prtd->graph);
+	if (ret) {
+		q6apm_dai_quarantine_buffer(component, substream, prtd, ret);
+		return ret;
+	}
+
+	prtd->state = Q6APM_STREAM_STOPPED;
+	return 0;
 }
 
 static int q6apm_dai_close(struct snd_soc_component *component,
@@ -457,19 +648,36 @@ static int q6apm_dai_close(struct snd_soc_component *component,
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct q6apm_dai_rtd *prtd = runtime->private_data;
+	bool protected;
+	int close_ret;
+	int ret = 0;
 
-	if (prtd->state) {
+	protected = q6apm_denali_protection_runtime(substream, prtd->graph);
+	if (prtd->state == Q6APM_STREAM_QUARANTINED) {
+		ret = -EIO;
+	} else if (prtd->state) {
 		/* only stop graph that is started */
-		q6apm_graph_stop(prtd->graph);
-		q6apm_free_fragments(prtd->graph, substream->stream);
+		if (!protected || prtd->state == Q6APM_STREAM_RUNNING ||
+		    prtd->state == Q6APM_STREAM_UNCERTAIN) {
+			ret = q6apm_graph_stop(prtd->graph);
+		}
+		if (!ret)
+			q6apm_free_fragments(prtd->graph, substream->stream);
 	}
+	if (ret && q6apm_graph_execution_uncertain(prtd->graph))
+		q6apm_dai_quarantine_buffer(component, substream, prtd, ret);
 
-	q6apm_graph_close(prtd->graph);
-	prtd->graph = NULL;
-	kfree(prtd);
+	close_ret = q6apm_graph_close(prtd->graph);
+	if (close_ret && prtd->state != Q6APM_STREAM_QUARANTINED)
+		q6apm_dai_quarantine_buffer(component, substream, prtd,
+					    close_ret);
+	if (prtd->state != Q6APM_STREAM_QUARANTINED) {
+		prtd->graph = NULL;
+		kfree(prtd);
+	}
 	runtime->private_data = NULL;
 
-	return 0;
+	return ret ?: close_ret;
 }
 
 static snd_pcm_uframes_t q6apm_dai_pointer(struct snd_soc_component *component,
@@ -531,7 +739,8 @@ static int q6apm_dai_hw_params(struct snd_soc_component *component,
 
 static int q6apm_dai_memory_map(struct snd_soc_component *component,
 				struct snd_pcm_substream *substream,
-				int graph_id, bool is_push_pull)
+				int graph_id, bool is_push_pull,
+				bool protected, bool *retain_buffer)
 {
 	struct q6apm_dai_data *pdata;
 	struct device *dev = component->dev;
@@ -550,8 +759,12 @@ static int q6apm_dai_memory_map(struct snd_soc_component *component,
 		phys = substream->dma_buffer.addr | (pdata->sid << 32);
 
 	ret = q6apm_map_memory_fixed_region(dev, graph_id, phys, BUFFER_BYTES_MAX);
-	if (ret < 0)
-		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
+	if (ret < 0) {
+		*retain_buffer = protected &&
+			(ret == -ETIMEDOUT || ret == -ESHUTDOWN);
+		dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n", ret);
+		return ret;
+	}
 
 	if (is_push_pull) {
 		if (pdata->sid < 0)
@@ -560,13 +773,40 @@ static int q6apm_dai_memory_map(struct snd_soc_component *component,
 			phys = (substream->dma_buffer.addr + BUFFER_BYTES_MAX) | (pdata->sid << 32);
 
 		ret = q6apm_map_pos_buffer(dev, graph_id, phys, POS_BUFFER_BYTES);
-		if (ret < 0)
-			dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",	ret);
+		if (ret < 0) {
+			int unmap_ret;
+
+			dev_err(dev, "Audio Start: Buffer Allocation failed rc = %d\n",
+				ret);
+			unmap_ret = q6apm_unmap_memory_fixed_region(dev, graph_id);
+			*retain_buffer = protected &&
+					 (ret == -ETIMEDOUT || unmap_ret);
+		}
 	} else {
 
 	}
 
 	return ret;
+}
+
+static void q6apm_dai_retain_dma_buffer(struct snd_soc_component *component,
+					struct snd_pcm_substream *substream,
+					int reason)
+{
+	if (!substream->dma_buffer.area)
+		return;
+
+	if (substream->runtime)
+		snd_pcm_set_runtime_buffer(substream, NULL);
+	/* Retain until reboot or a future, proven DSP-reset reclamation hook. */
+	if (substream->dma_buffer.dev.dev)
+		get_device(substream->dma_buffer.dev.dev);
+	substream->dma_buffer.area = NULL;
+	substream->dma_buffer.addr = 0;
+	substream->dma_buffer.bytes = 0;
+	dev_err(component->dev,
+		"retaining DMA buffer after uncertain DSP mapping (%d)\n",
+		reason);
 }
 
 static int q6apm_dai_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm_runtime *rtd)
@@ -581,6 +821,8 @@ static int q6apm_dai_pcm_new(struct snd_soc_component *component, struct snd_soc
 	int size = BUFFER_BYTES_MAX + PAGE_SIZE;
 	int graph_id, ret;
 	bool is_push_pull;
+	bool protected;
+	bool retain_buffer = false;
 	struct snd_pcm_substream *substream = NULL;
 
 	graph_id = cpu_dai->driver->id;
@@ -593,6 +835,10 @@ static int q6apm_dai_pcm_new(struct snd_soc_component *component, struct snd_soc
 
 
 	if (substream) {
+		protected = q6apm_denali_protected_graph(component, rtd,
+							 graph_id);
+		if (protected)
+			q6apm_latch_protected_graph(component, graph_id);
 		is_push_pull = q6apm_is_graph_in_push_pull_mode_from_id(component->dev,
 									graph_id,
 									substream->stream);
@@ -603,34 +849,64 @@ static int q6apm_dai_pcm_new(struct snd_soc_component *component, struct snd_soc
 		if (ret)
 			return ret;
 
-		ret = q6apm_dai_memory_map(component, substream, graph_id, is_push_pull);
-		if (ret)
+		ret = q6apm_dai_memory_map(component, substream,
+					   graph_id, is_push_pull,
+					   protected, &retain_buffer);
+		if (ret) {
+			if (retain_buffer)
+				q6apm_dai_retain_dma_buffer(component,
+							    substream, ret);
 			return ret;
+		}
 	}
 
 	return 0;
 }
 
-static void q6apm_dai_memory_unmap(struct snd_soc_component *component,
-				   struct snd_pcm_substream *substream)
+static int q6apm_dai_memory_unmap(struct snd_soc_component *component,
+				  struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *soc_prtd;
 	struct snd_soc_dai *cpu_dai;
 	int graph_id;
+	int ret;
 
 	soc_prtd = snd_soc_substream_to_rtd(substream);
 	if (!soc_prtd)
-		return;
+		return 0;
 
 	cpu_dai = snd_soc_rtd_to_cpu(soc_prtd, 0);
 	if (!cpu_dai)
-		return;
+		return 0;
 
 	graph_id = cpu_dai->driver->id;
-	q6apm_unmap_memory_fixed_region(component->dev, graph_id);
+	if (q6apm_graph_dma_quarantined(component->dev, graph_id))
+		return -EBUSY;
+
+	ret = q6apm_unmap_memory_fixed_region(component->dev, graph_id);
+	if (ret)
+		return ret;
 
 	if (q6apm_is_graph_in_push_pull_mode_from_id(component->dev, graph_id, substream->stream))
-		q6apm_unmap_pos_buffer(component->dev, graph_id);
+		return q6apm_unmap_pos_buffer(component->dev, graph_id);
+
+	return 0;
+}
+
+static bool q6apm_dai_protected_substream(struct snd_soc_component *component,
+					  struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct snd_soc_dai *cpu_dai;
+
+	if (!rtd)
+		return false;
+	cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	if (!cpu_dai)
+		return false;
+
+	return q6apm_protected_graph_latched(component, rtd,
+						cpu_dai->driver->id);
 }
 
 static void q6apm_dai_pcm_free(struct snd_soc_component *component, struct snd_pcm *pcm)
@@ -638,12 +914,20 @@ static void q6apm_dai_pcm_free(struct snd_soc_component *component, struct snd_p
 	struct snd_pcm_substream *substream;
 
 	substream = pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream;
-	if (substream)
-		q6apm_dai_memory_unmap(component, substream);
+	if (substream) {
+		int ret = q6apm_dai_memory_unmap(component, substream);
+
+		if (ret && q6apm_dai_protected_substream(component, substream))
+			q6apm_dai_retain_dma_buffer(component, substream, ret);
+	}
 
 	substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
-	if (substream)
-		q6apm_dai_memory_unmap(component, substream);
+	if (substream) {
+		int ret = q6apm_dai_memory_unmap(component, substream);
+
+		if (ret && q6apm_dai_protected_substream(component, substream))
+			q6apm_dai_retain_dma_buffer(component, substream, ret);
+	}
 }
 
 static int q6apm_dai_compr_open(struct snd_soc_component *component,
@@ -669,7 +953,7 @@ static int q6apm_dai_compr_open(struct snd_soc_component *component,
 
 	prtd->cstream = stream;
 	prtd->graph = q6apm_graph_open(dev, event_handler_compr, prtd, graph_id,
-					SNDRV_PCM_STREAM_PLAYBACK);
+					SNDRV_PCM_STREAM_PLAYBACK, false);
 	if (IS_ERR(prtd->graph)) {
 		ret = PTR_ERR(prtd->graph);
 		kfree(prtd);
@@ -680,8 +964,14 @@ static int q6apm_dai_compr_open(struct snd_soc_component *component,
 	runtime->dma_bytes = BUFFER_BYTES_MAX;
 	size = COMPR_PLAYBACK_MAX_FRAGMENT_SIZE * COMPR_PLAYBACK_MAX_NUM_FRAGMENTS;
 	ret = snd_dma_alloc_pages(SNDRV_DMA_TYPE_DEV, dev, size, &prtd->dma_buffer);
-	if (ret)
+	if (ret) {
+		if (!q6apm_graph_close(prtd->graph)) {
+			prtd->graph = NULL;
+			runtime->private_data = NULL;
+			kfree(prtd);
+		}
 		return ret;
+	}
 
 	if (pdata->sid < 0)
 		prtd->phys = prtd->dma_buffer.addr;
@@ -1009,6 +1299,7 @@ static const struct snd_soc_component_driver q6apm_fe_dai_component = {
 	.pcm_new	= q6apm_dai_pcm_new,
 	.pcm_free	= q6apm_dai_pcm_free,
 	.hw_params	= q6apm_dai_hw_params,
+	.hw_free	= q6apm_dai_hw_free,
 	.pointer	= q6apm_dai_pointer,
 	.trigger	= q6apm_dai_trigger,
 	.ack		= q6apm_dai_ack,
@@ -1017,27 +1308,62 @@ static const struct snd_soc_component_driver q6apm_fe_dai_component = {
 	.remove_order   = SND_SOC_COMP_ORDER_EARLY,
 };
 
+static void q6apm_dai_release_dma_dev(void *data)
+{
+	struct device *dev = data;
+	struct q6apm *apm = dev_get_drvdata(dev->parent);
+
+	if (apm) {
+		mutex_lock(&apm->lock);
+		if (apm->dma_dev == dev)
+			apm->dma_dev = NULL;
+		mutex_unlock(&apm->lock);
+	}
+	put_device(dev);
+}
+
 static int q6apm_dai_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
 	struct q6apm_dai_data *pdata;
+	struct q6apm *apm;
 	struct of_phandle_args args;
 	int rc;
+
+	apm = dev_get_drvdata(dev->parent);
+	if (!apm)
+		return -EPROBE_DEFER;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return -ENOMEM;
 
 	rc = of_parse_phandle_with_fixed_args(node, "iommus", 1, 0, &args);
-	if (rc < 0)
+	if (rc < 0) {
 		pdata->sid = -1;
-	else
+	} else {
 		pdata->sid = args.args[0] & SID_MASK_DEFAULT;
+		of_node_put(args.np);
+	}
 
 	dev_set_drvdata(dev, pdata);
+	rc = 0;
+	mutex_lock(&apm->lock);
+	if (apm->dma_dev)
+		rc = -EBUSY;
+	else
+		apm->dma_dev = get_device(dev);
+	mutex_unlock(&apm->lock);
+	if (rc)
+		return rc;
 
-	return devm_snd_soc_register_component(dev, &q6apm_fe_dai_component, NULL, 0);
+	rc = devm_add_action_or_reset(dev, q6apm_dai_release_dma_dev, dev);
+	if (rc)
+		return rc;
+
+	return devm_snd_soc_register_component(dev, &q6apm_fe_dai_component,
+					       NULL, 0);
 }
 
 #ifdef CONFIG_OF
