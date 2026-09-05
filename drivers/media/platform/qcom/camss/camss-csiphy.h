@@ -42,6 +42,7 @@ struct csiphy_lanes_cfg {
 };
 
 struct csiphy_csi2_cfg {
+	enum v4l2_mbus_type bus_type;
 	struct csiphy_lanes_cfg lane_cfg;
 };
 

@@ -4726,20 +4726,32 @@ static int camss_parse_endpoint_node(struct device *dev,
 	if (ret)
 		return ret;
 
-	/*
-	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
-	 * D-PHY is supported in the driver.
-	 */
-	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
+	if (vep.bus_type == V4L2_MBUS_CSI2_CPHY &&
+	    !of_device_is_compatible(dev->of_node, "qcom,x1e80100-camss")) {
+		dev_err(dev, "C-PHY is not supported on this CAMSS\n");
+		return -EOPNOTSUPP;
+	}
+
+	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY &&
+	    vep.bus_type != V4L2_MBUS_CSI2_CPHY) {
 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
 		return -EINVAL;
 	}
 
 	csd->interface.csiphy_id = vep.base.port;
+	csd->interface.csi2.bus_type = vep.bus_type;
 
 	mipi_csi2 = &vep.bus.mipi_csi2;
-	lncfg->clk.pos = mipi_csi2->clock_lane;
-	lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+	if (vep.bus_type == V4L2_MBUS_CSI2_CPHY &&
+	    (mipi_csi2->num_data_lanes != 1 || mipi_csi2->data_lanes[0] != 0)) {
+		dev_err(dev, "Unsupported X1E80100 C-PHY topology\n");
+		return -EOPNOTSUPP;
+	}
+
+	if (vep.bus_type == V4L2_MBUS_CSI2_DPHY) {
+		lncfg->clk.pos = mipi_csi2->clock_lane;
+		lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+	}
 	lncfg->num_data = mipi_csi2->num_data_lanes;
 
 	lncfg->data = devm_kcalloc(dev,
