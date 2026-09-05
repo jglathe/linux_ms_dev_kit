@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/input/touchscreen/microsoft,mshw0485.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Microsoft Surface G6 MSHW0485 touchscreen
+
+maintainers:
+  - Leon Silcott <leon@boasi.io>
+
+description:
+  The MSHW0485 is a HID-over-SPI touchscreen used by the Microsoft Surface
+  Pro 11. It uses a protocol-9 Qualcomm GENI controller in quad-SPI mode.
+
+allOf:
+  - $ref: touchscreen.yaml#
+  - $ref: /schemas/spi/spi-peripheral-props.yaml#
+
+properties:
+  compatible:
+    const: microsoft,mshw0485
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  interrupt-gpios:
+    maxItems: 1
+
+  power-gpios:
+    maxItems: 1
+
+  reset-gpios:
+    maxItems: 1
+
+  microsoft,enable-heat-frame-abi:
+    type: boolean
+    description:
+      Opt in to the optional raw heat-frame misc-device ABI. The matching
+      kernel configuration must also be enabled.
+
+  microsoft,enable-iptsd-bridge:
+    type: boolean
+    description:
+      Opt in to the optional HIDRAW-only DFT bridge used by iptsd. The
+      matching kernel configuration must also be enabled.
+
+  spi-max-frequency:
+    maximum: 40000000
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - interrupt-gpios
+  - power-gpios
+  - reset-gpios
+  - spi-max-frequency
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    spi {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        touchscreen@0 {
+            compatible = "microsoft,mshw0485";
+            reg = <0>;
+            spi-max-frequency = <40000000>;
+
+            interrupt-parent = <&tlmm>;
+            interrupts = <51 IRQ_TYPE_LEVEL_LOW>;
+            interrupt-gpios = <&tlmm 51 GPIO_ACTIVE_LOW>;
+            power-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+            reset-gpios = <&tlmm 48 GPIO_ACTIVE_HIGH>;
+
+            microsoft,enable-heat-frame-abi;
+            microsoft,enable-iptsd-bridge;
+        };
+    };
+...

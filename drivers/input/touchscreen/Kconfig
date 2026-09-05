@@ -1414,4 +1414,39 @@ config TOUCHSCREEN_HIMAX_HX83112B
 	  To compile this driver as a module, choose M here: the
 	  module will be called himax_hx83112b.
 
+config TOUCHSCREEN_MSHW0485
+	tristate "Microsoft Surface G6 MSHW0485 touchscreen"
+	depends on SPI && OF
+	help
+	  Say Y here to enable support for the MSHW0485 touchscreen found
+	  on the Microsoft Surface Pro 11.
+
+	  To compile this driver as a module, choose M here: the module will
+	  be called mshw0485_touch.
+
+config TOUCHSCREEN_MSHW0485_HEAT_FRAME
+	bool "MSHW0485 raw heat-frame userspace ABI"
+	depends on TOUCHSCREEN_MSHW0485
+	default n
+	help
+	  Expose raw MSHW0485 heat and sideband reports through the
+	  /dev/g6ts-heat misc-device ABI. The touchscreen node must also carry
+	  the microsoft,enable-heat-frame-abi property before the endpoint is
+	  registered.
+
+	  If unsure, say N.
+
+config TOUCHSCREEN_MSHW0485_IPTSD
+	bool "MSHW0485 HIDRAW bridge for iptsd"
+	depends on TOUCHSCREEN_MSHW0485 && HID && HIDRAW
+	depends on HID=y || TOUCHSCREEN_MSHW0485=m
+	default n
+	help
+	  Expose the native MSHW0485 DFT stream through a HIDRAW-only sibling
+	  for userspace pen processing by iptsd. The touchscreen node must also
+	  carry the microsoft,enable-iptsd-bridge property before the endpoint
+	  is registered.
+
+	  If unsure, say N.
+
 endif

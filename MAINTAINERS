@@ -17929,6 +17929,15 @@ F:	Documentation/driver-api/surface_aggregator/clients/dtx.rst
 F:	drivers/platform/surface/surface_dtx.c
 F:	include/uapi/linux/surface_aggregator/dtx.h
 
+MICROSOFT SURFACE G6 TOUCHSCREEN DRIVER
+M:	Leon Silcott <leon@boasi.io>
+L:	linux-input@vger.kernel.org
+S:	Maintained
+F:	Documentation/ABI/testing/dev-g6ts-heat
+F:	Documentation/devicetree/bindings/input/touchscreen/microsoft,mshw0485.yaml
+F:	drivers/input/touchscreen/mshw0485_touch.c
+F:	include/uapi/linux/g6ts_heat.h
+
 MICROSOFT SURFACE SENSOR FAN DRIVER
 M:	Maximilian Luz <luzmaximilian@gmail.com>
 M:	Ivor Wanders <ivor@iwanders.net>
