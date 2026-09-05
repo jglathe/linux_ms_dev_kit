@@ -10,7 +10,7 @@
 
 / {
 	model = "Lenovo IdeaCentre Mini 01Q8X10 (Hamoa)";
-	compatible = "lenovo,hamoa-ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
+	compatible = "lenovo,hamoa-ideacentre-mini-01q8x10", "lenovo,ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
 };
 
 //&iris {
