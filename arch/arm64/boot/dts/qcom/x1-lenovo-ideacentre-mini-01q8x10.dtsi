@@ -4,7 +4,6 @@
  */
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
 #include "hamoa-pmics.dtsi"
@@ -174,16 +173,13 @@
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 
-		gpio = <&pmc8380_3_gpios 5 GPIO_ACTIVE_HIGH>;
+		gpio = <&tlmm 18 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-0 = <&nvme2_reg_en>;
+		pinctrl-0 = <&nvme_reg_en>;
 		pinctrl-names = "default";
 
-		startup-delay-us = <2000000>;
-
 		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	vreg_v0p9: regulator-v0p9 {
@@ -652,10 +648,19 @@
 		pinctrl-names = "default";
 	};
 
-};
+	eusb6_repeater: redriver@4f {
+		compatible = "nxp,ptn3222";
+		reg = <0x4f>;
+		#phy-cells = <0>;
 
-&lpass_vamacro {
-	qcom,dmic-sample-rate = <2400000>;
+		vdd3v3-supply = <&vreg_l13b>;
+		vdd1v8-supply = <&vreg_l4b>;
+
+		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
+
+		pinctrl-0 = <&eusb6_reset_n>;
+		pinctrl-names = "default";
+	};
 };
 
 &gpu {
@@ -667,8 +672,6 @@
 };
 
 &mdss_dp0 {
-	sound-name-prefix = "DisplayPort0";
-
 	status = "okay";
 };
 
@@ -677,8 +680,6 @@
 };
 
 &mdss_dp1 {
-	sound-name-prefix = "DisplayPort1";
-
 	status = "okay";
 };
 
@@ -687,8 +688,6 @@
 };
 
 &mdss_dp2 {
-	sound-name-prefix = "DisplayPort2";
-
 	status = "okay";
 };
 
@@ -789,19 +788,6 @@
 &pcie6a_port0 {
 	reset-gpios = <&tlmm 152 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 154 GPIO_ACTIVE_LOW>;
-};
-
-&pmc8380_3_gpios {
-	nvme2_reg_en: nvme2-reg-en-state {
-		pins = "gpio5";
-		function = "normal";
-		power-source = <0>;
-		input-disable;
-		output-enable;
-		drive-push-pull;
-		bias-disable;
-		qcom,drive-strength = <PMIC_GPIO_STRENGTH_LOW>;
-	};
 };
 
 &pmc8380_5_gpios {
@@ -1027,6 +1013,14 @@
 		};
 	};
 
+	eusb6_reset_n: eusb6-reset-n-state {
+		pins = "gpio184";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
 	wcd_default: wcd-reset-n-active-state {
 		pins = "gpio191";
 		function = "gpio";
@@ -1144,9 +1138,6 @@
 
 &usb_mp {
 	status = "okay";
-
-	phys = <&usb_mp_hsphy0>, <&usb_mp_qmpphy0>;
-	phy-names = "usb2-0", "usb3-0";
 };
 
 &usb_mp_hsphy0 {
@@ -1158,7 +1149,23 @@
 	status = "okay";
 };
 
+&usb_mp_hsphy1 {
+	vdd-supply = <&vreg_l2e>;
+	vdda12-supply = <&vreg_l3e>;
+
+	phys = <&eusb6_repeater>;
+
+	status = "okay";
+};
+
 &usb_mp_qmpphy0 {
+	vdda-phy-supply = <&vreg_l3c>;
+	vdda-pll-supply = <&vreg_l3e>;
+
+	status = "okay";
+};
+
+&usb_mp_qmpphy1 {
 	vdda-phy-supply = <&vreg_l3c>;
 	vdda-pll-supply = <&vreg_l3e>;
 
