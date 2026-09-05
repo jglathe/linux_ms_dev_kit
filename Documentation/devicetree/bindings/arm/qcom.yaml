@@ -1224,6 +1224,13 @@ properties:
 
       - items:
           - enum:
+              - lenovo,ideapad-slim5x-lcd
+              - lenovo,ideapad-slim5x-oled
+          - const: lenovo,ideapad-5
+          - const: qcom,x1p42100
+
+      - items:
+          - enum:
               - acer,swift-go14-01
               - asus,vivobook-s15-x1p4
               - hp,omnibook-x14-fe1
