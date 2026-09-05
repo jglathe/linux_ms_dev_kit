@@ -6,6 +6,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -45,6 +46,9 @@ phy_qcom_mipi_csi2_set_clock_rates(struct mipi_csi2phy_device *csi2phy,
 		struct clk *clk = csi2phy->clks[i].clk;
 		u64 min_rate = link_freq / 4;
 		long round_rate;
+
+		if (csi2phy->stream_cfg.mode == PHY_MODE_MIPI_CPHY)
+			min_rate = 0;
 
 		phy_qcom_mipi_csi2_add_clock_margin(&min_rate);
 
@@ -91,14 +95,61 @@ phy_qcom_mipi_csi2_set_clock_rates(struct mipi_csi2phy_device *csi2phy,
 	return 0;
 }
 
+static int phy_qcom_mipi_csi2_set_mode(struct phy *phy, enum phy_mode mode,
+				       int submode)
+{
+	struct mipi_csi2phy_device *csi2phy = phy_get_drvdata(phy);
+
+	switch (mode) {
+	case PHY_MODE_MIPI_DPHY:
+		return submode ? -EINVAL : 0;
+	case PHY_MODE_MIPI_CPHY:
+		if (submode < 0 || submode >= BITS_PER_LONG)
+			return -EINVAL;
+		if (!csi2phy->soc_cfg->cphy_symbol_rate ||
+		    !(csi2phy->soc_cfg->cphy_trio_mask & BIT(submode)))
+			return -EOPNOTSUPP;
+		if (csi2phy->irq <= 0)
+			return csi2phy->irq ?: -EOPNOTSUPP;
+
+		csi2phy->stream_cfg.cphy_trio = submode;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+}
+
 static int phy_qcom_mipi_csi2_configure(struct phy *phy,
 					union phy_configure_opts *opts)
 {
 	struct mipi_csi2phy_device *csi2phy = phy_get_drvdata(phy);
 	struct phy_configure_opts_mipi_dphy *dphy_cfg_opts = &opts->mipi_dphy;
 	struct mipi_csi2phy_stream_cfg *stream_cfg = &csi2phy->stream_cfg;
+	enum phy_mode mode = phy_get_mode(phy);
 	int ret;
 	int i;
+
+	if (mode == PHY_MODE_MIPI_CPHY) {
+		/*
+		 * Generic C-PHY options do not exist yet. Carry the symbol rate in
+		 * hs_clk_rate and the number of trios in lanes for this bounded mode.
+		 */
+		if (dphy_cfg_opts->lanes != 1 || !dphy_cfg_opts->hs_clk_rate)
+			return -EINVAL;
+		if (dphy_cfg_opts->hs_clk_rate !=
+		    csi2phy->soc_cfg->cphy_symbol_rate)
+			return -EOPNOTSUPP;
+
+		stream_cfg->mode = mode;
+		stream_cfg->combo_mode = 1;
+		stream_cfg->link_freq = dphy_cfg_opts->hs_clk_rate;
+		stream_cfg->num_data_lanes = dphy_cfg_opts->lanes;
+
+		return 0;
+	}
+
+	if (mode != PHY_MODE_MIPI_DPHY)
+		return -EINVAL;
 
 	ret = phy_mipi_dphy_config_validate(dphy_cfg_opts);
 	if (ret)
@@ -107,6 +158,7 @@ static int phy_qcom_mipi_csi2_configure(struct phy *phy,
 	if (dphy_cfg_opts->lanes < 1 || dphy_cfg_opts->lanes > CSI2_MAX_DATA_LANES)
 		return -EINVAL;
 
+	stream_cfg->mode = mode;
 	stream_cfg->combo_mode = 0;
 	stream_cfg->link_freq = dphy_cfg_opts->hs_clk_rate;
 	stream_cfg->num_data_lanes = dphy_cfg_opts->lanes;
@@ -156,7 +208,17 @@ static int phy_qcom_mipi_csi2_power_on(struct phy *phy)
 
 	ops->hw_version_read(csi2phy);
 
-	return ops->lanes_enable(csi2phy, &csi2phy->stream_cfg);
+	if (csi2phy->stream_cfg.mode != PHY_MODE_MIPI_CPHY)
+		return ops->lanes_enable(csi2phy, &csi2phy->stream_cfg);
+
+	enable_irq(csi2phy->irq);
+	ret = ops->lanes_enable(csi2phy, &csi2phy->stream_cfg);
+	if (!ret)
+		return 0;
+
+	disable_irq(csi2phy->irq);
+	clk_bulk_disable_unprepare(csi2phy->soc_cfg->num_clk,
+				   csi2phy->clks);
 
 poweroff_phy:
 	regulator_bulk_disable(csi2phy->soc_cfg->num_supplies,
@@ -168,6 +230,12 @@ poweroff_phy:
 static int phy_qcom_mipi_csi2_power_off(struct phy *phy)
 {
 	struct mipi_csi2phy_device *csi2phy = phy_get_drvdata(phy);
+	const struct mipi_csi2phy_hw_ops *ops = csi2phy->soc_cfg->ops;
+
+	if (csi2phy->stream_cfg.mode == PHY_MODE_MIPI_CPHY) {
+		ops->lanes_disable(csi2phy, &csi2phy->stream_cfg);
+		disable_irq(csi2phy->irq);
+	}
 
 	clk_bulk_disable_unprepare(csi2phy->soc_cfg->num_clk,
 				   csi2phy->clks);
@@ -181,6 +249,7 @@ static const struct phy_ops phy_qcom_mipi_csi2_ops = {
 	.configure	= phy_qcom_mipi_csi2_configure,
 	.power_on	= phy_qcom_mipi_csi2_power_on,
 	.power_off	= phy_qcom_mipi_csi2_power_off,
+	.set_mode	= phy_qcom_mipi_csi2_set_mode,
 	.owner		= THIS_MODULE,
 };
 
@@ -240,6 +309,16 @@ static int phy_qcom_mipi_csi2_probe(struct platform_device *pdev)
 	csi2phy->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(csi2phy->base))
 		return PTR_ERR(csi2phy->base);
+
+	csi2phy->irq = platform_get_irq_optional(pdev, 0);
+	if (csi2phy->irq > 0) {
+		ret = devm_request_irq(dev, csi2phy->irq,
+				       csi2phy->soc_cfg->ops->isr,
+				       IRQF_TRIGGER_RISING | IRQF_NO_AUTOEN,
+				       dev_name(dev), csi2phy);
+		if (ret)
+			csi2phy->irq = ret;
+	}
 
 	generic_phy = devm_phy_create(dev, NULL, &phy_qcom_mipi_csi2_ops);
 	if (IS_ERR(generic_phy)) {

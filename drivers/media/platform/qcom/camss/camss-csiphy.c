@@ -24,6 +24,7 @@
 #include "camss.h"
 
 #define MSM_CSIPHY_NAME "msm_csiphy"
+#define X1E80100_CPHY_LINK_FREQ 1203000000LL
 
 static const struct csiphy_format_info formats_8x16[] = {
 	{ MEDIA_BUS_FMT_UYVY8_1X16, 8 },
@@ -312,6 +313,51 @@ static void csiphy_stream_off_legacy(struct csiphy_device *csiphy)
 	csiphy->res->hw_ops->lanes_disable(csiphy, &csiphy->cfg);
 }
 
+static int csiphy_stream_on_cphy(struct csiphy_device *csiphy)
+{
+	struct phy_configure_opts_mipi_dphy *cphy_cfg;
+	union phy_configure_opts cphy_opts = { 0 };
+	struct csiphy_lanes_cfg *lane_cfg;
+	struct device *dev = csiphy->camss->dev;
+	s64 link_freq;
+	int ret;
+
+	if (csiphy->camss->res->version != CAMSS_X1E80100)
+		return -EOPNOTSUPP;
+
+	lane_cfg = &csiphy->cfg.csi2->lane_cfg;
+	if (lane_cfg->num_data != 1 || lane_cfg->data[0].pos != 0)
+		return -EOPNOTSUPP;
+
+	link_freq = camss_get_link_freq(&csiphy->subdev.entity, 0, 0);
+	if (link_freq < 0) {
+		dev_err(dev, "Cannot get CSI2 transmitter's link frequency\n");
+		return link_freq;
+	}
+	if (link_freq != X1E80100_CPHY_LINK_FREQ)
+		return -EOPNOTSUPP;
+
+	/* Carry the symbol rate in the D-PHY options until C-PHY has its own. */
+	cphy_cfg = &cphy_opts.mipi_dphy;
+	cphy_cfg->hs_clk_rate = link_freq * 2;
+	cphy_cfg->lanes = lane_cfg->num_data;
+
+	ret = phy_set_mode_ext(csiphy->phy, PHY_MODE_MIPI_CPHY,
+			       lane_cfg->data[0].pos);
+	if (ret) {
+		dev_err(dev, "failed to select MIPI C-PHY mode: %d\n", ret);
+		return ret;
+	}
+
+	ret = phy_configure(csiphy->phy, &cphy_opts);
+	if (ret) {
+		dev_err(dev, "failed to configure MIPI C-PHY: %d\n", ret);
+		return ret;
+	}
+
+	return phy_power_on(csiphy->phy);
+}
+
 /*
  * csiphy_stream_on - Enable streaming on CSIPHY module
  * @csiphy: CSIPHY device
@@ -331,6 +377,9 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
 	struct device *dev = csiphy->camss->dev;
 	s64 link_freq;
 	int ret;
+
+	if (csiphy->cfg.csi2->bus_type == V4L2_MBUS_CSI2_CPHY)
+		return csiphy_stream_on_cphy(csiphy);
 
 	dphy_cfg = &dphy_opts.mipi_dphy;
 

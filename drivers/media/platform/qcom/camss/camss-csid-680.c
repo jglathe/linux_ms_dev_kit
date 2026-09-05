@@ -105,6 +105,7 @@
 #define		CSI2_RX_CFG0_PHY_TYPE_SEL			24
 #define		CSI2_RX_CFG0_TPG_MUX_EN				BIT(27)
 #define		CSI2_RX_CFG0_TPG_MUX_SEL			GENMASK(29, 28)
+#define		CSI2_RX_CFG0_TPG_NUM_SEL			BIT(28)
 
 #define CSID_CSI2_RX_CFG1					0x204
 #define		CSI2_RX_CFG1_PACKET_ECC_CORRECTION_EN		BIT(0)
@@ -190,8 +191,17 @@ static void __csid_configure_rx(struct csid_device *csid,
 	struct camss *camss;
 
 	camss = csid->camss;
-	val = (phy->lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
-	val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
+	if (camss->res->version == CAMSS_X1E80100 &&
+	    phy->bus_type == V4L2_MBUS_CSI2_CPHY) {
+		u8 trio = (phy->lane_assign & 0xf) / 2;
+
+		/* Zero active lanes encodes one C-PHY trio. */
+		val = trio << CSI2_RX_CFG0_DL0_INPUT_SEL;
+		val |= BIT(CSI2_RX_CFG0_PHY_TYPE_SEL);
+	} else {
+		val = (phy->lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
+		val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
+	}
 
 	if (camss->tpg && csid->tpg_linked &&
 	    camss->tpg[phy->csiphy_id].testgen.mode != TPG_PAYLOAD_MODE_DISABLED) {
@@ -200,6 +210,10 @@ static void __csid_configure_rx(struct csid_device *csid,
 	} else {
 		val |= (phy->csiphy_id + CSI2_RX_CFG0_PHY_SEL_BASE_IDX)
 			<< CSI2_RX_CFG0_PHY_NUM_SEL;
+
+		if (camss->res->version == CAMSS_X1E80100 &&
+		    phy->bus_type == V4L2_MBUS_CSI2_CPHY)
+			val |= CSI2_RX_CFG0_TPG_NUM_SEL;
 	}
 
 	writel(val, csid->base + CSID_CSI2_RX_CFG0);

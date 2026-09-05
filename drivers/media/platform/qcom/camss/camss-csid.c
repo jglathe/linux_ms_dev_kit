@@ -557,7 +557,11 @@ static int csid_set_clock_rates(struct csid_device *csid)
 		if (!strcmp(clock->name, "csi0") ||
 		    !strcmp(clock->name, "csi1") ||
 		    !strcmp(clock->name, "csi2") ||
-		    !strcmp(clock->name, "csi3")) {
+		    !strcmp(clock->name, "csi3") ||
+		    (csid->camss->res->version == CAMSS_X1E80100 &&
+		     csid->phy.bus_type == V4L2_MBUS_CSI2_CPHY &&
+		     (!strcmp(clock->name, "csid") ||
+		      !strcmp(clock->name, "csid_csiphy_rx")))) {
 			u64 min_rate = link_freq / 4;
 			long rate;
 
@@ -1275,6 +1279,7 @@ static int csid_link_setup(struct media_entity *entity,
 		if (sd->grp_id == TPG_GRP_ID) {
 			tpg = v4l2_get_subdevdata(sd);
 
+			csid->phy.bus_type = V4L2_MBUS_CSI2_DPHY;
 			csid->phy.lane_cnt = tpg->res->lane_cnt;
 			csid->phy.csiphy_id = tpg->id;
 			csid->phy.lane_assign = csid_get_lane_assign(NULL, csid->phy.lane_cnt);
@@ -1288,6 +1293,7 @@ static int csid_link_setup(struct media_entity *entity,
 				return -EPERM;
 
 			csid->phy.csiphy_id = csiphy->id;
+			csid->phy.bus_type = csiphy->cfg.csi2->bus_type;
 
 			lane_cfg = &csiphy->cfg.csi2->lane_cfg;
 			csid->phy.lane_cnt = lane_cfg->num_data;

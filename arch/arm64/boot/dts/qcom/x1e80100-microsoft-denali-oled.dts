@@ -5,6 +5,10 @@
 
 /dts-v1/;
 
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/media/video-interfaces.h>
+#include <dt-bindings/phy/phy.h>
+
 #include "hamoa.dtsi"
 #include "x1-microsoft-denali.dtsi"
 
@@ -13,6 +17,109 @@
 	compatible = "microsoft,denali-oled", "microsoft,denali",
 		     "lenovo,thinkpad-t14s",
 		     "qcom,x1e80100";
+
+	leds {
+		compatible = "gpio-leds";
+
+		pinctrl-0 = <&cam_indicator_en>;
+		pinctrl-names = "default";
+
+		privacy_led: privacy-led {
+			function = LED_FUNCTION_INDICATOR;
+			color = <LED_COLOR_ID_WHITE>;
+			/* GPIO225 polarity is pending hardware validation. */
+			gpios = <&tlmm 225 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+};
+
+&apps_rsc {
+	regulators-0 {
+		vreg_l7b_2p8: ldo7 {
+			regulator-name = "vreg_l7b_2p8";
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+	};
+
+	regulators-8 {
+		compatible = "qcom,pm8010-rpmh-regulators";
+		qcom,pmic-id = "m";
+
+		vdd-l3-l4-supply = <&vreg_s4c_1p8>;
+
+		vreg_l3m_1p8: ldo3 {
+			regulator-name = "vreg_l3m_1p8";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+	};
+};
+
+&camss {
+	status = "okay";
+
+	ports {
+		port@2 {
+			csiphy2_ep: endpoint@4 {
+				reg = <4>;
+				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+				data-lanes = <0>;
+				remote-endpoint = <&imx681_ep>;
+			};
+		};
+	};
+};
+
+&cci1 {
+	status = "okay";
+};
+
+&cci1_i2c1 {
+	clock-frequency = <400000>;
+
+	imx681: camera@10 {
+		compatible = "sony,imx681";
+		reg = <0x10>;
+
+		reset-gpios = <&tlmm 237 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&cam_front_default>;
+		pinctrl-names = "default";
+
+		clocks = <&camcc CAM_CC_MCLK4_CLK>;
+		assigned-clocks = <&camcc CAM_CC_MCLK4_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		avdd-supply = <&vreg_l7b_2p8>;
+		dovdd-supply = <&vreg_l3m_1p8>;
+
+		leds = <&privacy_led>;
+		led-names = "privacy";
+
+		orientation = <0>;
+		rotation = <0>;
+
+		port {
+			imx681_ep: endpoint {
+				bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+				data-lanes = <0>;
+				/* Half of the observed 2406-Msymbol/s C-PHY rate. */
+				link-frequencies = /bits/ 64 <1203000000>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
+
+&csiphy2 {
+	vdda-0p8-supply = <&vreg_l2c_0p8>;
+	vdda-1p2-supply = <&vreg_l1c_1p2>;
+	phy-type = <PHY_TYPE_CPHY>;
+
+	status = "okay";
 };
 
 &gpu_zap_shader {
@@ -36,4 +143,22 @@
 			"qcom/x1e80100/microsoft/Denali/cdsp_dtb.mbn";
 
 	status = "okay";
+};
+
+&tlmm {
+	cam_front_default: cam-front-default-state {
+		mclk4-pins {
+			pins = "gpio100";
+			function = "cam_aon";
+			drive-strength = <16>;
+			bias-disable;
+		};
+
+		reset-n-pins {
+			pins = "gpio237";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
 };

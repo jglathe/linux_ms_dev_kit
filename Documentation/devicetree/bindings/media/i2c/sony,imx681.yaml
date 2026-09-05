@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/media/i2c/sony,imx681.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sony IMX681 CMOS Image Sensor
+
+maintainers:
+  - turbinebmw <turbine.bmw@gmail.com>
+
+description:
+  The Sony IMX681 is a CMOS image sensor. The currently supported mode is
+  3840x2640 RAW10 at approximately 30 frames per second over one MIPI CSI-2
+  C-PHY trio at 2406 Msymbol/s.
+
+allOf:
+  - $ref: /schemas/media/video-interface-devices.yaml#
+
+properties:
+  compatible:
+    const: sony,imx681
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    description: Input clock at 19.2 MHz
+    maxItems: 1
+
+  avdd-supply:
+    description: Analog power supply
+
+  dovdd-supply:
+    description: Digital I/O power supply
+
+  reset-gpios:
+    description: Active-low sensor reset (XCLR) GPIO
+    maxItems: 1
+
+  leds: true
+  led-names: true
+  orientation: true
+  rotation: true
+
+  port:
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
+    properties:
+      endpoint:
+        $ref: /schemas/media/video-interfaces.yaml#
+        additionalProperties: false
+
+        properties:
+          bus-type:
+            const: 1 # MIPI CSI-2 C-PHY
+          data-lanes:
+            items:
+              - const: 0
+          link-frequencies: true
+          remote-endpoint: true
+
+        required:
+          - bus-type
+          - data-lanes
+          - link-frequencies
+
+    required:
+      - endpoint
+
+required:
+  - compatible
+  - reg
+  - clocks
+  - avdd-supply
+  - dovdd-supply
+  - port
+
+unevaluatedProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    #include <dt-bindings/media/video-interfaces.h>
+
+    i2c {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        camera@10 {
+            compatible = "sony,imx681";
+            reg = <0x10>;
+            clocks = <&camera_clk>;
+            avdd-supply = <&camera_avdd>;
+            dovdd-supply = <&camera_dovdd>;
+            reset-gpios = <&gpio 10 GPIO_ACTIVE_LOW>;
+
+            port {
+                imx681_ep: endpoint {
+                    bus-type = <MEDIA_BUS_TYPE_CSI2_CPHY>;
+                    data-lanes = <0>;
+                    link-frequencies = /bits/ 64 <1203000000>;
+                    remote-endpoint = <&csi_in>;
+                };
+            };
+        };
+    };
+...
