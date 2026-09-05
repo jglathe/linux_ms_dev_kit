@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.2.2-jg-2) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: add CTIA/OMTP mux
+  * REMOVE arm64: dts: qcom: hamoa: Mark the EC reset gpio as reserved on all boards  whole series [Abel Vesa <abel.vesa@oss.qualcomm.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 05 Sep 2026 06:45:03 +0200
+
 linux-qcom-x1e (7.2.2-jg-1) resolute; urgency=medium
 
   * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
