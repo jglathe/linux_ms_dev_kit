@@ -1,5 +1,7 @@
 linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * arm64: dts: qcom: x1p42100-ideapad-5-2in1: add CTIA/OMTP mux
+  * REMOVE arm64: dts: qcom: hamoa: Mark the EC reset gpio as reserved on all boards  whole series [Abel Vesa <abel.vesa@oss.qualcomm.com>]
   * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
   * arm64: dts: qcom: x1p42100-hp-omnibook-5: Rewrite as dedicated DT [Jay Sim <jsim3368@gmail.com>]
   * arm64: dts: qcom: x1p42100-hp-omnibook-5: Advertise data-role = "host" [Jay Sim <jsim3368@gmail.com>]
