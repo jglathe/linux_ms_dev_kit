@@ -1,5 +1,8 @@
 linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
 
+  * arm64: dts: qcom: Add Lenovo IdeaPad Slim 5x 14Q8X9 whole series [https://lore.kernel.org/all/20260906-x1-ideapad-slim5x-v1-0-7ccffbe6bc4a@oldschoolsolutions.biz/]
+  * arm64: dts: qcom: IdeaCentre Mini 01Q8X10 Hamoa + Purwa whole series [https://lore.kernel.org/all/20260905-x1-ideacentre-mini-prettify-v1-0-9a87882973bb@oldschoolsolutions.biz/]
+  * rebase the whole stack to v7.2.3
   * arm64: dts: qcom: x1p42100-ideapad-5-2in1: add CTIA/OMTP mux
   * REMOVE arm64: dts: qcom: hamoa: Mark the EC reset gpio as reserved on all boards  whole series [Abel Vesa <abel.vesa@oss.qualcomm.com>]
   * arm64: dts: qcom: x1-lenovo-ideacentre-mini-01q8x10: discriminate compatible strings
