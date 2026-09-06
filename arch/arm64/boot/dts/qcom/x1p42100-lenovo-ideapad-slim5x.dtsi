@@ -1127,7 +1127,7 @@
 };
 
 &pcie3_port0 {
-	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	reset-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
 	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
 };
 
@@ -1452,13 +1452,6 @@
 		};
 	};
 
-	sdc2_card_det_n: sdc2-card-det-state {
-		pins = "gpio71";
-		function = "gpio";
-		drive-strength = <2>;
-		bias-pull-up;
-	};
-
 	tpad_default: tpad-default-state {
 		pins = "gpio3";
 		function = "gpio";
@@ -1605,7 +1598,7 @@
 	phy-names = "usb2-phy";
 	qcom,select-utmi-as-pipe-clk;
 	status = "okay";
-	/delete-property/ port@1;
+	/delete-node/ port@1;
 };
 
 &usb_1_ss2_hsphy {
