@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.2.3-jg-0) resolute; urgency=medium
+
+  * arm64: dts: qcom: Add Lenovo IdeaPad Slim 5x 14Q8X9 whole series [https://lore.kernel.org/all/20260906-x1-ideapad-slim5x-v1-0-7ccffbe6bc4a@oldschoolsolutions.biz/]
+  * arm64: dts: qcom: IdeaCentre Mini 01Q8X10 Hamoa + Purwa whole series [https://lore.kernel.org/all/20260905-x1-ideacentre-mini-prettify-v1-0-9a87882973bb@oldschoolsolutions.biz/]
+  * rebase the whole stack to v7.2.3
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 06 Sep 2026 21:44:20 +0200
+
 linux-qcom-x1e (7.2.2-jg-2) resolute; urgency=medium
 
   * arm64: dts: qcom: x1p42100-ideapad-5-2in1: add CTIA/OMTP mux
