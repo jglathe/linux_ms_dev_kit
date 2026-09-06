@@ -11,7 +11,7 @@
 
 / {
 	model = "Lenovo IdeaPad Slim 5x 14Q8X9 (LCD)";
-	compatible = "lenovo,ideapad-slim5x-lcd", "lenovo,ideapad-5", "qcom,x1p42100";
+	compatible = "lenovo,ideapad-slim5x-lcd", "lenovo,ideapad-5", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 
 	backlight: backlight {
 		compatible = "pwm-backlight";
