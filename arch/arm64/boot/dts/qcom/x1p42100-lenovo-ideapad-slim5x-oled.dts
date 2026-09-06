@@ -11,5 +11,5 @@
 
 / {
 	model = "Lenovo IdeaPad Slim 5x 14Q8X9 (OLED)";
-	compatible = "lenovo,ideapad-slim5x-oled", "lenovo,ideapad-5", "qcom,x1p42100";
+	compatible = "lenovo,ideapad-slim5x-oled", "lenovo,ideapad-5", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 };
