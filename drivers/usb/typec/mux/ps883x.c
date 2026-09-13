@@ -222,7 +222,7 @@ static int ps883x_configure(struct ps883x_retimer *retimer, int cfg0,
 	 * docks (e.g. Lenovo 40B0). Qualcomm firmware on platforms that
 	 * program this chip from an MCU uses a similar post-config delay.
 	 */
-	fsleep(20000);
+	fsleep(30000);
 
 	return 0;
 }
