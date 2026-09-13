@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.2.3-jg-1) resolute; urgency=medium
+
+  * arm64: dts: qcom: x1-ideacentre-mini-01q8x10: remove qcom,disable-usb4
+  * usb: typec: mux: ps883x: v2 follow-up — drop DT USB4 quirk, align DP path
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 13 Sep 2026 17:52:43 +0200
+
 linux-qcom-x1e (7.2.3-jg-0) resolute; urgency=medium
 
   * arm64: dts: qcom: Add Lenovo IdeaPad Slim 5x 14Q8X9 whole series [https://lore.kernel.org/all/20260906-x1-ideapad-slim5x-v1-0-7ccffbe6bc4a@oldschoolsolutions.biz/]
