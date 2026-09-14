@@ -171,6 +171,9 @@ endif
 do_rebuild_snapshot=true
 rebuild_snapshot_dir=$(CURDIR)/../rebuilds
 
+# Stubble
+do_stubble=false
+
 # ZSTD compressed kernel modules
 do_zstd_ko=true
 
