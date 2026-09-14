@@ -205,21 +205,24 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
 			cfg1 |= CONN_STATUS_1_DP_CONNECTED |
 				CONN_STATUS_1_DP_HPD_LEVEL;
 
-			switch (state->mode)  {
+			switch (state->mode) {
+			/* DP + USB3 (pin D, and legacy pin F) */
 			case TYPEC_DP_STATE_D:
+			case TYPEC_DP_STATE_F:
 				cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
 				fallthrough;
+			/* DP only (pin C, and pin E) */
 			case TYPEC_DP_STATE_C:
+			case TYPEC_DP_STATE_E:
 				cfg1 |= CONN_STATUS_1_DP_SINK_REQUESTED |
 					CONN_STATUS_1_DP_PIN_ASSIGNMENT_C_D;
 				break;
-			default: /* MODE_E */
+			default:
 				break;
 			}
 			break;
 		case USB_TYPEC_TBT_SID:
 			tb_data = state->data;
-
 			/* Unconditional */
 			cfg2 |= CONN_STATUS_2_TBT_CONNECTED;
 
