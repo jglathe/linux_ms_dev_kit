@@ -63,6 +63,7 @@ printenv:
 	@echo "do_skip_checks            = $(do_skip_checks)"
 	@echo "do_full_build             = $(do_full_build)"
 	@echo "do_mainline_build         = $(do_mainline_build)"
+	@echo "do_stubble"		 = $(do_stubble)"
 	@echo "do_dbgsym_package         = $(do_dbgsym_package)"
 	@echo "do_linux_main_modules_depends = $(do_linux_main_modules_depends)"
 	@echo "do_dtbs                   = $(do_dtbs)"
