@@ -1,4 +1,4 @@
-linux-qcom-x1e (7.3.0-13.13) stonking; urgency=medium
+linux-qcom-x1e (7.3.0-15.15) stonking; urgency=medium
 
   * Rebase linux-qcom-x1e onto ubuntu-unstable
 
