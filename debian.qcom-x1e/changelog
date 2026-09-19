@@ -137,7 +137,7 @@ linux-qcom-x1e (7.3-rc3-jg-0) stonking; urgency=medium
   * add: qcom-x1e-7.0
   * add: jg/ubuntu-qcom-x1e
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 19 Sep 2026 12:00:00 +0200
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sat, 19 Sep 2026 20:59:10 +0200
 
 linux (7.3.0-5.5) stonking; urgency=medium
 
