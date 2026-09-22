@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025, Kellerman Rivero <krsloco@gmail.com>
+ */
+
+/* X126100 is a variant of X1P42100 with minor differences */
+#include "purwa.dtsi"
+
+&gcc {
+	compatible = "qcom,x126100-gcc", "qcom,x1p42100-gcc", "qcom,x1e80100-gcc";
+};
+
+&gpucc {
+	compatible = "qcom,x126100-gpucc", "qcom,x1p42100-gpucc";
+};
+
+&pcie6a_phy {
+	compatible = "qcom,x126100-qmp-gen4x4-pcie-phy", "qcom,x1p42100-qmp-gen4x4-pcie-phy";
+};
+
+&pcie3_phy {
+	compatible = "qcom,x126100-qmp-gen4x4-pcie-phy", "qcom,x1p42100-qmp-gen4x4-pcie-phy";
+};

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2025, Kellerman Rivero <krsloco@gmail.com>
+ */
+
+/dts-v1/;
+
+#include "x126100.dtsi"
+#include "x126100-asus-vivobook-16.dtsi"
+
+/delete-node/ &pmc8380_6;
+/delete-node/ &pmc8380_6_thermal;
