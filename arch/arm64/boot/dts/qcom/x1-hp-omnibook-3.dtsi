@@ -42,6 +42,45 @@
 		#sound-dai-cells = <1>;
 	};
 
+	hdmi-bridge {
+		compatible = "parade,ps185hdm";
+
+		pinctrl-0 = <&hdmi_hpd_default>;
+		pinctrl-names = "default";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+
+				hdmi_bridge_dp_in: endpoint {
+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+
+				hdmi_bridge_tmds_out: endpoint {
+					remote-endpoint = <&hdmi_con>;
+				};
+			};
+		};
+	};
+
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		type = "a";
+
+		port {
+			hdmi_con: endpoint {
+				remote-endpoint = <&hdmi_bridge_tmds_out>;
+			};
+		};
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -66,7 +105,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		/* Left-side port, closer to the screen */
+		/* Display-adjacent port */
 		connector@0 {
 			compatible = "usb-c-connector";
 			reg = <0>;
@@ -89,21 +128,21 @@
 					reg = <1>;
 
 					pmic_glink_ss0_ss_in: endpoint {
-						remote-endpoint = <&retimer_ss0_ss_out>;
+						remote-endpoint = <&usb_1_ss0_qmpphy_out>;
 					};
 				};
 
 				port@2 {
 					reg = <2>;
 
-					pmic_glink_ss0_con_sbu_in: endpoint {
-						remote-endpoint = <&retimer_ss0_con_sbu_out>;
+					pmic_glink_ss0_sbu: endpoint {
+						remote-endpoint = <&usb_1_ss0_sbu_mux>;
 					};
 				};
 			};
 		};
 
-		/* Left-side port, farther from the screen */
+		/* User-adjacent port */
 		connector@1 {
 			compatible = "usb-c-connector";
 			reg = <1>;
@@ -152,7 +191,7 @@
 
 	sound: sound {
 		compatible = "qcom,x1e80100-sndcard";
-		model = "X1E80100-HP-OMNIBOOK-X14";
+		model = "X1E80100-HP-OMNIBOOK-3";
 		audio-routing = "SpkrLeft IN", "WSA WSA_SPK1 OUT",
 				"SpkrRight IN", "WSA WSA_SPK2 OUT",
 				"IN1_HPHL", "HPHL_OUT",
@@ -168,15 +207,63 @@
 				"VA DMIC3", "VA MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
 
+		displayport-0-dai-link {
+			link-name = "DisplayPort0 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		displayport-1-dai-link {
+			link-name = "DisplayPort1 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp1>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_1>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
+		displayport-2-dai-link {
+			link-name = "DisplayPort2 Playback";
+
+			codec {
+				sound-dai = <&mdss_dp2>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai DISPLAY_PORT_RX_2>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+
 		wcd-playback-dai-link {
 			link-name = "WCD Playback";
 
-			cpu {
-				sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
-			};
-
 			codec {
 				sound-dai = <&wcd938x 0>, <&swr1 0>, <&lpass_rxmacro 0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>;
 			};
 
 			platform {
@@ -187,12 +274,12 @@
 		wcd-capture-dai-link {
 			link-name = "WCD Capture";
 
-			cpu {
-				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
-			};
-
 			codec {
 				sound-dai = <&wcd938x 1>, <&swr2 1>, <&lpass_txmacro 0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>;
 			};
 
 			platform {
@@ -203,12 +290,12 @@
 		wsa-dai-link {
 			link-name = "WSA Playback";
 
-			cpu {
-				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
-			};
-
 			codec {
 				sound-dai = <&left_spkr>, <&right_spkr>, <&swr0 0>, <&lpass_wsamacro 0>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai WSA_CODEC_DMA_RX_0>;
 			};
 
 			platform {
@@ -219,16 +306,54 @@
 		va-dai-link {
 			link-name = "VA Capture";
 
-			cpu {
-				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
-			};
-
 			codec {
 				sound-dai = <&lpass_vamacro 0>;
 			};
 
+			cpu {
+				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
+			};
+
 			platform {
 				sound-dai = <&q6apm>;
+			};
+		};
+	};
+
+	usb-1-ss0-sbu-mux {
+		compatible = "onnn,fsusb42", "gpio-sbu-mux";
+
+		enable-gpios = <&tlmm 168 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 167 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-0 = <&usb_1_ss0_sbu_default>;
+		pinctrl-names = "default";
+
+		mode-switch;
+		orientation-switch;
+
+		port {
+			usb_1_ss0_sbu_mux: endpoint {
+				remote-endpoint = <&pmic_glink_ss0_sbu>;
+			};
+		};
+	};
+
+	usb-1-ss1-sbu-mux {
+		compatible = "onnn,fsusb42", "gpio-sbu-mux";
+
+		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
+		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-0 = <&usb_1_ss1_sbu_default>;
+		pinctrl-names = "default";
+
+		mode-switch;
+		orientation-switch;
+
+		port {
+			usb_1_ss1_sbu_mux: endpoint {
+				remote-endpoint = <&pmic_glink_ss1_sbu>;
 			};
 		};
 	};
@@ -245,22 +370,6 @@
 
 		pinctrl-0 = <&edp_reg_en>;
 		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_edp_bl: regulator-edp-bl {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VBL9";
-		regulator-min-microvolt = <3600000>;
-		regulator-max-microvolt = <3600000>;
-
-		gpio = <&pmc8380_3_gpios 10 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&edp_bl_reg_en>;
 
 		regulator-boot-on;
 	};
@@ -298,54 +407,6 @@
 		regulator-boot-on;
 	};
 
-	vreg_rtmr0_1p15: regulator-rtmr0-1p15 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_RTMR0_1P15";
-		regulator-min-microvolt = <1150000>;
-		regulator-max-microvolt = <1150000>;
-
-		gpio = <&pmc8380_5_gpios 8 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&usb0_pwr_1p15_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_rtmr0_1p8: regulator-rtmr0-1p8 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_RTMR0_1P8";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-
-		gpio = <&pm8550ve_9_gpios 8 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&usb0_1p8_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
-	vreg_rtmr0_3p3: regulator-rtmr0-3p3 {
-		compatible = "regulator-fixed";
-
-		regulator-name = "VREG_RTMR0_3P3";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-
-		gpio = <&pm8550_gpios 11 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-
-		pinctrl-0 = <&usb0_3p3_reg_en>;
-		pinctrl-names = "default";
-
-		regulator-boot-on;
-	};
-
 	vreg_vph_pwr: regulator-vph-pwr {
 		compatible = "regulator-fixed";
 
@@ -373,12 +434,6 @@
 		regulator-boot-on;
 	};
 
-	/*
-	 * TODO: These two regulators are actually part of the removable M.2
-	 * card and not the CRD mainboard. Need to describe this differently.
-	 * Functionally it works correctly, because all we need to do is to
-	 * turn on the actual 3.3V supply above.
-	 */
 	vreg_wcn_0p95: regulator-wcn-0p95 {
 		compatible = "regulator-fixed";
 
@@ -458,25 +513,6 @@
 
 			vreg_pmu_rfa_1p7: ldo9 {
 				regulator-name = "vreg_pmu_rfa_1p7";
-			};
-		};
-	};
-
-	usb-1-ss1-sbu-mux {
-		compatible = "onnn,fsusb42", "gpio-sbu-mux";
-
-		enable-gpios = <&tlmm 179 GPIO_ACTIVE_LOW>;
-		select-gpios = <&tlmm 178 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-0 = <&usb_1_ss1_sbu_default>;
-		pinctrl-names = "default";
-
-		mode-switch;
-		orientation-switch;
-
-		port {
-			usb_1_ss1_sbu_mux: endpoint {
-				remote-endpoint = <&pmic_glink_ss1_sbu>;
 			};
 		};
 	};
@@ -860,66 +896,25 @@
 	};
 };
 
-&i2c3 {
-	clock-frequency = <400000>;
-
-	status = "okay";
-
-	typec-mux@8 {
-		compatible = "parade,ps8830";
-		reg = <0x08>;
-
-		clocks = <&rpmhcc RPMH_RF_CLK3>;
-
-		vdd-supply = <&vreg_rtmr0_1p15>;
-		vdd33-supply = <&vreg_rtmr0_3p3>;
-		vdd33-cap-supply = <&vreg_rtmr0_3p3>;
-		vddar-supply = <&vreg_rtmr0_1p15>;
-		vddat-supply = <&vreg_rtmr0_1p15>;
-		vddio-supply = <&vreg_rtmr0_1p8>;
-
-		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_LOW>;
-
-		pinctrl-0 = <&rtmr0_default>;
-		pinctrl-names = "default";
-
-		orientation-switch;
-		retimer-switch;
-
-		ports {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			port@0 {
-				reg = <0>;
-
-				retimer_ss0_ss_out: endpoint {
-					remote-endpoint = <&pmic_glink_ss0_ss_in>;
-				};
-			};
-
-			port@1 {
-				reg = <1>;
-
-				retimer_ss0_ss_in: endpoint {
-					remote-endpoint = <&usb_1_ss0_qmpphy_out>;
-				};
-			};
-
-			port@2 {
-				reg = <2>;
-
-				retimer_ss0_con_sbu_out: endpoint {
-					remote-endpoint = <&pmic_glink_ss0_con_sbu_in>;
-				};
-			};
-		};
-	};
-};
-
 &i2c5 {
 	clock-frequency = <400000>;
 	status = "okay";
+
+	keyboard@3a {
+		compatible = "hid-over-i2c";
+		reg = <0x3a>;
+
+		hid-descr-addr = <0x3a>;
+		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+
+		vdd-supply = <&vreg_misc_3p3>;
+		vddl-supply = <&vreg_l12b_1p2>;
+
+		pinctrl-0 = <&kybd_default>;
+		pinctrl-names = "default";
+
+		wakeup-source;
+	};
 
 	eusb3_repeater: redriver@43 {
 		compatible = "nxp,ptn3222";
@@ -933,37 +928,35 @@
 
 		pinctrl-0 = <&eusb3_reset_n>;
 		pinctrl-names = "default";
-
 	};
 
-	eusb_2_repeater: redriver@4b {
+	eusb5_repeater: redriver@4b {
 		compatible = "nxp,ptn3222";
 		reg = <0x4b>;
 		#phy-cells = <0>;
+
 
 		vdd3v3-supply = <&vreg_l13b_3p0>;
 		vdd1v8-supply = <&vreg_l4b_1p8>;
 
 		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
 
-		pinctrl-0 = <&eusb_2_reset_n>;
+		pinctrl-0 = <&eusb5_reset_n>;
 		pinctrl-names = "default";
 	};
 
-	keyboard@3a {
-		compatible = "hid-over-i2c";
-		reg = <0x3a>;
+	eusb6_repeater: redriver@4f {
+		compatible = "nxp,ptn3222";
+		reg = <0x4f>;
+		#phy-cells = <0>;
 
-		hid-descr-addr = <0x3a>;	/* ACPI _DSM value; the X14 uses 0x1 */
-		interrupts-extended = <&tlmm 67 IRQ_TYPE_LEVEL_LOW>;
+		vdd3v3-supply = <&vreg_l13b_3p0>;
+		vdd1v8-supply = <&vreg_l4b_1p8>;
 
-		vdd-supply = <&vreg_misc_3p3>;
-		vddl-supply = <&vreg_l12b_1p2>;
+		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
 
-		pinctrl-0 = <&kybd_default>;
+		pinctrl-0 = <&eusb6_reset_n>;
 		pinctrl-names = "default";
-
-		wakeup-source;
 	};
 };
 
@@ -1010,6 +1003,8 @@
 };
 
 &mdss_dp0 {
+	sound-name-prefix = "DisplayPort0";
+
 	status = "okay";
 };
 
@@ -1018,10 +1013,22 @@
 };
 
 &mdss_dp1 {
+	sound-name-prefix = "DisplayPort1";
+
 	status = "okay";
 };
 
 &mdss_dp1_out {
+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
+};
+
+&mdss_dp2 {
+	sound-name-prefix = "DisplayPort2";
+
+	status = "okay";
+};
+
+&mdss_dp2_out {
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 };
 
@@ -1046,7 +1053,7 @@
 				edp_panel_in: endpoint {
 					remote-endpoint = <&mdss_dp3_out>;
 				};
-			};	
+			};
 		};
 	};
 };
@@ -1120,26 +1127,6 @@
 	status = "okay";
 };
 
-&pm8550_gpios {
-	rtmr0_default: rtmr0-reset-n-active-state {
-		pins = "gpio10";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
-
-	usb0_3p3_reg_en: usb0-3p3-reg-en-state {
-		pins = "gpio11";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
-};
-
 &pm8550ve_8_gpios {
 	misc_3p3_reg_en: misc-3p3-reg-en-state {
 		pins = "gpio6";
@@ -1153,17 +1140,6 @@
 	};
 };
 
-&pm8550ve_9_gpios {
-	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
-		pins = "gpio8";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
-};
-
 &pmc8380_3_gpios {
 	edp_bl_en: edp-bl-en-state {
 		pins = "gpio4";
@@ -1172,34 +1148,6 @@
 		input-disable;
 		output-enable;
 	};
-
-	edp_bl_reg_en: edp-bl-reg-en-state {
-		pins = "gpio10";
-		function = "normal";
-	};
-
-};
-
-&pmc8380_5_gpios {
-	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
-		pins = "gpio8";
-		function = "normal";
-		power-source = <1>; /* 1.8V */
-		bias-disable;
-		input-disable;
-		output-enable;
-	};
-};
-
-&pmk8550_gpios {
-	edp_bl_pwm: edp-bl-pwm-state {
-		pins = "gpio5";
-		function = "func3";
-	};
-};
-
-&pmk8550_pwm {
-	status = "okay";
 };
 
 &qupv3_0 {
@@ -1298,7 +1246,15 @@
 		bias-disable;
 	};
 
-	eusb_2_reset_n: eusb-2-reset-n-state {
+	eusb3_reset_n: eusb3-reset-n-state {
+		pins = "gpio6";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	eusb5_reset_n: eusb5-reset-n-state {
 		pins = "gpio7";
 		function = "gpio";
 		drive-strength = <2>;
@@ -1306,8 +1262,8 @@
 		output-low;
 	};
 
-	eusb3_reset_n: eusb3-reset-n-state {
-		pins = "gpio6";
+	eusb6_reset_n: eusb6-reset-n-state {
+		pins = "gpio184";
 		function = "gpio";
 		drive-strength = <2>;
 		bias-disable;
@@ -1317,6 +1273,12 @@
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio92";
 		function = "gpio";
+		bias-disable;
+	};
+
+	hdmi_hpd_default: hdmi-hpd-default-state {
+		pins = "gpio126";
+		function = "usb2_dp";
 		bias-disable;
 	};
 
@@ -1400,26 +1362,35 @@
 		};
 	};
 
-	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
-		mode-pins {
-			pins = "gpio177";
+	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
+		oe-n-pins {
+			pins = "gpio168";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
-			output-high;
 		};
 
+		sel-pins {
+			pins = "gpio167";
+			function = "gpio";
+			bias-pull-up;
+			drive-strength = <2>;
+		};
+
+	};
+
+	usb_1_ss1_sbu_default: usb-1-ss1-sbu-state {
 		oe-n-pins {
 			pins = "gpio179";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 
 		sel-pins {
 			pins = "gpio178";
 			function = "gpio";
-			bias-disable;
+			bias-pull-up;
 			drive-strength = <2>;
 		};
 	};
@@ -1492,7 +1463,7 @@
 };
 
 &usb_1_ss0_qmpphy_out {
-	remote-endpoint = <&retimer_ss0_ss_in>;
+	remote-endpoint = <&pmic_glink_ss0_ss_in>;
 };
 
 &usb_1_ss1_hsphy {
@@ -1511,21 +1482,6 @@
 	status = "okay";
 };
 
-&usb_2 {
-	dr_mode = "host";
-
-	status = "okay";
-};
-
-&usb_2_hsphy {
-	vdd-supply = <&vreg_l2e_0p8>;
-	vdda12-supply = <&vreg_l3e_1p2>;
-
-	phys = <&eusb_2_repeater>;
-
-	status = "okay";
-};
-
 &usb_1_ss1 {
 	dr_mode = "host";
 
@@ -1540,10 +1496,48 @@
 	remote-endpoint = <&pmic_glink_ss1_ss_in>;
 };
 
-&usb_mp {
-	phys = <&usb_mp_hsphy0>, <&usb_mp_qmpphy0>;
-	phy-names = "usb2-0", "usb3-0";
+&usb_1_ss2_qmpphy {
+	vdda-phy-supply = <&vreg_l2j_1p2>;
+	vdda-pll-supply = <&vreg_l2d_0p9>;
 
+	/delete-property/ mode-switch;
+	/delete-property/ orientation-switch;
+
+	status = "okay";
+
+	ports {
+		port@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/delete-node/ endpoint;
+
+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
+				reg = <0>;
+
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&hdmi_bridge_dp_in>;
+			};
+		};
+	};
+};
+
+&usb_2 {
+	dr_mode = "host";
+
+	status = "okay";
+};
+
+&usb_2_hsphy {
+	vdd-supply = <&vreg_l2e_0p8>;
+	vdda12-supply = <&vreg_l3e_1p2>;
+
+	phys = <&eusb5_repeater>;
+
+	status = "okay";
+};
+
+&usb_mp {
 	status = "okay";
 };
 
@@ -1557,6 +1551,22 @@
 };
 
 &usb_mp_qmpphy0 {
+	vdda-phy-supply = <&vreg_l3c_0p8>;
+	vdda-pll-supply = <&vreg_l3e_1p2>;
+
+	status = "okay";
+};
+
+&usb_mp_hsphy1 {
+	vdd-supply = <&vreg_l2e_0p8>;
+	vdda12-supply = <&vreg_l3e_1p2>;
+
+	phys = <&eusb6_repeater>;
+
+	status = "okay";
+};
+
+&usb_mp_qmpphy1 {
 	vdda-phy-supply = <&vreg_l3c_0p8>;
 	vdda-pll-supply = <&vreg_l3e_1p2>;
 
