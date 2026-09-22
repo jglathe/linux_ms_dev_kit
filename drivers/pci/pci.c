@@ -3067,6 +3067,10 @@ bool pci_bridge_d3_possible(struct pci_dev *bridge)
 		if (IS_ENABLED(CONFIG_X86) && bridge->is_pciehp)
 			return false;
 
+		/* SC8280XP Root Ports crash the system when entering D3. */
+		if (of_machine_is_compatible("qcom,sc8280xp"))
+			return false;
+
 		if (dmi_check_system(bridge_d3_blacklist))
 			return false;
 
