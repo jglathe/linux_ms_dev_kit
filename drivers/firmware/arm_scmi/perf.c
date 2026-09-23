@@ -861,11 +861,20 @@ static void scmi_perf_domain_init_fc(const struct scmi_protocol_handle *ph,
 	dom->fc_info = fc;
 }
 
+static unsigned long scmi_perf_opp_freq(const struct perf_dom_info *dom,
+					int idx)
+{
+	if (!dom->level_indexing_mode)
+		return dom->opp[idx].perf * dom->mult_factor;
+
+	return dom->opp[idx].indicative_freq * dom->mult_factor;
+}
+
 static int scmi_dvfs_device_opps_add(const struct scmi_protocol_handle *ph,
 				     struct device *dev, u32 domain)
 {
 	int idx, ret;
-	unsigned long freq;
+	unsigned long freq, sustained_hz, lowest_hz = ULONG_MAX;
 	struct dev_pm_opp_data data = {};
 	struct perf_dom_info *dom;
 
@@ -873,14 +882,27 @@ static int scmi_dvfs_device_opps_add(const struct scmi_protocol_handle *ph,
 	if (IS_ERR(dom))
 		return PTR_ERR(dom);
 
+	for (idx = 0; idx < dom->opp_count; idx++)
+		lowest_hz = min(lowest_hz, scmi_perf_opp_freq(dom, idx));
+
+	/*
+	 * A sustained frequency below every OPP would mark all of them as
+	 * turbo. Such a value cannot separate sustained levels from boost
+	 * levels, so ignore it and treat the domain as having no turbo OPPs.
+	 */
+	sustained_hz = dom->sustained_freq_khz * 1000UL;
+	if (dom->opp_count && sustained_hz < lowest_hz) {
+		dev_warn_once(dev, FW_BUG
+			      "[%d][%s]: sustained freq %lu Hz below lowest OPP %lu Hz, ignored\n",
+			      domain, dom->info.name, sustained_hz, lowest_hz);
+		sustained_hz = ULONG_MAX;
+	}
+
 	for (idx = 0; idx < dom->opp_count; idx++) {
-		if (!dom->level_indexing_mode)
-			freq = dom->opp[idx].perf * dom->mult_factor;
-		else
-			freq = dom->opp[idx].indicative_freq * dom->mult_factor;
+		freq = scmi_perf_opp_freq(dom, idx);
 
 		/* All OPPs above the sustained frequency are treated as turbo */
-		data.turbo = freq > dom->sustained_freq_khz * 1000UL;
+		data.turbo = freq > sustained_hz;
 
 		data.level = dom->opp[idx].perf;
 		data.freq = freq;
