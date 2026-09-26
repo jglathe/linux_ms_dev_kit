@@ -5275,10 +5275,11 @@
 				      "xo",
 				      "core";
 
-			iommus = <&apps_smmu 0x1940 0>,
-				 <&apps_smmu 0x1947 0>;
-
 			dma-coherent;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+			dma-ranges = <0x0 0x0 0x0 0xe0000000>;
 
 			/*
 			 * IRIS firmware is signed by vendors, only
@@ -5286,6 +5287,15 @@
 			 * is available.
 			 */
 			status = "disabled";
+
+			non-pixel {
+				iommus = <&apps_smmu 0x1940 0x0>;
+				iommu-ranges = <0x25800000 0xba800000>;
+			};
+
+			pixel {
+				iommus = <&apps_smmu 0x1947 0x0>;
+			};
 
 			iris_opp_table: opp-table {
 				compatible = "operating-points-v2";
