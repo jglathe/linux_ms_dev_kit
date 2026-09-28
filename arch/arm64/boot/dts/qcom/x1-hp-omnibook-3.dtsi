@@ -19,8 +19,8 @@
 	wcd938x: audio-codec {
 		compatible = "qcom,wcd9385-codec";
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&wcd_default>;
+		pinctrl-names = "default";
 
 		qcom,micbias1-microvolt = <1800000>;
 		qcom,micbias2-microvolt = <1800000>;
@@ -100,10 +100,10 @@
 		compatible = "qcom,x1e80100-pmic-glink",
 			     "qcom,sm8550-pmic-glink",
 			     "qcom,pmic-glink";
-		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
-				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
+				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
 
 		/* Display-adjacent port */
 		connector@0 {
@@ -384,8 +384,8 @@
 		gpio = <&pm8550ve_8_gpios 6 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 
-		pinctrl-names = "default";
 		pinctrl-0 = <&misc_3p3_reg_en>;
+		pinctrl-names = "default";
 
 		regulator-boot-on;
 		regulator-always-on;
@@ -558,7 +558,7 @@
 		vreg_l2b_3p0: ldo2 {
 			regulator-name = "vreg_l2b_3p0";
 			regulator-min-microvolt = <3072000>;
-			regulator-max-microvolt = <3100000>;
+			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -567,6 +567,10 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l5b_3p0: ldo5 {
@@ -622,8 +626,12 @@
 		vreg_l13b_3p0: ldo13 {
 			regulator-name = "vreg_l13b_3p0";
 			regulator-min-microvolt = <3072000>;
-			regulator-max-microvolt = <3100000>;
+			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l14b_3p0: ldo14 {
@@ -1059,7 +1067,7 @@
 };
 
 &mdss_dp3_out {
-	data-lanes = <0 1 2 3>;
+	data-lanes = <3 2 1 0>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 
 	remote-endpoint = <&edp_panel_in>;
