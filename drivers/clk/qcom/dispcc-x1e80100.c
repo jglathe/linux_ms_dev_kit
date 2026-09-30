@@ -94,6 +94,21 @@ static struct clk_alpha_pll disp_cc_pll0 = {
 	.clkr = {
 		.hw.init = &(const struct clk_init_data) {
 			.name = "disp_cc_pll0",
+			/*
+			 * The boot firmware (UEFI) leaves disp_cc_pll0 locked
+			 * and running for the handover framebuffer.
+			 * clk_disable_unused() runs before any display driver
+			 * probes, finds the PLL unused (no consumers, no
+			 * CLK_IGNORE_UNUSED) and powers it down.  The DPU
+			 * driver then has to relock it via the reset-prepare
+			 * sequence.  On X1E80100 that relock can end up
+			 * marginal (per-boot analog lottery), degrading the
+			 * DPU core timing enough to corrupt eDP output at
+			 * MTP granularity (every other micro transfer packet
+			 * delivered blank, on ~50% of boots).  Keeping the
+			 * firmware PLL state avoids the relock entirely.
+			 */
+			.flags = CLK_IGNORE_UNUSED,
 			.parent_data = &(const struct clk_parent_data) {
 				.index = DT_BI_TCXO,
 			},
