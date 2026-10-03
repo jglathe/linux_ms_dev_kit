@@ -5,12 +5,13 @@
 #include "purwa.dtsi"
 #include "hamoa-pmics.dtsi"
 #include "x1-hp-omnibook-3.dtsi"
+
 /delete-node/ &pmc8380_6;
 /delete-node/ &pmc8380_6_thermal;
 
 / {
 	model = "HP OmniBook 3 Laptop 14-hz0xxx";
-	compatible = "hp,omnibook-3-14-hz0xxx", "lenovo,thinkpad-t14s", "qcom,x1p42100";
+	compatible = "hp,omnibook-3-oled","hp,omnibook-3", "lenovo,thinkpad-t14s", "qcom,x1p42100";
 	chassis-type = "laptop";
 };
 
