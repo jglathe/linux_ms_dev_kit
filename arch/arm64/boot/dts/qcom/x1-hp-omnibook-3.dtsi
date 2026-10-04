@@ -690,7 +690,7 @@
 		vreg_l2c_0p9: ldo2 {
 			regulator-name = "vreg_l2c_0p9";
 			regulator-min-microvolt = <880000>;
-			regulator-max-microvolt = <880000>;
+			regulator-max-microvolt = <920000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -872,7 +872,7 @@
 		vreg_l3j_0p9: ldo3 {
 			regulator-name = "vreg_l3j_0p9";
 			regulator-min-microvolt = <880000>;
-			regulator-max-microvolt = <880000>;
+			regulator-max-microvolt = <920000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
