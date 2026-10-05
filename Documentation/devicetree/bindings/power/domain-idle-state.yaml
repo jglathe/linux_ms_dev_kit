@@ -45,6 +45,12 @@ patternProperties:
           state will yield power benefits, after overcoming the overhead while
           entering the idle state.
 
+      system-state:
+        description:
+          When present, this state requires system-wide coordination and is
+          not applicable while the platform is up and running.
+        type: boolean
+
       arm,psci-suspend-param:
         $ref: /schemas/types.yaml#/definitions/uint32
         description: |
@@ -76,6 +82,14 @@ examples:
         entry-latency-us = <20>;
         exit-latency-us = <40>;
         min-residency-us = <80>;
+      };
+
+      domain_power_off: domain-power-off {
+        compatible = "domain-idle-state";
+        entry-latency-us = <100>;
+        exit-latency-us = <200>;
+        min-residency-us = <1000>;
+        system-state;
       };
     };
 ...
