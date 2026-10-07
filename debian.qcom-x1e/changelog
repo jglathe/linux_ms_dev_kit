@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.3.0-21.21) stonking; urgency=medium
+
+  [ Hans de Goede ]
+  * power: sequencing: pcie-m2: Add Lenovo ThinkPad T14s gen6 WCN7850 subsystem PCI ids
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Thu, 08 Oct 2026 00:44:07 +0200
+
 linux-qcom-x1e (7.3.0-20.20) stonking; urgency=medium
 
   * Rebase onto generic 7.3.0-9.9
