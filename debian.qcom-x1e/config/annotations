@@ -10226,10 +10226,10 @@ CONFIG_RUSTC_HAS_FILE_AS_C_STR                  policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_FILE_WITH_NUL                  policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '22'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '220106'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '109701'}>
 CONFIG_RUSTC_VERSION_TEXT                       policy<{'arm64': '"rustc 1.93.1 (01f6ddf75 2026-02-11) (built from a source tarball)"'}>
 CONFIG_RUST_BITMAP_HARDENED                     policy<{'arm64': 'n'}>
 CONFIG_RUST_BUILD_ASSERT_ALLOW                  policy<{'arm64': 'n'}>
