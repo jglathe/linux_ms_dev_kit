@@ -558,7 +558,7 @@
 		vreg_l2b_3p0: ldo2 {
 			regulator-name = "vreg_l2b_3p0";
 			regulator-min-microvolt = <3072000>;
-			regulator-max-microvolt = <3100000>;
+			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
@@ -626,7 +626,7 @@
 		vreg_l13b_3p0: ldo13 {
 			regulator-name = "vreg_l13b_3p0";
 			regulator-min-microvolt = <3072000>;
-			regulator-max-microvolt = <3100000>;
+			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 
 			regulator-state-mem {
@@ -696,7 +696,7 @@
 
 		vreg_l3c_0p9: ldo3 {
 			regulator-name = "vreg_l3c_0p9";
-			regulator-min-microvolt = <912000>;
+			regulator-min-microvolt = <880000>;
 			regulator-max-microvolt = <920000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
@@ -857,8 +857,8 @@
 
 		vreg_l1j_0p9: ldo1 {
 			regulator-name = "vreg_l1j_0p9";
-			regulator-min-microvolt = <912000>;
-			regulator-max-microvolt = <912000>;
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <920000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
