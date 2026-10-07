@@ -1,26 +1,319 @@
 linux-qcom-x1e (7.3.0-18.18) stonking; urgency=medium
 
+  * Rebase onto generic 7.3.0-9.9
   * i2c: qcom-geni: Restore the source-clock selection policy
   * i2c: qcom-geni: Fix hardcoded clock index in SE_GENI_CLK_SEL
   * net: qrtr: resend HELLO on MHI resume
 
  -- Tobias Heider <tobias.heider@canonical.com>  Wed, 07 Oct 2026 14:48:32 +0200
 
-linux-qcom-x1e (7.3.0-17.17) stonking; urgency=medium
+linux (7.3.0-9.9) stonking; urgency=medium
 
-  [ Manivannan Sadhasivam ]
-  * Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+  * stonking/linux: 7.3.0-9.9 -proposed tracker (LP: #2169521)
 
-  [ Tobias Heider ]
-  * Relax QSEECOM allowlist, allow all of X1 and Glymur
+  * 26.10 mini-iso: screen hangs after selecting target (LP: #2169198)
+    - [Config] Disable KEXEC_HANDOVER_ENABLE_DEFAULT
 
- -- Tobias Heider <tobias.heider@canonical.com>  Tue, 06 Oct 2026 12:15:31 +0200
+  * Support additional 2888x1808@30fps 900MHz for OVTI05C1 camera sensor
+    (LP: #2147409)
+    - media: ipu-bridge: Add support additional link frequency
+    - platform/x86: int3472: Increase handshake GPIO delay to 200 ms
 
-linux-qcom-x1e (7.3.0-15.15) stonking; urgency=medium
+  * AMD system hangs on resume when a Thunderbolt dock is plugged in during
+    s2idle (LP: #2168944)
+    - platform/x86/amd: Stop counting intermediate cycles with metrics table
 
-  * Rebase linux-qcom-x1e onto ubuntu-unstable
+  * Fix TI TAS2783 amplifier firmware load issue (LP: #2169023)
+    - ASoC: tas2783-sdw: add firmware download status check
 
- -- Tobias Heider <tobias.heider@canonical.com>  Mon, 14 Sep 2026 12:16:35 +0200
+  * Miscellaneous Ubuntu changes
+    - [Packaging] Restore the linux-doc transitional stub
+    - [Config] updateconfigs after v7.3-rc6 rebase
+    - [Config] Enable ARM64_ERRATUM_3821522
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 05 Oct 2026 10:56:27 +0200
+
+linux (7.3.0-8.8) stonking; urgency=medium
+
+  * stonking/linux: 7.3.0-8.8 -proposed tracker (LP: #2168832)
+
+  * Ubuntu 26.04 linux kernel has non-functional nova-core GPU driver enabled,
+    conflicting with nouveau (LP: #2150845)
+    - [Config] Disable DRM_NOVA
+    - [Config] Disable NOVA_CORE
+
+  * Include v4l2loopback in default modules set for 26.04 (LP: #2168012)
+    - [Packaging] Add dependency for v4l2loopback
+
+  * linux: enable CONFIG_EROFS_FS_PAGE_CACHE_SHARE (LP: #2158501)
+    - [Config] Enable CONFIG_EROFS_FS_PAGE_CACHE_SHARE
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Tue, 29 Sep 2026 19:04:39 +0200
+
+linux (7.3.0-7.7) stonking; urgency=medium
+
+  * stonking/linux: 7.3.0-7.7 -proposed tracker (LP: #2168730)
+
+  * Stonking real-time patchset v7.3-rc4-rt1 (LP: #2168432)
+    - SAUCE: drm/i915: Use preempt_disable/enable_rt() where recommended
+    - SAUCE: drm/i915: Don't disable interrupts on PREEMPT_RT during atomic
+      updates
+    - SAUCE: drm/i915: Disable tracing points on PREEMPT_RT
+    - SAUCE: drm/i915/gt: Use spin_lock_irq() instead of local_irq_disable() +
+      spin_lock()
+    - SAUCE: drm/i915: Drop the irqs_disabled() check
+    - SAUCE: drm/i915/guc: Consider also RCU depth in busy loop.
+    - SAUCE: Revert "drm/i915: Depend on !PREEMPT_RT."
+    - SAUCE: drm/i915: Consider RCU read section as atomic.
+    - [debian] update master upstream-realtime
+
+  * Linux, Ubuntu, 24.04, System hangs for about 10 seconds when unplug
+    external monitor cable on non TBT dock  (LP: #2160082)
+    - Revert "UBUNTU: SAUCE: drm/i915/lnl+/tc: Fix false disconnect of active
+      DP-alt TC port during long HPD pulse"
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 28 Sep 2026 17:46:02 +0200
+
+linux (7.3.0-6.6) stonking; urgency=medium
+
+  * stonking/linux: 7.3.0-6.6 -proposed tracker (LP: #2167819)
+
+  * 26.10 Snapdragon X Elite: Sync concept kernel changes  (LP: #2167217)
+    - SAUCE: arm64: dts: qcom: x1e78100-lenovo-thinkpad-t14s: Describe the
+      PCIe M.2 Key M connector
+    - SAUCE: arm64: dts: qcom: x1e78100-lenovo-thinkpad-t14s: Describe PCIe
+      M.2 1620 LGA connector
+    - SAUCE: arm64: dts: qcom: hamoa/purwa: Add QREF regulator supplies
+    - SAUCE: dt-bindings: arm: qcom: Distinguish IdeaCentre Mini 01Q8X10 SKUs
+    - SAUCE: arm64: dts: qcom: Split IdeaCentre Mini into a common DTSI
+    - SAUCE: arm64: dts: qcom: Add Purwa IdeaCentre Mini 01Q8X10
+    - SAUCE: arm64: dts: qcom: ideacentre-mini: Build the Hamoa EL2 DTB
+    - SAUCE: arm64: dts: qcom: ideacentre-mini: Fix the second M.2 3V3 rail
+    - SAUCE: arm64: dts: qcom: ideacentre-mini: Wire up DP sound names and VA
+      macro
+    - SAUCE: arm64: dts: qcom: ideacentre-mini: Drop the unused USB MP port
+    - SAUCE: dt-bindings: arm: qcom: Add Lenovo Ideapad Slim 5 variants
+    - SAUCE: firmware: qcom: scm: Allow QSEECOM on Lenovo IdeaPad 5 models
+    - SAUCE: arm64: dts: qcom: Add Lenovo IdeaPad Slim 5x 14Q8X9
+    - SAUCE: arm64: dts: qcom: glymur: Add PCIe3 PHY and PCIe3a controller
+      nodes
+    - SAUCE: arm64: dts: qcom: glymur-crd: Add PHY supplies for pcie3_phy
+    - SAUCE: dt-bindings: arm: qcom: Add Asus Zenbook A14 (UX3407NA)
+    - SAUCE: arm64: dts: qcom: glymur: Add Asus Zenbook A14 (UX3407NA)
+    - SAUCE: firmware: qcom: scm: Allow QSEECOM on Asus Zenbook A14 (UX3407NA)
+    - SAUCE: dt-bindings: arm: qcom: Add HP EliteBook X G2q 14 AI
+    - SAUCE: arm64: dts: qcom: Add HP EliteBook X G2q 14 AI
+    - SAUCE: firmware: qcom: scm: Allow QSEECOM on HP EliteBook X G2q 14 AI
+    - SAUCE: dt-bindings: arm: qcom: Add Lenovo Yoga Slim 7x Gen11
+    - SAUCE: arm64: dts: qcom: glymur: Add Lenovo Yoga Slim 7x Gen11
+    - SAUCE: firmware: qcom: scm: Allow QSEECOM on Yoga Slim 7x Gen11
+    - SAUCE: phy: qcom: edp: split power-on sequencing by PHY version
+    - SAUCE: phy: qcom: edp: update v8 power-on programming sequence
+
+  * Support TI TAC5xx2 audio codec on Intel NVL platform (LP: #2167689)
+    - soundwire: intel_auxdevice: add tac5xx2 family to wake_capable_list
+
+  * Add support for Zen6 EPP tunings (LP: #2167558)
+    - cpufreq/amd-pstate: Add per SoC and per core type EPP tuning values
+    - cpufreq/amd-pstate: Add EPP tunings for Zen6 client platforms
+    - cpufreq/amd-pstate: Show a warning if missing EPP tunings
+
+  * Zen 6 client HSMP support (LP: #2167555)
+    - SAUCE: platform/x86/amd/hsmp: Add HSMP client support for Family 1Ah
+    - SAUCE: platform/x86/amd/hsmp: Route metric table through the client
+      messages
+    - SAUCE: platform/x86/amd/hsmp: Add ACPI client support for Family 1Ah
+    - SAUCE: platform/x86/amd/hsmp: Document and expose client telemetry table
+      in UAPI
+
+  * Fix fTPM handling on Zen 6 platforms (LP: #2167552)
+    - tpm: Call cmd_ready/go_idle for each command transmission
+
+  * Add support for CPPC values for Zen6 (LP: #2167550)
+    - SAUCE: ACPI: CPPC: Refactor boost ratio handling
+    - SAUCE: cpufreq/acpi-cpufreq: Use amd_get_boost_ratio()
+    - SAUCE: cpufreq/amd-pstate: Get Highest Freq for a CPU
+
+  * Support Samsung S5K3J1 sensor for Intel MIPI camera (LP: #2121852)
+    - SAUCE: media: ipu-bridge: Support s5k3j1 sensor
+
+  * 25.10 Snapdragon X Elite: Sync concept kernel changes (LP: #2121477)
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-xps13-9345: Add Left/Right
+      Speakers and Tweeter
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-xps13-9345: enable MICs LDO
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-xps13-9345: Mark audio channels
+      as left-right swapped
+    - SAUCE: arm64: dts: qcom: x1-acer-swift-14: Add support for Acer Swift 14
+    - SAUCE: dt-bindings: arm: qcom: Add Acer Swift 14 AI
+    - SAUCE: Update x1-acer device trees for v7.3
+
+  * 26.04 Snapdragon X Elite: Sync concept kernel changes  (LP: #2144643)
+    - SAUCE: dt-bindings: phy: qcom: Add CSI2 C-PHY/DPHY schema
+    - SAUCE: phy: qcom-mipi-csi2: Add a CSI2 MIPI DPHY driver
+    - SAUCE: dt-bindings: media: qcom,x1e80100-camss: Add simple-mfd
+      compatible
+    - SAUCE: dt-bindings: media: qcom,x1e80100-camss: Add optional PHY handle
+      definitions
+    - SAUCE: dt-bindings: media: qcom,x1e80100-camss: Add support for combo-
+      mode endpoints
+    - SAUCE: dt-bindings: media: qcom,x1e80100-camss: Describe iommu entries
+    - SAUCE: media: qcom: camss: Add legacy_phy flag to SoC definition
+      structures
+    - SAUCE: media: qcom: camss: Add support for PHY API devices
+    - SAUCE: media: qcom: camss: Drop legacy PHY descriptions from x1e
+    - SAUCE: arm64: dts: qcom: x1e80100: Add CCI definitions
+    - SAUCE: arm64: dts: qcom: x1e80100: Add CAMSS block definition
+    - SAUCE: arm64: dts: qcom: x1e80100-crd: Add pm8010 CRD pmic,id=m
+      regulators
+    - SAUCE: arm64: dts: qcom: x1e80100-crd: Add ov08x40 RGB sensor on CSIPHY4
+    - SAUCE: arm64: dts: qcom: x1e80100-t14s: Add pm8010 camera PMIC with
+      voltage levels for IR and RGB camera
+    - SAUCE: arm64: dts: qcom: x1e80100-t14s: Add on ov02c10 RGB sensor on
+      CSIPHY4
+    - SAUCE: arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: Add pm8010 camera
+      PMIC with voltage levels for IR and RGB camera
+    - SAUCE: arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: Add l7b_2p8
+      voltage regulator for RGB camera
+    - SAUCE: arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: Add ov02c10 RGB
+      sensor on CSIPHY4
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-inspiron14-7441: Switch on CAMSS
+      RGB sensor
+    - SAUCE: arm64: dts: qcom: x1e78100-t14s: enable camera privacy indicator
+    - SAUCE: arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: enable camera
+      privacy indicator
+    - SAUCE: arm64: dts: qcom: x1-asus-zenbook-a14: Add on OV02C10 RGB sensor
+      on CSIPHY4
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-xps13-9345: add camera support
+    - SAUCE: arm64: dts: qcom: x1e80100-dell-xps13-9345: enable camera privacy
+      indicator
+    - SAUCE: arm64: dts: qcom: x1e-acer-swift-14: Move PCIe PERST and Wake
+      GPIOs to port nodes
+
+  * Add support for AMD Zen6 client SFH (LP: #2167219)
+    - SAUCE: HID: amd_sfh: Add DMI quirk and module param to disable
+      interrupts
+    - SAUCE: HID: amd_sfh: Add support for newer AMD SoCs
+    - SAUCE: HID: amd_sfh: Add HPD support for new AMD SOC
+    - SAUCE: HID: amd_sfh: Add device mode support for latest AMD SOC.
+
+  * append bpf to CONFIG_LSM (LP: #2166235)
+    - [Config] append bpf to CONFIG_LSM
+
+  * Malformed HV_LINUX_VENDOR_ID breaks VM Availability Metric on Azure
+    (LP: #2158462)
+    - SAUCE: (no-up) hv: Fix supplied vendor ID
+
+  * Miscellaneous Ubuntu changes
+    - [Packaging] Add incremental rebuild support
+    - [Packaging] Snapshot incremental rebuild packages
+    - SAUCE: arm64: dts: qcom: x1p42100-hp-elitebook-6-g1q: DT for HP
+      EliteBook 6 G1q
+    - SAUCE: arm64: dts: qcom: x1e80100-lenovo-yoga-slim7x: Fix RGB camera
+      supplies
+    - SAUCE: dt-bindings: arm: qcom: Document HP EliteBook 6 G1q
+    - SAUCE: firmware: qcom: scm: Allow QSEECOM for HP EliteBook 6 G1q
+    - [packaging] Create a linux-main-modules dependency toggle
+    - [Config] toolchain version update
+    - [Config] updateconfigs after v7.3-rc4 rebase
+    - [Config] enable new v7.3-rc4 drivers as modules
+    - [Packaging] Build-depend on clang/LLVM 22 to match rustc
+    - [Packaging] compress the SPDX SBOM documents in linux-buildinfo
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 21 Sep 2026 16:57:39 +0200
+
+linux (7.3.0-5.5) stonking; urgency=medium
+
+  * stonking/linux: 7.3.0-5.5 -proposed tracker (LP: #2167199)
+
+  * AA: disable SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED (LP: #2147533)
+    - [Config] disable SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED
+
+  * Packaging resync (LP: #1786013)
+    - [Packaging] update variants
+
+  * unconfined profile denies userns_create for chromium based processes
+    (LP: #1990064)
+    - [Config] disable CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS
+
+  * FFe: add network interface mediation to 26.04 (LP: #2144679)
+    - SAUCE: apparmor5.1.0 [24/25]: apparmor: skb: add the ability to use
+      interface in network mediation.
+    - SAUCE: apparmor5.1.0 [25/25]: apparmor: skb: switch to using sk_ctx crit
+      section
+
+  * Jellyfin Desktop Flatpak doesn't work with the current AppArmor profile
+    (LP: #2142956)
+    - SAUCE: apparmor5.1.0 [23/25]: apparmor: skb: fix
+      apparmor_secmark_check() when !inet and secmark defined.
+
+  * update apparmor and LSM stacking patch set (LP: #2028253)
+    - SAUCE: apparmor5.1.0 [1/25]: apparmor-next: apparmor: fix implicit
+      declaration of function 'decompress_zstd'
+    - SAUCE: apparmor5.1.0 [2/25]: apparmor-next: apparmor: Fix warning:
+      'decompress_zstd' defined but not used
+    - SAUCE: apparmor5.1.0 [3/25]: apparmor-next-next: apparmor: setup slab
+      cache for audit data
+    - SAUCE: apparmor5.1.0 [4/25]: apparmor-next-next: apparmor: add the
+      ability for profiles to have a learning cache
+    - SAUCE: apparmor5.1.0 [5/25]: Stacking: LSM: Single calls in secid hooks
+    - SAUCE: apparmor5.1.0 [6/25]: Stacking: LSM: Exclusive secmark usage
+    - SAUCE: apparmor5.1.0 [7/25]: Stacking: AppArmor: Remove the exclusive
+      flag
+    - SAUCE: apparmor5.1.0 [8/25]: Revert "apparmor: fix dbus permission
+      queries to v9 ABI"
+    - SAUCE: apparmor5.1.0 [9/25]: apparmor: net: patch to provide
+      compatibility with v2.x net rules
+    - SAUCE: apparmor5.1.0 [10/25]: apparmor: net: add fine grained ipv4/ipv6
+      mediation
+    - SAUCE: apparmor5.1.0 [11/25]: apparmor: userns: add unprivileged user ns
+      mediation
+    - SAUCE: apparmor5.1.0 [12/25]: apparmor: userns: Add sysctls for
+      additional controls of unpriv userns restrictions
+    - SAUCE: apparmor5.1.0 [14/25]: apparmor: userns: open userns related
+      sysctl so lxc can check if restriction are in place
+    - SAUCE: apparmor5.1.0 [15/25]: apparmor: userns: allow profile to be
+      transitioned when a userns is created
+    - SAUCE: apparmor5.1.0 [16/25]: apparmor: mqueue: call
+      security_inode_init_security on inode creation
+    - SAUCE: apparmor5.1.0 [17/25]: apparmor: mqueue: add fine grained
+      mediation of posix mqueues
+    - SAUCE: apparmor5.1.0 [18/25]: apparmor: mqueue: prevent
+      profile->disconnected double free in aa_free_profile
+    - SAUCE: apparmor5.1.0 [19/25]: apparmor: uring: add io_uring mediation
+    - SAUCE: apparmor5.1.0 [22/25]: apparmor: prompt: enable userspace upcall
+      for mediation
+
+  * update apparmor and LSM stacking patch set (LP: #2028253) // Installation
+    of AppArmor on a 6.14 kernel produces error message "Illegal number: yes"
+    (LP: #2102680)
+    - SAUCE: apparmor5.1.0 [20/25]: apparmor: create an
+      AA_SFS_TYPE_BOOLEAN_INTPRINT sysctl variant
+    - SAUCE: apparmor5.1.0 [21/25]: apparmor: Use AA_SFS_FILE_BOOLEAN_INTPRINT
+      for userns and io_uring sysctls
+
+  * update apparmor and LSM stacking patch set (LP: #2028253) // [FFe]
+    apparmor-4.0.0-alpha2 for unprivileged user namespace restrictions in
+    mantic (LP: #2032602)
+    - SAUCE: apparmor5.1.0 [13/25]: apparmor: userns - make it so special
+      unconfined profiles can mediate user namespaces
+
+  * Miscellaneous Ubuntu changes
+    - [Config] enable SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED
+    - SAUCE: apparmor: fix unterminated prompt string in Kconfig
+    - [Packaging] Migrate to pkgconf
+    - SAUCE: Revert "ceph: move mdsmap.h to fs/ceph/"
+    - SAUCE: Revert "Revert "rfkill: make new event layout opt-in""
+    - SAUCE: Revert "ACPICA: avoid accessing operands out-of-bounds"
+    - SAUCE: Revert "Revert "net/tls(TLS_SW): Add selftest for 'chunked'
+      sendfile test""
+    - SAUCE: Revert "net: ena: fix too long default tx interrupt moderation
+      interval"
+    - SAUCE: Revert "(no-up) Input: Cypress PS/2 Trackpad simulated
+      multitouch"
+    - Changes.md: record the seven SAUCE patches dropped for the linux handoff
+    - [Packaging] update Ubuntu.md
+
+ -- Paolo Pisati <paolo.pisati@canonical.com>  Mon, 14 Sep 2026 11:01:34 +0200
 
 linux-unstable (7.3.0-4.4) stonking; urgency=medium
 
