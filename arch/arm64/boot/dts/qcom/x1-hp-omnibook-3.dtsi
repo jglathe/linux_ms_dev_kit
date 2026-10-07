@@ -1054,6 +1054,12 @@
 			enable-gpios = <&pmc8380_3_gpios 4 GPIO_ACTIVE_HIGH>;
 			power-supply = <&vreg_edp_3p3>;
 
+			/*
+			 * Panel reports 11-bit PWM (PWMGEN_BIT_COUNT=0x0b), so
+			 * 2047 levels. Silences "no max-brightness property found".
+			 */
+			max-brightness = <2047>;
+
 			pinctrl-0 = <&edp_bl_en>;
 			pinctrl-names = "default";
 
@@ -1067,7 +1073,13 @@
 };
 
 &mdss_dp3_out {
-	data-lanes = <3 2 1 0>;
+	/*
+	 * Was <3 2 1 0>. Every other X1 board in this tree uses <0 1 2 3>.
+	 * The reversed order is the prime suspect for the eDP link training
+	 * failures ("max v_level reached", ret=-11) and the endless dpu vblank
+	 * timeouts. If the panel stays dark with this, restore <3 2 1 0>.
+	 */
+	data-lanes = <0 1 2 3>;
 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
 
 	remote-endpoint = <&edp_panel_in>;
@@ -1081,6 +1093,9 @@
 };
 
 &pcie4 {
+	/* WiFi slot: fixes "supply vddpe-3v3 not found, using dummy regulator" */
+	vddpe-3v3-supply = <&vreg_wcn_3p3>;
+
 	pinctrl-0 = <&pcie4_default>;
 	pinctrl-names = "default";
 
