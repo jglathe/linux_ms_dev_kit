@@ -1298,6 +1298,7 @@ CONFIG_ARM64_ERRATUM_2658417                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_2966298                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_3117295                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_3194386                    policy<{'arm64': 'y'}>
+CONFIG_ARM64_ERRATUM_3821522                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_4118414                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_4193714                    policy<{'arm64': 'y'}>
 CONFIG_ARM64_ERRATUM_4311569                    policy<{'arm64': 'y'}>
@@ -1335,6 +1336,7 @@ CONFIG_ARM64_TLB_RANGE                          policy<{'arm64': 'y'}>
 CONFIG_ARM64_VA_BITS                            policy<{'arm64': '48'}>
 CONFIG_ARM64_VA_BITS_39                         policy<{'arm64': 'n'}>
 CONFIG_ARM64_VA_BITS_52                         policy<{'arm64': 'n'}>
+CONFIG_ARM64_WORKAROUND_BROKEN_AMU_CONSTCNT     policy<{'arm64': 'y'}>
 CONFIG_ARM64_WORKAROUND_CLEAN_CACHE             policy<{'arm64': 'y'}>
 CONFIG_ARM64_WORKAROUND_DISABLE_CNP             policy<{'arm64': 'y'}>
 CONFIG_ARM64_WORKAROUND_REPEAT_TLBI_SYNC        policy<{'arm64': 'y'}>
@@ -2122,6 +2124,7 @@ CONFIG_CC_NO_ARRAY_BOUNDS                       policy<{'arm64': 'y'}>
 CONFIG_CC_NO_STRINGOP_OVERFLOW                  policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE              policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_SIZE                     policy<{'arm64': 'n'}>
+CONFIG_CC_OPT_INLINE_MEMSET                     policy<{'arm64': '"-finline-stringops=memset"'}>
 CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0"'}>
 CONFIG_CDNS_I3C_MASTER                          policy<{'arm64': 'm'}>
 CONFIG_CDROM                                    policy<{'arm64': 'y'}>
@@ -11396,6 +11399,8 @@ CONFIG_SND_SOC_ADAU1761                         policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_ADAU1761_I2C                     policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_ADAU1761_SPI                     policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_ADAU17X1                         policy<{'arm64': 'm'}>
+CONFIG_SND_SOC_ADAU1977_I2C                     policy<{'arm64': 'n'}>
+CONFIG_SND_SOC_ADAU1977_SPI                     policy<{'arm64': 'n'}>
 CONFIG_SND_SOC_ADAU7002                         policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_ADAU7118                         policy<{'arm64': 'm'}>
 CONFIG_SND_SOC_ADAU7118_HW                      policy<{'arm64': 'm'}>
