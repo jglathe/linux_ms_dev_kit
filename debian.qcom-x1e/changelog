@@ -1,3 +1,21 @@
+linux-qcom-x1e (7.3.0-18.18) stonking; urgency=medium
+
+  * i2c: qcom-geni: Restore the source-clock selection policy
+  * i2c: qcom-geni: Fix hardcoded clock index in SE_GENI_CLK_SEL
+  * net: qrtr: resend HELLO on MHI resume
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Wed, 07 Oct 2026 14:48:32 +0200
+
+linux-qcom-x1e (7.3.0-17.17) stonking; urgency=medium
+
+  [ Manivannan Sadhasivam ]
+  * Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+
+  [ Tobias Heider ]
+  * Relax QSEECOM allowlist, allow all of X1 and Glymur
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Tue, 06 Oct 2026 12:15:31 +0200
+
 linux-qcom-x1e (7.3.0-15.15) stonking; urgency=medium
 
   * Rebase linux-qcom-x1e onto ubuntu-unstable
