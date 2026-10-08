@@ -1538,7 +1538,7 @@
 			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
 				reg = <0>;
 
-				data-lanes = <0 1 2 3>;
+				data-lanes = <3 2 1 0>;
 				remote-endpoint = <&hdmi_bridge_dp_in>;
 			};
 		};
