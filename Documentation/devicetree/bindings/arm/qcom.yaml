@@ -1233,6 +1233,13 @@ properties:
 
       - items:
           - enum:
+              - hp,omnibook-3-lcd
+              - hp,omnibook-3-oled
+          - const: hp,omnibook-3
+          - const: qcom,x1p42100
+
+      - items:
+          - enum:
               - lenovo,ideapad-slim5x-lcd
               - lenovo,ideapad-slim5x-oled
           - const: lenovo,ideapad-5
