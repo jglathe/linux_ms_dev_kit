@@ -94,6 +94,7 @@ ifeq ($(config),1)
 endif
 
 CFLAGS		+= $(INCLUDES) $(LIB_INCLUDES) $(TOOLS_INCLUDES) -I$(LIBSUBCMD_INCLUDES)
+CFLAGS		+= -D__u128='unsigned __int128 __attribute__((aligned(16)))'
 
 export CFLAGS OUTPUT srctree
 
