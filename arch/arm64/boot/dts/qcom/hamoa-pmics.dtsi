@@ -3,8 +3,6 @@
  * Copyright (c) 2024, Linaro Limited
  */
 
-#include <dt-bindings/iio/adc/qcom,pm8550-adc5-gen3.h>
-#include <dt-bindings/iio/adc/qcom,pmk8550-adc5-gen3.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/input/linux-event-codes.h>
 #include <dt-bindings/interrupt-controller/irq.h>
@@ -274,24 +272,6 @@
 			#interrupt-cells = <2>;
 		};
 
-		pmk8550_adc_tm: adc@9000 {
-			compatible = "qcom,spmi-adc5-gen3";
-			reg = <0x9000>, <0x9100>;
-			interrupts = <0x0 0x90 0x1 IRQ_TYPE_EDGE_RISING>,
-				     <0x0 0x91 0x1 IRQ_TYPE_EDGE_RISING>;
-			interrupt-names = "sdam0",
-					  "sdam1";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			#io-channel-cells = <1>;
-			#thermal-sensor-cells = <1>;
-
-			channel@18e {
-				reg = <PM8550_ADC5_GEN3_VPH_PWR(1)>;
-				label = "VPH_PWR";
-			};
-		};
-
 		pmk8550_pwm: pwm {
 			compatible = "qcom,pmk8550-pwm";
 
@@ -308,6 +288,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			#io-channel-cells = <1>;
+			#thermal-sensor-cells = <1>;
 			pinctrl-0 = <&sys_therm_0_gpio3>, <&sys_therm_1_gpio4>;
 			pinctrl-names = "default";
 
