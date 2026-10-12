@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3-rc7-jg-0) stonking; urgency=medium
+
+  * rebase the whole stack onto v7.3-rc7
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 12 Oct 2026 11:37:21 +0200
+
 linux-qcom-x1e (7.2.9-jg-0) stonking; urgency=medium
 
   * transplanted the debian build env form 7.3.0-15 onto this tree
