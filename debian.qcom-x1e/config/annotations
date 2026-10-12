@@ -3496,7 +3496,6 @@ CONFIG_DRM_MSM_KMS_FBDEV                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
-CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -10018,10 +10017,15 @@ CONFIG_RTW89_PCI                                policy<{'arm64': 'm'}>
 CONFIG_RTW89_USB                                policy<{'arm64': 'm'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '19'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190101'}>
+CONFIG_RUSTC_HAS_FILE_AS_C_STR                  policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_FILE_WITH_NUL                  policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
+CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '108200'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
+CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RWSEM_SPIN_ON_OWNER                      policy<{'arm64': 'y'}>
 CONFIG_RXGK                                     policy<{'arm64': 'n'}>
