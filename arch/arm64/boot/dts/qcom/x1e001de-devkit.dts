@@ -281,7 +281,7 @@
 
 	thermal-zones {
 		soc-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX1_GPIO_100K_PU(1)>;
 
 			trips {
 				soc-critical {
@@ -293,7 +293,7 @@
 		};
 
 		dc-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX2_GPIO_100K_PU(1)>;
 
 			trips {
 				dc-critical {
@@ -305,7 +305,7 @@
 		};
 
 		usb0-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX1_THM_100K_PU(1)>;
 
 			trips {
 				usb0-critical {
@@ -317,7 +317,7 @@
 		};
 
 		usb2-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX2_THM_100K_PU(1)>;
 
 			trips {
 				usb2-critical {
@@ -329,7 +329,7 @@
 		};
 
 		edp-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX3_THM_100K_PU(1)>;
 
 			trips {
 				edp-critical {
@@ -341,7 +341,7 @@
 		};
 
 		usb1-thermal {
-			thermal-sensors = <&pmk8550_adc_tm PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
+			thermal-sensors = <&pmk8550_vadc ADC5_GEN3_AMUX5_THM_100K_PU(1)>;
 
 			trips {
 				usb1-critical {
@@ -1496,23 +1496,23 @@
 	};
 };
 
-&pmk8550_adc_tm {
+&pmk8550_vadc {
 	channel@144 {
-		reg = <PM8550_ADC5_GEN3_AMUX_THM1_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX1_THM_100K_PU(1)>;
 		label = "SYS_THERM2";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
 		qcom,adc-tm;
 	};
 	channel@145 {
-		reg = <PM8550_ADC5_GEN3_AMUX_THM2_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX2_THM_100K_PU(1)>;
 		label = "SYS_THERM3";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
 		qcom,adc-tm;
 	};
 	channel@146 {
-		reg = <PM8550_ADC5_GEN3_AMUX_THM3_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX3_THM_100K_PU(1)>;
 		label = "SYS_THERM4";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
@@ -1520,21 +1520,21 @@
 	};
 	/* SYS_THERM5 is unused */
 	channel@148 {
-		reg = <PM8550_ADC5_GEN3_AMUX_THM5_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX5_THM_100K_PU(1)>;
 		label = "SYS_THERM6";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
 		qcom,adc-tm;
 	};
 	channel@14a {
-		reg = <PM8550_ADC5_GEN3_AMUX1_GPIO3_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX1_GPIO_100K_PU(1)>;
 		label = "SYS_THERM0";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
 		qcom,adc-tm;
 	};
 	channel@14b {
-		reg = <PM8550_ADC5_GEN3_AMUX2_GPIO4_100K_PU(1)>;
+		reg = <ADC5_GEN3_AMUX2_GPIO_100K_PU(1)>;
 		label = "SYS_THERM1";
 		qcom,hw-settle-time = <100>;
 		qcom,ratiometric;
