@@ -17,4 +17,4 @@ do_tools_bpftool = true
 do_tools_rtla = true
 
 do_dtbs		= true
-do_stubble	= true
+do_stubble	= false
