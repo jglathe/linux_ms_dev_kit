@@ -242,6 +242,17 @@
 		regulator-always-on;
 	};
 
+	vreg_audio_en: regulator-audio-en {
+		compatible = "regulator-fixed";
+		regulator-name = "VREG_AUDIO_EN";
+		gpio = <&tlmm 68 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		pinctrl-0 = <&audio_en_default>;
+		pinctrl-names = "default";
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
 	vreg_nvme: regulator-nvme {
 		compatible = "regulator-fixed";
 
@@ -1255,14 +1266,14 @@
 &swr0 {
 	status = "okay";
 
-	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
+	pinctrl-0 = <&wsa_swr_active>, <&spkr_en1_default>, <&spkr_en2_default>;
 	pinctrl-names = "default";
 
 	/* WSA8845, Left Speaker */
 	left_spkr: speaker@0,0 {
 		compatible = "sdw20217020400";
 		reg = <0 0>;
-		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
+		powerdown-gpios = <&tlmm 204 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrLeft";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
@@ -1274,7 +1285,7 @@
 	right_spkr: speaker@0,1 {
 		compatible = "sdw20217020400";
 		reg = <0 1>;
-		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
+		powerdown-gpios = <&tlmm 205 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrRight";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
@@ -1344,6 +1355,27 @@
 		pins = "gpio70";
 		function = "gpio";
 		drive-strength = <16>;
+		bias-disable;
+	};
+
+	spkr_en1_default: spkr-en1-default-state {
+		pins = "gpio204";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	spkr_en2_default: spkr-en2-default-state {
+		pins = "gpio205";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	audio_en_default: audio-en-default-state {
+		pins = "gpio68";
+		function = "gpio";
+		drive-strength = <2>;
 		bias-disable;
 	};
 
