@@ -519,6 +519,14 @@ static unsigned long qcom_pas_panic(struct rproc *rproc)
 	return qcom_q6v5_panic(&pas->q6v5);
 }
 
+static int qcom_pas_stop_noop(struct rproc *rproc)
+{
+	/* PAS/SCM unavailable (EL2/slbounce). Cannot shut the remoteproc down.
+	 * Return success so the framework does not treat this as an error.
+	 */
+	return 0;
+}
+
 static int qcom_pas_attach(struct rproc *rproc)
 {
 	struct qcom_pas *pas = rproc->priv;
@@ -615,6 +623,14 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
 	.attach = qcom_pas_attach,
 };
 
+static const struct rproc_ops qcom_pas_ops_no_pas = {
+	.attach = qcom_pas_attach_running,
+	.da_to_va = qcom_pas_da_to_va,
+	.stop = qcom_pas_stop_noop,
+	.panic = qcom_pas_panic,
+	/* no start/load/parse_fw — those require PAS/SCM which are unavailable */
+};
+
 static int qcom_pas_init_clock(struct qcom_pas *pas)
 {
 	pas->xo = devm_clk_get(pas->dev, "xo");
@@ -705,7 +721,7 @@ static void qcom_pas_pds_detach(struct qcom_pas *pas, struct device **pds, size_
 		dev_pm_domain_detach(pds[i], false);
 }
 
-static int qcom_pas_alloc_memory_region(struct qcom_pas *pas)
+static int qcom_pas_alloc_memory_region(struct qcom_pas *pas, bool skip_pas_ctx)
 {
 	struct resource res;
 	int ret;
@@ -719,10 +735,12 @@ static int qcom_pas_alloc_memory_region(struct qcom_pas *pas)
 	pas->mem_phys = pas->mem_reloc = res.start;
 	pas->mem_size = resource_size(&res);
 
-	pas->pas_ctx = devm_qcom_pas_context_alloc(pas->dev, pas->pas_id,
-						   pas->mem_phys, pas->mem_size);
-	if (IS_ERR(pas->pas_ctx))
-		return PTR_ERR(pas->pas_ctx);
+	if (!skip_pas_ctx) {
+		pas->pas_ctx = devm_qcom_pas_context_alloc(pas->dev, pas->pas_id,
+							   pas->mem_phys, pas->mem_size);
+		if (IS_ERR(pas->pas_ctx))
+			return PTR_ERR(pas->pas_ctx);
+	}
 
 	if (!pas->dtb_pas_id)
 		return 0;
@@ -736,11 +754,13 @@ static int qcom_pas_alloc_memory_region(struct qcom_pas *pas)
 	pas->dtb_mem_phys = pas->dtb_mem_reloc = res.start;
 	pas->dtb_mem_size = resource_size(&res);
 
-	pas->dtb_pas_ctx = devm_qcom_pas_context_alloc(pas->dev, pas->dtb_pas_id,
-						       pas->dtb_mem_phys,
-						       pas->dtb_mem_size);
-	if (IS_ERR(pas->dtb_pas_ctx))
-		return PTR_ERR(pas->dtb_pas_ctx);
+	if (!skip_pas_ctx) {
+		pas->dtb_pas_ctx = devm_qcom_pas_context_alloc(pas->dev, pas->dtb_pas_id,
+							       pas->dtb_mem_phys,
+							       pas->dtb_mem_size);
+		if (IS_ERR(pas->dtb_pas_ctx))
+			return PTR_ERR(pas->dtb_pas_ctx);
+	}
 
 	return 0;
 }
@@ -827,14 +847,21 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	const char *fw_name, *dtb_fw_name = NULL;
 	const struct rproc_ops *ops = &qcom_pas_ops;
 	int ret;
+	bool pas_avail, scm_avail, no_pas_scm, broken_reset;
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
 		return -EINVAL;
 
-	if (!qcom_pas_is_available())
+	pas_avail = qcom_pas_is_available();
+	scm_avail = qcom_scm_is_available();
+	no_pas_scm = !pas_avail || !scm_avail;
+	broken_reset = device_property_read_bool(&pdev->dev, "qcom,broken-reset");
+
+	if (!pas_avail && !broken_reset)
 		return -EPROBE_DEFER;
 
+	/* When broken-reset is set and PAS/SCM are missing (EL2/slbounce), we continue for pure attach. */
 	fw_name = desc->firmware_name;
 	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
 				      &fw_name);
@@ -852,6 +879,9 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (desc->minidump_id)
 		ops = &qcom_pas_minidump_ops;
 
+	if (broken_reset && no_pas_scm)
+		ops = &qcom_pas_ops_no_pas;
+
 	rproc = devm_rproc_alloc(&pdev->dev, desc->sysmon_name, ops, fw_name, sizeof(*pas));
 
 	if (!rproc) {
@@ -860,9 +890,12 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	}
 
 	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
-	if (desc->auto_boot)
-		rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
-	else
+	if (desc->auto_boot) {
+		if (broken_reset && no_pas_scm)
+			rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
+		else
+			rproc->auto_boot = desc->auto_boot;
+	} else
 		rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
 
@@ -890,13 +923,15 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_rproc;
 
-	ret = qcom_pas_alloc_memory_region(pas);
+	ret = qcom_pas_alloc_memory_region(pas, no_pas_scm);
 	if (ret)
 		goto free_rproc;
 
-	ret = qcom_pas_assign_memory_region(pas);
-	if (ret)
-		goto free_rproc;
+	if (!no_pas_scm) {
+		ret = qcom_pas_assign_memory_region(pas);
+		if (ret)
+			goto free_rproc;
+	}
 
 	ret = qcom_pas_init_clock(pas);
 	if (ret)
@@ -916,6 +951,15 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (ret)
 		goto detach_proxy_pds;
 
+	if (broken_reset && no_pas_scm) {
+		qcom_q6v5_read_smp2p_state(&pas->q6v5);
+		if (rproc->state == RPROC_OFFLINE && !ops->start) {
+			dev_err(&pdev->dev, "no PAS/SCM and remoteproc not running during boot, exiting\n");
+			ret = 0;
+			goto deinit_q6v5;
+		}
+	}
+
 	qcom_add_glink_subdev(rproc, &pas->glink_subdev, desc->ssr_name);
 	qcom_add_smd_subdev(rproc, &pas->smd_subdev);
 	qcom_add_pdm_subdev(rproc, &pas->pdm_subdev);
@@ -927,9 +971,11 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	qcom_add_ssr_subdev(rproc, &pas->ssr_subdev, desc->ssr_name);
 
-	pas->pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
-	if (pas->dtb_pas_id)
-		pas->dtb_pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
+	if (!no_pas_scm && pas->pas_ctx) {
+		pas->pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
+		if (pas->dtb_pas_id && pas->dtb_pas_ctx)
+			pas->dtb_pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
+	}
 
 	if (desc->early_boot)
 		pas->rproc->state = RPROC_DETACHED;
