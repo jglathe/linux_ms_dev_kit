@@ -590,11 +590,10 @@ static irqreturn_t arch_timer_handler_phys(int irq, void *dev_id)
 static __always_inline int arch_timer_shutdown(const int access,
 					       struct clock_event_device *clk)
 {
-	unsigned long ctrl;
-
-	ctrl = arch_timer_reg_read_cp15(access, ARCH_TIMER_REG_CTRL);
-	ctrl &= ~ARCH_TIMER_CTRL_ENABLE;
-	arch_timer_reg_write_cp15(access, ARCH_TIMER_REG_CTRL, ctrl);
+	arch_timer_reg_write_cp15(access, ARCH_TIMER_REG_CTRL,
+				  ARCH_TIMER_CTRL_ENABLE | ARCH_TIMER_CTRL_IT_MASK);
+	arch_timer_reg_write_cp15(access, ARCH_TIMER_REG_CVAL,
+				  BIT(arch_counter_get_width() - 1) - 1);
 
 	return 0;
 }
