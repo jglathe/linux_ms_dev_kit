@@ -867,6 +867,10 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	no_pas_scm = !pas_avail || !scm_avail;
 	broken_reset = device_property_read_bool(&pdev->dev, "qcom,broken-reset");
 
+	dev_info(&pdev->dev,
+			 "pas_avail=%d scm_avail=%d no_pas_scm=%d broken_reset=%d\n",
+			 pas_avail, scm_avail, no_pas_scm, broken_reset);
+
 	if (!pas_avail && !broken_reset)
 		return -EPROBE_DEFER;
 
