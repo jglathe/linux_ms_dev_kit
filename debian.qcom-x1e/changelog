@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.3.0-22.22) stonking; urgency=medium
+
+  [ Srinivas Kandagatla ]
+  * ASoC: codecs: lpass-macros: switch regcache to REGCACHE_MAPLE
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Wed, 14 Oct 2026 23:12:26 +0200
+
 linux-qcom-x1e (7.3.0-21.21) stonking; urgency=medium
 
   [ Hans de Goede ]
