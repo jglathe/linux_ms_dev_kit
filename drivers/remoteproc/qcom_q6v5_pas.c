@@ -28,6 +28,7 @@
 #include <linux/soc/qcom/mdt_loader.h>
 #include <linux/soc/qcom/smem.h>
 #include <linux/soc/qcom/smem_state.h>
+#include <asm/virt.h>
 
 #include "qcom_common.h"
 #include "qcom_pil_info.h"
@@ -37,6 +38,21 @@
 #define QCOM_PAS_DECRYPT_SHUTDOWN_DELAY_MS	100
 
 #define MAX_ASSIGN_COUNT 3
+
+/*
+ * Platforms whose TrustZone firmware supports the PAS path when the
+ * kernel runs at EL2. Older platforms (and current Windows laptop
+ * firmware) do not; they fall back to the attach-only ops when
+ * qcom,broken-reset is also set.
+ *
+ * Temporary, kernel-contained quirk. Drop entries once the corresponding
+ * firmware is universally available.
+ */
+static const char * const el2_pas_capable_compats[] = {
+	"qcom,hamoa-iot-evk",
+	"qcom,glymur",
+	NULL,
+};
 
 struct qcom_pas_data {
 	int crash_reason_smem;
@@ -124,6 +140,17 @@ struct qcom_pas {
 	struct qcom_pas_context *pas_ctx;
 	struct qcom_pas_context *dtb_pas_ctx;
 };
+
+static bool qcom_pas_is_el2_pas_capable(void)
+{
+	const char * const *compat;
+
+	for (compat = el2_pas_capable_compats; *compat; compat++)
+		if (of_machine_is_compatible(*compat))
+			return true;
+
+	return false;
+}
 
 static void qcom_pas_segment_dump(struct rproc *rproc,
 				  struct rproc_dump_segment *segment,
@@ -856,7 +883,10 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	const char *fw_name, *dtb_fw_name = NULL;
 	const struct rproc_ops *ops = &qcom_pas_ops;
 	int ret;
-	bool pas_avail, scm_avail, no_pas_scm, broken_reset;
+	bool in_el2 = is_kernel_in_hyp_mode();
+	bool el2_pas_capable = qcom_pas_is_el2_pas_capable();
+	bool use_pas;
+	bool pas_avail, scm_avail, broken_reset;
 
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
@@ -864,17 +894,30 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	pas_avail = qcom_pas_is_available();
 	scm_avail = qcom_scm_is_available();
-	no_pas_scm = !pas_avail || !scm_avail;
 	broken_reset = device_property_read_bool(&pdev->dev, "qcom,broken-reset");
 
-	dev_info(&pdev->dev,
-			 "pas_avail=%d scm_avail=%d no_pas_scm=%d broken_reset=%d\n",
-			 pas_avail, scm_avail, no_pas_scm, broken_reset);
+	/* PAS is usable at EL2 only on platforms whose TZ firmware supports it. */
+	use_pas = pas_avail && scm_avail && (!in_el2 || el2_pas_capable);
 
-	if (!pas_avail && !broken_reset)
+	dev_info(&pdev->dev,
+		 "pas_avail=%d scm_avail=%d in_el2=%d el2_pas_capable=%d use_pas=%d broken_reset=%d\n",
+		 pas_avail, scm_avail, in_el2, el2_pas_capable, use_pas, broken_reset);
+
+	if (el2_pas_capable && broken_reset) {
+		dev_err(&pdev->dev,
+			"qcom,broken-reset set on EL2 PAS-capable platform\n");
+		return -EINVAL;
+	}
+
+	if (!use_pas && !broken_reset)
 		return -EPROBE_DEFER;
 
-	/* When broken-reset is set and PAS/SCM are missing (EL2/slbounce), we continue for pure attach. */
+	if (!use_pas && !(in_el2 && !el2_pas_capable)) {
+		dev_err(&pdev->dev,
+			"non-PAS path only valid for EL2 on non-capable platforms\n");
+		return -EINVAL;
+	}
+
 	fw_name = desc->firmware_name;
 	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
 				      &fw_name);
@@ -892,7 +935,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (desc->minidump_id)
 		ops = &qcom_pas_minidump_ops;
 
-	if (broken_reset && no_pas_scm)
+	if (!use_pas)
 		ops = &qcom_pas_ops_no_pas;
 
 	rproc = devm_rproc_alloc(&pdev->dev, desc->sysmon_name, ops, fw_name, sizeof(*pas));
@@ -904,14 +947,12 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
 	if (desc->auto_boot) {
-		if (ops->start) {
+		if (ops->start)
 			rproc->auto_boot = RPROC_AUTO_BOOT_RESTART_IF_FW_AVAILABLE;
-		} else {
-			if (broken_reset && no_pas_scm)
-				rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
-			else
-				rproc->auto_boot = desc->auto_boot;
-		}
+		else if (!use_pas)
+			rproc->auto_boot = RPROC_AUTO_BOOT_ATTACH_OR_START;
+		else
+			rproc->auto_boot = desc->auto_boot;
 	} else {
 		rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
 	}
@@ -941,11 +982,11 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_rproc;
 
-	ret = qcom_pas_alloc_memory_region(pas, no_pas_scm);
+	ret = qcom_pas_alloc_memory_region(pas, !use_pas);
 	if (ret)
 		goto free_rproc;
 
-	if (!no_pas_scm) {
+	if (use_pas) {
 		ret = qcom_pas_assign_memory_region(pas);
 		if (ret)
 			goto free_rproc;
@@ -969,7 +1010,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	if (ret)
 		goto detach_proxy_pds;
 
-	if (broken_reset && no_pas_scm) {
+	if (broken_reset && !use_pas) {
 		qcom_q6v5_read_smp2p_state(&pas->q6v5);
 		if (rproc->state == RPROC_OFFLINE && !ops->start) {
 			dev_err(&pdev->dev, "no PAS/SCM and remoteproc not running during boot, exiting\n");
@@ -989,7 +1030,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 
 	qcom_add_ssr_subdev(rproc, &pas->ssr_subdev, desc->ssr_name);
 
-	if (!no_pas_scm && pas->pas_ctx) {
+	if (use_pas && pas->pas_ctx) {
 		pas->pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
 		if (pas->dtb_pas_id && pas->dtb_pas_ctx)
 			pas->dtb_pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
