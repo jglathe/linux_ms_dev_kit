@@ -1036,7 +1036,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 			pas->dtb_pas_ctx->use_tzmem = desc->needs_tzmem || rproc->has_iommu;
 	}
 
-	if (desc->early_boot)
+	if (desc->early_boot || !use_pas)
 		pas->rproc->state = RPROC_DETACHED;
 
 	ret = rproc_add(rproc);
