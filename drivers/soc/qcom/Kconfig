@@ -15,6 +15,18 @@ menuconfig QCOM_SOC
 
 if QCOM_SOC
 
+config QCOM_ADSP_PWR_LMTS
+	tristate "Qualcomm ADSP power-limits Modern Standby notification"
+	depends on RPMSG
+	depends on ARCH_QCOM || COMPILE_TEST
+	help
+	  Tell the ADSP when the system enters and leaves suspend, like the
+	  Windows PEP does, so it stops its power-limits timer while the
+	  system sleeps. Without it the ADSP wakes up about 100 times per
+	  second and DDR cannot stay in low-power mode during s2idle.
+
+	  Say m here on Snapdragon X laptops.
+
 config QCOM_AOSS_QMP
 	tristate "Qualcomm AOSS Driver"
 	depends on MAILBOX
