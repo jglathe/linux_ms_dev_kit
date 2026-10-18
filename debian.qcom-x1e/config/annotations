@@ -5365,6 +5365,9 @@ CONFIG_IGBVF                                    policy<{'arm64': 'm'}>
 CONFIG_IGB_HWMON                                policy<{'arm64': 'y'}>
 CONFIG_IGC                                      policy<{'arm64': 'm'}>
 CONFIG_IGC_LEDS                                 policy<{'arm64': 'y'}>
+CONFIG_IGH_ECAT                                 policy<{'arm64': 'm'}>
+CONFIG_IGH_ECAT_ENABLE_EOE                      policy<{'arm64': 'y'}>
+CONFIG_IGH_ECAT_GENERIC_DEVICE                  policy<{'arm64': 'n'}>
 CONFIG_IIO                                      policy<{'arm64': 'y'}>
 CONFIG_IIO_ADC_HELPER                           policy<{'arm64': 'm'}>
 CONFIG_IIO_ADIS_LIB                             policy<{'arm64': 'm'}>
@@ -6404,6 +6407,7 @@ CONFIG_LOCKDEP_SUPPORT                          policy<{'arm64': 'y'}>
 CONFIG_LOCKD_V4                                 policy<{'arm64': 'y'}>
 CONFIG_LOCKUP_DETECTOR                          policy<{'arm64': 'y'}>
 CONFIG_LOCK_DEBUGGING_SUPPORT                   policy<{'arm64': 'y'}>
+CONFIG_LOCK_DOWN_IN_SECURE_BOOT                 policy<{'arm64': 'n'}>
 CONFIG_LOCK_DOWN_KERNEL_FORCE_CONFIDENTIALITY   policy<{'arm64': 'n'}>
 CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY         policy<{'arm64': 'n'}>
 CONFIG_LOCK_DOWN_KERNEL_FORCE_NONE              policy<{'arm64': 'y'}>
@@ -8621,7 +8625,7 @@ CONFIG_PHY_QCOM_IPQ806X_SATA                    policy<{'arm64': 'm'}>
 CONFIG_PHY_QCOM_IPQ806X_USB                     policy<{'arm64': 'm'}>
 CONFIG_PHY_QCOM_M31_EUSB                        policy<{'arm64': 'm'}>
 CONFIG_PHY_QCOM_M31_USB                         policy<{'arm64': 'm'}>
-CONFIG_PHY_QCOM_MIPI_CSI2                       policy<{'arm64': 'n'}>
+CONFIG_PHY_QCOM_MIPI_CSI2                       policy<{'arm64': 'm'}>
 CONFIG_PHY_QCOM_PCIE2                           policy<{'arm64': 'm'}>
 CONFIG_PHY_QCOM_QMP                             policy<{'arm64': 'y'}>
 CONFIG_PHY_QCOM_QMP_COMBO                       policy<{'arm64': 'm'}>
@@ -10352,7 +10356,9 @@ CONFIG_SECURITY_APPARMOR_EXPORT_BINARY          policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_HASH                   policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_HASH_DEFAULT           policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_INTROSPECT_POLICY      policy<{'arm64': 'y'}>
+CONFIG_SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED policy<{'arm64': 'n'}>
 CONFIG_SECURITY_APPARMOR_PARANOID_LOAD          policy<{'arm64': 'y'}>
+CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS        policy<{'arm64': 'y'}>
 CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'arm64': 'y'}>
 CONFIG_SECURITY_INFINIBAND                      policy<{'arm64': 'y'}>
 CONFIG_SECURITY_IPE                             policy<{'arm64': 'n'}>
@@ -10364,6 +10370,7 @@ CONFIG_SECURITY_LOCKDOWN_LSM_EARLY              policy<{'arm64': 'y'}>
 CONFIG_SECURITY_NETWORK                         policy<{'arm64': 'y'}>
 CONFIG_SECURITY_NETWORK_XFRM                    policy<{'arm64': 'y'}>
 CONFIG_SECURITY_PATH                            policy<{'arm64': 'y'}>
+CONFIG_SECURITY_PERF_EVENTS_RESTRICT            policy<{'arm64': 'n'}>
 CONFIG_SECURITY_SELINUX                         policy<{'arm64': 'y'}>
 CONFIG_SECURITY_SELINUX_AVC_HASH_BITS           policy<{'arm64': '9'}>
 CONFIG_SECURITY_SELINUX_AVC_STATS               policy<{'arm64': 'y'}>
@@ -12672,6 +12679,8 @@ CONFIG_UBSAN_KVM_EL2                            policy<{'arm64': 'n'}>
 CONFIG_UBSAN_SHIFT                              policy<{'arm64': 'y'}>
 CONFIG_UBSAN_TRAP                               policy<{'arm64': 'n'}>
 CONFIG_UBSAN_UNREACHABLE                        policy<{'arm64': 'n'}>
+CONFIG_UBUNTU_HOST                              policy<{'arm64': 'n'}>
+CONFIG_UBUNTU_ODM_DRIVERS                       policy<{'arm64': 'n'}>
 CONFIG_UCC                                      policy<{'arm64': 'y'}>
 CONFIG_UCC_FAST                                 policy<{'arm64': 'y'}>
 CONFIG_UCC_SLOW                                 policy<{'arm64': 'y'}>
@@ -13241,6 +13250,7 @@ CONFIG_VEML6070                                 policy<{'arm64': 'm'}>
 CONFIG_VEML6075                                 policy<{'arm64': 'm'}>
 CONFIG_VERSAL_SYSMON                            policy<{'arm64': 'n'}>
 CONFIG_VERSAL_SYSMON_I2C                        policy<{'arm64': 'n'}>
+CONFIG_VERSION_SIGNATURE                        policy<{'arm64': '""'}>
 CONFIG_VETH                                     policy<{'arm64': 'm'}>
 CONFIG_VEXPRESS_CONFIG                          policy<{'arm64': 'y'}>
 CONFIG_VF610_ADC                                policy<{'arm64': 'm'}>
