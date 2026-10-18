@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3-rc7-jg-1) stonking; urgency=medium
+
+  * re-add the clk sync-state series https://lore.kernel.org/all/20260626-clk-sync-state-v1-0-4156d8196dc8@redhat.com/ [Brian Masney <bmasney@redhat.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 18 Oct 2026 10:30:05 +0200
+
 linux-qcom-x1e (7.3-rc7-jg-0) stonking; urgency=medium
 
   * rebase the whole stack onto v7.3-rc7
