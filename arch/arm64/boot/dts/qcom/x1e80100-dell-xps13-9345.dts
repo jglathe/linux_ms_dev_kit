@@ -47,7 +47,7 @@
 		pinctrl-0 = <&cam_indicator_en>;
 		pinctrl-names = "default";
 
-		led-camera-indicator {
+		privacy_led: led-camera-indicator {
 			label = "white:camera-indicator";
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_WHITE>;
