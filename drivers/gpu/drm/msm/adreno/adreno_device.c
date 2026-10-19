@@ -247,6 +247,14 @@ static int adreno_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		return ret;
 
+	/*
+	 * Register devfreq last: its sysfs, QoS and cooling device can reach
+	 * gpu_set_freq() as soon as it exists, and on a6xx the GMU freq and
+	 * bandwidth tables are only built by a6xx_gmu_init(), after
+	 * msm_gpu_init().
+	 */
+	msm_devfreq_init(gpu);
+
 	return 0;
 }
 
