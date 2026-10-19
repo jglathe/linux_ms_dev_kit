@@ -113,7 +113,9 @@
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_WHITE>;
 			gpios = <&tlmm 110 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "none";
 			default-state = "off";
+			/* Reuse as a panic indicator until we get a "camera on" trigger */
 			panic-indicator;
 		};
 	};
@@ -975,10 +977,8 @@
 		pinctrl-0 = <&rtmr0_default>;
 		pinctrl-names = "default";
 
-		orientation-switch;
 		retimer-switch;
-
-		qcom,disable-usb4;
+		orientation-switch;
 
 		ports {
 			#address-cells = <1>;
@@ -1079,8 +1079,6 @@
 
 		retimer-switch;
 		orientation-switch;
-
-		qcom,disable-usb4;
 
 		ports {
 			#address-cells = <1>;
