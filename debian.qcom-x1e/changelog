@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3.0-jg-0) stonking; urgency=medium
+
+  * rebase the whole stack to v7.3
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 19 Oct 2026 19:53:52 +0200
+
 linux-qcom-x1e (7.3.0-29.29) stonking; urgency=medium
 
   [ Dale Whinham ]
