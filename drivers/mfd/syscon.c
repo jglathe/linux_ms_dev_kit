@@ -123,7 +123,16 @@ static struct syscon *of_syscon_register(struct device_node *np, bool check_res)
 	}
 
 	if (check_res) {
-		clk = of_clk_get(np, 0);
+		/*
+		 * The "clocks" of a clock provider (e.g. the X1E TCSR block) are
+		 * its parent clocks, not a register clock. Attaching one keeps it
+		 * prepared forever, which pins an RPMh XO vote and blocks the SoC
+		 * from turning the crystal off in suspend.
+		 */
+		if (of_property_present(np, "#clock-cells"))
+			clk = ERR_PTR(-ENOENT);
+		else
+			clk = of_clk_get(np, 0);
 		if (IS_ERR(clk)) {
 			ret = PTR_ERR(clk);
 			/* clock is optional */
