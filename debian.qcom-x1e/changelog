@@ -1,3 +1,41 @@
+linux-qcom-x1e (7.3.0-24.24) stonking; urgency=medium
+
+  [ Luke Macken ]
+  * arm64: dts: qcom: mahua-lenovo-thinkpad-t14s-gen7: Add Elan touchpad at 0x15
+
+  [ Srinivas Kandagatla ]
+  * dt-bindings: arm: qcom: add Lenovo ThinkPad T14s Gen 7 (Mahua)
+  * arm64: dts: qcom: Add Lenovo ThinkPad T14s Gen 7
+  * drm/panel-edp: add CSOT MNE007QB1-1 entry
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Mon, 19 Oct 2026 15:54:33 +0200
+
+linux-qcom-x1e (7.3.0-23.23) stonking; urgency=medium
+
+  [ Jens Glathe ]
+  * arm64: dts: qcom: hamoa: Drop cluster_cl5 idle state from CPU clusters
+
+  [ Abel Vesa ]
+  * soc: qcom: pmic_glink: Fix device access from worker during suspend
+  * usb: typec: ucsi: Schedule connector worker on freezable workqueue
+
+  [ Vikash Garodia ]
+  * media: iris: reset AHB bridge before enabling HW mode
+
+  [ Vishnu Reddy ]
+  * media: iris: Fix power-off ordering to disable power domain after clocks
+  * media: iris: Fix iova allocation from restrict region
+
+  [ Dmitry Baryshkov ]
+  * media: iris: fail firmware boot on invalid uc_region
+  * media: iris: take core lock when scanning the instance list
+  * media: iris: guard against a NULL hfi_sys_ops in the interrupt handler
+
+  [ Hungyu Lin ]
+  * media: iris: cancel sys error work on driver removal
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Thu, 15 Oct 2026 17:05:34 +0200
+
 linux-qcom-x1e (7.3.0-22.22) stonking; urgency=medium
 
   [ Srinivas Kandagatla ]
