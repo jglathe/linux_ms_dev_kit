@@ -4274,11 +4274,22 @@
 					     "video-mem";
 
 			operating-points-v2 = <&iris_opp_table>;
-			iommus = <&apps_smmu 0x2a00 0x400>,
-				 <&apps_smmu 0x2a07 0x400>;
 			memory-region = <&pil_video_mem>;
 
+			#address-cells = <1>;
+			#size-cells = <1>;
+			dma-ranges = <0x0 0x0 0x0 0xe0000000>;
+
 			status = "disabled";
+
+			non-pixel {
+				iommus = <&apps_smmu 0x2a00 0x400>;
+				iommu-ranges = <0x25800000 0xba800000>;
+			};
+
+			pixel {
+				iommus = <&apps_smmu 0x2a07 0x400>;
+			};
 
 			iris_opp_table: opp-table {
 				compatible = "operating-points-v2";
