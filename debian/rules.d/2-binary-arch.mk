@@ -228,9 +228,6 @@ ifeq ($(do_linux_tools),true)
  endif
 endif
 
-	# The main image
-	install -m600 -D $(build_dir)/$(kernfile) \
-		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 	install -d $(pkgdir)/boot
 	install -m644 $(build_dir)/.config \
 		$(pkgdir)/boot/config-$(abi_release)-$*
@@ -246,9 +243,9 @@ ifeq ($(do_stubble),true)
 		$(STUBBLEDTBS) \
 	        --output=$(build_dir)/$(kernfile).stubble
 
-	# The main image
+	# The main image (stubble version goes into the image package)
 	install -m600 -D $(build_dir)/$(kernfile).stubble \
-		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
+		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 else
 	# The main image
 	install -m600 -D $(build_dir)/$(kernfile) \
