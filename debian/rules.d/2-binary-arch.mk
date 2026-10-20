@@ -243,9 +243,9 @@ ifeq ($(do_stubble),true)
 		$(STUBBLEDTBS) \
 	        --output=$(build_dir)/$(kernfile).stubble
 
-	# The main image
+	# The main image (stubble version goes into the image package)
 	install -m600 -D $(build_dir)/$(kernfile).stubble \
-		$(pkgdir)/boot/$(instfile)-$(abi_release)-$*
+		$(pkgdir_bin)/boot/$(instfile)-$(abi_release)-$*
 else
 	# The main image
 	install -m600 -D $(build_dir)/$(kernfile) \
