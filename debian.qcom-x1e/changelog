@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3.0-jg-1) stonking; urgency=medium
+
+  * add Iris IOMMU fault series: https://lore.kernel.org/all/20260926-vpu_iommu_iova_handling-v5-0-0322ca5dc10c@oss.qualcomm.com/ [Vikash Garodia <vikash.garodia@oss.qualcomm.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 20 Oct 2026 20:40:27 +0200
+
 linux-qcom-x1e (7.3.0-jg-0) stonking; urgency=medium
 
   * rebase the whole stack to v7.3
