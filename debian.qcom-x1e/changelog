@@ -1,3 +1,15 @@
+linux-qcom-x1e (7.3.0-25.25) stonking; urgency=medium
+
+  [ Jianfeng Liu ]
+  * clk: qcom: dispcc-x1e80100: don't disable display PLLs in the unused-clock sweep
+
+  [ Oleg Keri ]
+  * dt-bindings: embedded-controller: add Lenovo Yoga Slim 7x Gen 11 EC
+  * platform/arm64: add Lenovo Yoga Slim 7x Gen 11 EC driver
+  * arm64: dts: qcom: glymur-lenovo-yoga-slim7x: add the embedded controller
+
+ -- Tobias Heider <tobias.heider@canonical.com>  Thu, 22 Oct 2026 16:41:31 +0200
+
 linux-qcom-x1e (7.3.0-24.24) stonking; urgency=medium
 
   [ Luke Macken ]
