@@ -1,4 +1,4 @@
-linux-qcom-x1e (7.3.0-28.28) stonking; urgency=medium
+linux-qcom-x1e (7.3.0-29.29) stonking; urgency=medium
 
   [ Dale Whinham ]
   * arm64: dts: qcom: x1-denali: Fix microphone distortion
