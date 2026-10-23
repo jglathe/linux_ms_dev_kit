@@ -1699,6 +1699,7 @@ CONFIG_BATTERY_DS2782                           policy<{'arm64': 'm'}>
 CONFIG_BATTERY_GAUGE_LTC2941                    policy<{'arm64': 'm'}>
 CONFIG_BATTERY_GOLDFISH                         policy<{'arm64': 'm'}>
 CONFIG_BATTERY_HUAWEI_GAOKUN                    policy<{'arm64': 'm'}>
+CONFIG_BATTERY_LENOVO_YOGA_C630                 policy<{'arm64': 'm'}>
 CONFIG_BATTERY_MAX17040                         policy<{'arm64': 'm'}>
 CONFIG_BATTERY_MAX17042                         policy<{'arm64': 'm'}>
 CONFIG_BATTERY_MAX1720X                         policy<{'arm64': 'm'}>
@@ -12906,6 +12907,7 @@ CONFIG_UCS2_STRING                              policy<{'arm64': 'y'}>
 CONFIG_UCSI_ACPI                                policy<{'arm64': 'm'}>
 CONFIG_UCSI_CCG                                 policy<{'arm64': 'm'}>
 CONFIG_UCSI_HUAWEI_GAOKUN                       policy<{'arm64': 'm'}>
+CONFIG_UCSI_LENOVO_YOGA_C630                    policy<{'arm64': 'm'}>
 CONFIG_UCSI_PMIC_GLINK                          policy<{'arm64': 'm'}>
 CONFIG_UCSI_STM32G0                             policy<{'arm64': 'm'}>
 CONFIG_UDF_FS                                   policy<{'arm64': 'm'}>
