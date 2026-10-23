@@ -1,4 +1,26 @@
-linux-qcom-x1e (7.3.0-25.25) stonking; urgency=medium
+linux-qcom-x1e (7.3.0-28.28) stonking; urgency=medium
+
+  [ Dale Whinham ]
+  * arm64: dts: qcom: x1-denali: Fix microphone distortion
+  * arm64: dts: qcom: x1-denali: Add audio playback over DisplayPort
+  * arm64: dts: qcom: x1-denali: Add volume up/down GPIO keys
+
+  [ Qiang Yu ]
+  * arm64: dts: qcom: hamoa/purwa: Add QREF regulator supplies
+
+  [ Tobias Heider ]
+  * UBUNTU: SAUCE: arm64: dts: qcom: x1p42100-lenovo-ideapad-slim5x: add QREF regulator supplies
+  * UBUNTU: SAUCE: arm64: dts: qcom: x1-acer-swift-14: add QREF regulator supplies
+
+  [ Maulik Shah ]
+  * dt-bindings: power: domain-idle-state: Add system-state
+  * pmdomain: Add support for system-suspend-only states
+
+  [ Oleg Keri ]
+  * soundwire: qcom: wait for the interrupt thread before gating the clock
+
+  [ Tobias Heider ]
+  * UBUNTU: Enable Yoga Slim 7x gen 11 EC
 
   [ Jianfeng Liu ]
   * clk: qcom: dispcc-x1e80100: don't disable display PLLs in the unused-clock sweep
@@ -8,7 +30,7 @@ linux-qcom-x1e (7.3.0-25.25) stonking; urgency=medium
   * platform/arm64: add Lenovo Yoga Slim 7x Gen 11 EC driver
   * arm64: dts: qcom: glymur-lenovo-yoga-slim7x: add the embedded controller
 
- -- Tobias Heider <tobias.heider@canonical.com>  Thu, 22 Oct 2026 16:41:31 +0200
+ -- Tobias Heider <tobias.heider@canonical.com>  Fri, 23 Oct 2026 18:12:04 +0200
 
 linux-qcom-x1e (7.3.0-24.24) stonking; urgency=medium
 
