@@ -3796,6 +3796,20 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_QCOM, 0x1107, quirk_no_bus_reset); /* WCN
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_QCOM, 0x0308, quirk_no_bus_reset); /* SDX62/SDX65 */
 
 /*
+ * The WCN7850 firmware reports an LTR just below the LTR_L1.2_THRESHOLD it
+ * sees at boot, preventing it to ever enter L1.2.
+ * With LTR disabled the link idles in L1.2, similar to what Windows does.
+ */
+static void quirk_wcn7850_disable_ltr(struct pci_dev *pdev)
+{
+	pcie_capability_clear_word(pdev, PCI_EXP_DEVCTL2,
+				   PCI_EXP_DEVCTL2_LTR_EN);
+}
+DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_QCOM, 0x1107, quirk_wcn7850_disable_ltr);
+DECLARE_PCI_FIXUP_RESUME_EARLY(PCI_VENDOR_ID_QCOM, 0x1107,
+			       quirk_wcn7850_disable_ltr);
+
+/*
  * Root port on some Cavium CN8xxx chips do not successfully complete a bus
  * reset when used with certain child devices.  After the reset, config
  * accesses to the child may fail.
