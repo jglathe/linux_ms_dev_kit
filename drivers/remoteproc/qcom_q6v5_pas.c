@@ -883,7 +883,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
 	const char *fw_name, *dtb_fw_name = NULL;
 	const struct rproc_ops *ops = &qcom_pas_ops;
 	int ret;
-	bool in_el2 = is_kernel_in_hyp_mode();
+	bool in_el2 = is_hyp_mode_available();
 	bool el2_pas_capable = qcom_pas_is_el2_pas_capable();
 	bool use_pas;
 	bool pas_avail, scm_avail, broken_reset;
