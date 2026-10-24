@@ -54,6 +54,7 @@ u64 kimage_voffset __ro_after_init;
 EXPORT_SYMBOL(kimage_voffset);
 
 u32 __boot_cpu_mode[] = { BOOT_CPU_MODE_EL2, BOOT_CPU_MODE_EL1 };
+EXPORT_SYMBOL_GPL(__boot_cpu_mode);
 
 static bool rodata_is_rw __ro_after_init = true;
 
