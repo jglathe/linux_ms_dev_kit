@@ -195,8 +195,8 @@ int msm_atomic_check(struct drm_device *dev, struct drm_atomic_commit *state)
 	 */
 	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state,
 				      new_crtc_state, i) {
-		if ((old_crtc_state->ctm && !new_crtc_state->ctm) ||
-		    (!old_crtc_state->ctm && new_crtc_state->ctm)) {
+		if (new_crtc_state->color_mgmt_changed) {
+			dev_info(dev->dev, "Color management changed: forcing mode change.");
 			new_crtc_state->mode_changed = true;
 			state->allow_modeset = true;
 		}
