@@ -1,3 +1,28 @@
+linux-qcom-x1e (7.3.0-jg-2) stonking; urgency=medium
+
+  * media: iris: restore the no-TZ firmware boot lost in the rebase [Lars Karlslund <lars@karlslund.dk>]
+  * arm64: export __boot_cpu_mode and use it in qcom_q6v5_pas
+  * arm64: dts: qcom: x1p64100-dell-latitude-5455: enable backlight PWM and DP audio [3thanRam <ramsey.e.ethan@gmail.com>]
+  * drm/msm/dp: recompute the link capabilities on every sink read
+  * drm/msm/a6xx: Fix stale boot up BW vote [Jie Zhang <jie.zhang@oss.qualcomm.com>]
+  * drm/msm: Fix sched_prio inversion within a ring [Jie Zhang <jie.zhang@oss.qualcomm.com>]
+  * drm/msm/a6xx: Fix GMU shutdown idle check [Jie Zhang <jie.zhang@oss.qualcomm.com>]
+  * drm/msm/devfreq: Record idle_time at GPU idle onset [Jie Zhang <jie.zhang@oss.qualcomm.com>]
+  * drm/msm/a6xx: Reset preemption records across suspend [Akhil P Oommen <akhilpo@oss.qualcomm.com>]
+  * PCI: Disable LTR on Qualcomm WCN7850 [17cb:1107] to allow ASPM L1.2 [Anthony Ruhier <aruhier@mailbox.org>]
+  * arm64: dts: qcom: hamoa: add operating points for pcie4/5/6a [Val Packett <val@packett.cool>]
+  * drm/msm: TEST force mode set on color mgmt change [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: try reserving the DSPP-less LM first [Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>]
+  * drm/msm/dpu: reset unassigned resource slots to NULL on topology update [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: workaround res re-assignment issues by pairing enc/crtc [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: save layer mixers in encoder mode set and perform clean up on them instead of newly assigned ones [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: perform setup_dither clean up the same way it was set up [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: use cached pingpongs from encoder atomic set in cwb setup [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: use common helper cleanup function in cmd mode disable [JS Deck <jsdeckerido@gmail.com>]
+  * drm/msm/dpu: reset DSC_CMN_MAIN_CNF in dsc disable [JS Deck <jsdeckerido@gmail.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 25 Oct 2026 15:05:56 +0100
+
 linux-qcom-x1e (7.3.0-jg-1) stonking; urgency=medium
 
   * add Iris IOMMU fault series: https://lore.kernel.org/all/20260926-vpu_iommu_iova_handling-v5-0-0322ca5dc10c@oss.qualcomm.com/ [Vikash Garodia <vikash.garodia@oss.qualcomm.com>]
