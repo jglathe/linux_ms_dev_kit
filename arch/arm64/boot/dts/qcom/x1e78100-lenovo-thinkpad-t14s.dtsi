@@ -23,7 +23,7 @@
 	chassis-type = "laptop";
 
 	aliases {
-		serial0 = &uart14;
+		serial1 = &uart14;
 	};
 
 	wcd938x: audio-codec {
@@ -1948,6 +1948,11 @@
 
 &uart14 {
 	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,wcn7850-bt";
+		max-speed = <3200000>;
+	};
 
 	port {
 		uart14_ep: endpoint {
