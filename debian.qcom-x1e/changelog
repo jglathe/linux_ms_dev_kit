@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.3.0-jg-3) resolute; urgency=medium
+
+  * REMOVE drm/msm: TEST force mode set on color mgmt change [JS Deck <jsdeckerido@gmail.com>]
+  * arm64: dts: qcom: lenovo-t14s: re-add Bluetooth definition
+  * enable Iris node on several devices
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 26 Oct 2026 07:08:13 +0100
+
 linux-qcom-x1e (7.3.0-jg-2) stonking; urgency=medium
 
   * media: iris: restore the no-TZ firmware boot lost in the rebase [Lars Karlslund <lars@karlslund.dk>]
