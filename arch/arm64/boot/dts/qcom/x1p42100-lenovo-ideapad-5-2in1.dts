@@ -1037,10 +1037,10 @@
 	};
 };
 
-//&iris {
-//	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380_pa.mbn";
-//	status = "okay";
-//};
+&iris {
+	firmware-name = "qcom/x1p42100/LENOVO/83GH/qcvss8380_pa.mbn";
+	status = "okay";
+};
 
 &lpass_tlmm {
 	spkr_01_sd_n_active: spkr-01-sd-n-active-state {
