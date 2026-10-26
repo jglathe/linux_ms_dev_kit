@@ -17,11 +17,11 @@
 	compatible = "lenovo,purwa-ideacentre-mini-01q8x10", "lenovo,ideacentre-mini-01q8x10", "lenovo,thinkpad-t14s", "qcom,x1e80100";
 };
 
-//&iris {
-//	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcvss8380_pa.mbn";
-//
-//	status = "okay";
-//};
+&iris {
+	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcvss8380_pa.mbn";
+
+	status = "okay";
+};
 
 &gpu_zap_shader {
 	firmware-name = "qcom/x1p42100/LENOVO/91B6/qcdxkmsucpurwa.mbn";
