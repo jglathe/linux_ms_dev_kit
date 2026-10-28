@@ -78,14 +78,14 @@ static int qcom_smd_qrtr_probe(struct rpmsg_device *rpdev)
 	if (rc)
 		return rc;
 
-	/* Block sending until we have fully opened the channel */
-	guard(mutex)(&qdev->send_lock);
+	/* Keep sending blocked until endpoint setup completes. */
+	scoped_guard(mutex, &qdev->send_lock) {
+		rc = qrtr_endpoint_register(&qdev->ep, QRTR_EP_NID_AUTO);
+		if (rc)
+			return rc;
 
-	rc = qrtr_endpoint_register(&qdev->ep, QRTR_EP_NID_AUTO);
-	if (rc)
-		return rc;
-
-	qdev->channel = rpmsg_dev_open_ept(rpdev, qcom_smd_qrtr_callback, qdev);
+		qdev->channel = rpmsg_dev_open_ept(rpdev, qcom_smd_qrtr_callback, qdev);
+	}
 	if (!qdev->channel) {
 		qrtr_endpoint_unregister(&qdev->ep);
 		return -EREMOTEIO;
