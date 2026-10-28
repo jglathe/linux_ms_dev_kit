@@ -11,6 +11,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/soc/qcom/ubwc.h>
+#include <linux/clk/clk-conf.h>
 
 #include "iris_core.h"
 #include "iris_ctrls.h"
@@ -143,6 +144,10 @@ static int iris_init_resources(struct iris_core *core)
 	ret = iris_init_power_domains(core);
 	if (ret)
 		return ret;
+
+	ret = of_clk_set_defaults(core->dev->of_node, false);
+	if (ret)
+		return dev_err_probe(core->dev, ret, "failed to set clock defaults\n");
 
 	ret = iris_init_clocks(core);
 	if (ret)
@@ -542,6 +547,7 @@ static struct platform_driver qcom_iris_driver = {
 		.of_match_table = iris_dt_match,
 		.pm = &iris_pm_ops,
 	},
+	.driver_managed_clk_defaults = true,
 };
 
 module_platform_driver(qcom_iris_driver);
