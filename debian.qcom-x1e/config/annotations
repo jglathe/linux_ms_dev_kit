@@ -2126,7 +2126,7 @@ CONFIG_CC_NO_STRINGOP_OVERFLOW                  policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE              policy<{'arm64': 'y'}>
 CONFIG_CC_OPTIMIZE_FOR_SIZE                     policy<{'arm64': 'n'}>
 CONFIG_CC_OPT_INLINE_MEMSET                     policy<{'arm64': '"-finline-stringops=memset"'}>
-CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0"'}>
+CONFIG_CC_VERSION_TEXT                          policy<{'arm64': '"aarch64-linux-gnu-gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0"'}>
 CONFIG_CDNS_I3C_MASTER                          policy<{'arm64': 'm'}>
 CONFIG_CDROM                                    policy<{'arm64': 'y'}>
 CONFIG_CDX_BUS                                  policy<{'arm64': 'y'}>
@@ -3648,6 +3648,7 @@ CONFIG_DRM_PANEL_RONBO_RB070D30                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS581VF01             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_AMS639RQ08             policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_ATNA33XC20             policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_SAMSUNG_ATNA40CT01             policy<{'arm64': 'n'}>
 CONFIG_DRM_PANEL_SAMSUNG_DB7430                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_LD9040                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_SAMSUNG_LTL106HL02             policy<{'arm64': 'm'}>
@@ -4069,6 +4070,7 @@ CONFIG_E1000                                    policy<{'arm64': 'm'}>
 CONFIG_E1000E                                   policy<{'arm64': 'm'}>
 CONFIG_ECRYPT_FS_MESSAGING                      policy<{'arm64': 'y'}>
 CONFIG_EC_ACER_ASPIRE1                          policy<{'arm64': 'm'}>
+CONFIG_EC_DELL_XPS                              policy<{'arm64': 'n'}>
 CONFIG_EC_HUAWEI_GAOKUN                         policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_C630                      policy<{'arm64': 'm'}>
@@ -6335,10 +6337,10 @@ CONFIG_LDISC_AUTOLOAD                           policy<{'arm64': 'n'}>
 CONFIG_LDM_DEBUG                                policy<{'arm64': 'n'}>
 CONFIG_LDM_PARTITION                            policy<{'arm64': 'y'}>
 CONFIG_LD_CAN_USE_KEEP_IN_OVERLAY               policy<{'arm64': 'y'}>
-CONFIG_LD_IS_BFD                                policy<{'arm64': 'y'}>
+CONFIG_LD_IS_LLD                                policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN                           policy<{'arm64': 'y'}>
 CONFIG_LD_ORPHAN_WARN_LEVEL                     policy<{'arm64': '"warn"'}>
-CONFIG_LD_VERSION                               policy<{'arm64': '24600'}>
+CONFIG_LD_VERSION                               policy<{'arm64': '0'}>
 CONFIG_LEDS_88PM860X                            policy<{'arm64': 'm'}>
 CONFIG_LEDS_AAT1290                             policy<{'arm64': 'm'}>
 CONFIG_LEDS_ADP5520                             policy<{'arm64': 'm'}>
@@ -6503,7 +6505,7 @@ CONFIG_LIVEUPDATE_TEST                          policy<{'arm64': 'n'}>
 CONFIG_LKDTM                                    policy<{'arm64': 'n'}>
 CONFIG_LLC                                      policy<{'arm64': 'm'}>
 CONFIG_LLC2                                     policy<{'arm64': 'm'}>
-CONFIG_LLD_VERSION                              policy<{'arm64': '0'}>
+CONFIG_LLD_VERSION                              policy<{'arm64': '210108'}>
 CONFIG_LMK04832                                 policy<{'arm64': 'm'}>
 CONFIG_LMP91000                                 policy<{'arm64': 'm'}>
 CONFIG_LOAD_UEFI_KEYS                           policy<{'arm64': 'y'}>
@@ -10231,10 +10233,10 @@ CONFIG_RUSTC_HAS_FILE_AS_C_STR                  policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_FILE_WITH_NUL                  policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
 CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '22'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '220106'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '109701'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
 CONFIG_RUSTC_VERSION_TEXT                       policy<{'arm64': '"rustc 1.93.1 (01f6ddf75 2026-02-11) (built from a source tarball)"'}>
 CONFIG_RUST_BITMAP_HARDENED                     policy<{'arm64': 'n'}>
 CONFIG_RUST_BUILD_ASSERT_ALLOW                  policy<{'arm64': 'n'}>
@@ -10513,8 +10515,8 @@ CONFIG_SECURITY_APPARMOR_DEBUG                  policy<{'arm64': 'n'}>
 CONFIG_SECURITY_APPARMOR_EXPORT_BINARY          policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_HASH                   policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_HASH_DEFAULT           policy<{'arm64': 'y'}>
-CONFIG_SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_INTROSPECT_POLICY      policy<{'arm64': 'y'}>
+CONFIG_SECURITY_APPARMOR_PACKET_MEDIATION_ENABLED policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_PARANOID_LOAD          policy<{'arm64': 'y'}>
 CONFIG_SECURITY_APPARMOR_RESTRICT_USERNS        policy<{'arm64': 'n'}>
 CONFIG_SECURITY_DMESG_RESTRICT                  policy<{'arm64': 'y'}>
@@ -10834,6 +10836,7 @@ CONFIG_SENSORS_STTS751                          policy<{'arm64': 'm'}>
 CONFIG_SENSORS_SURFACE_FAN                      policy<{'arm64': 'm'}>
 CONFIG_SENSORS_SURFACE_TEMP                     policy<{'arm64': 'm'}>
 CONFIG_SENSORS_SY7636A                          policy<{'arm64': 'm'}>
+CONFIG_SENSORS_T14S_FAN_CTRL                    policy<{'arm64': 'n'}>
 CONFIG_SENSORS_TC654                            policy<{'arm64': 'm'}>
 CONFIG_SENSORS_TC74                             policy<{'arm64': 'm'}>
 CONFIG_SENSORS_TDA38640                         policy<{'arm64': 'm'}>
