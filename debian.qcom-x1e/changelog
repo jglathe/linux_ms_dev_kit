@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3.0-jg-5) stonking; urgency=medium
+
+  * rebase onto git+ssh://git.launchpad.net/~ubuntu-concept/ubuntu/+source/linux/+git/stonking repo, 7.3.0-29.29 including config(-ish)
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 30 Oct 2026 06:44:47 +0100
+
 linux-qcom-x1e (7.3.0-jg-4) stonking; urgency=medium
 
   * media: iris: apply clock defaults after power domains
