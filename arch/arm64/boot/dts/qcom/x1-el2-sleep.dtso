@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Hamoa (X1E/X1P) system sleep states for EL2, see
+ * jglathe/linux_ms_dev_kit#102. Apply on top of x1-el2.dtbo.
+ *
+ * - SS1 (0x02000154, ACPI \_SB.SYSM _LPI "platform.SS1") for runtime idle.
+ * - DRIPS (domain_ss3) only from system suspend; from runtime idle it hangs
+ *   the SoC after the first s2idle.
+ * - CL5 back on the clusters, system suspend only. TZ denies both system
+ *   states (...54) while the clusters only request CL4; runtime idle must
+ *   not use CL5 (DC ZVA erratum).
+ *
+ * Needs the genpd "system-state" support (domain-idle-state binding).
+ */
+
+/dts-v1/;
+/plugin/;
+
+&{/cpus/domain-idle-states} {
+	domain_ss1: domain-sleep-1 {
+		compatible = "domain-idle-state";
+		arm,psci-suspend-param = <0x02000154>;
+		entry-latency-us = <250>;
+		exit-latency-us = <250>;
+		min-residency-us = <7500>;
+	};
+};
+
+&cluster_cl5 {
+	system-state;
+};
+
+&domain_ss3 {
+	system-state;
+};
+
+&cluster_pd0 {
+	domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+};
+
+&cluster_pd1 {
+	domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+};
+
+&cluster_pd2 {
+	domain-idle-states = <&cluster_cl4>, <&cluster_cl5>;
+};
+
+&system_pd {
+	domain-idle-states = <&domain_ss1>, <&domain_ss3>;
+};
