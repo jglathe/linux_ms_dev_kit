@@ -477,9 +477,6 @@ CONFIG_RTC_DRV_TWL4030                          note<'boot essential on OMAP3/OM
 CONFIG_RT_GROUP_SCHED                           policy<{'arm64': 'n'}>
 CONFIG_RT_GROUP_SCHED                           note<'LP: #1875665'>
 
-CONFIG_RUST                                     policy<{'arm64': 'y'}>
-CONFIG_RUST                                     note<'Make sure this remains enabled'>
-
 CONFIG_SAMPLE_TRACE_PRINTK                      policy<{'arm64': 'm'}>
 CONFIG_SAMPLE_TRACE_PRINTK                      note<'Required for ftrace selftests'>
 
@@ -994,7 +991,6 @@ CONFIG_ALX                                      policy<{'arm64': 'm'}>
 CONFIG_AL_FIC                                   policy<{'arm64': 'y'}>
 CONFIG_AM2315                                   policy<{'arm64': 'm'}>
 CONFIG_AMBA_PL08X                               policy<{'arm64': 'y'}>
-CONFIG_AMCC_QT2025_PHY                          policy<{'arm64': 'm'}>
 CONFIG_AMD8111_ETH                              policy<{'arm64': 'm'}>
 CONFIG_AMD_AXI_I3C_MASTER                       policy<{'arm64': 'm'}>
 CONFIG_AMD_MBV_BRAM_REMOTEPROC                  policy<{'arm64': 'm'}>
@@ -1014,7 +1010,6 @@ CONFIG_AMT                                      policy<{'arm64': 'm'}>
 CONFIG_ANDROID_BINDERFS                         policy<{'arm64': 'm'}>
 CONFIG_ANDROID_BINDER_DEVICES                   policy<{'arm64': '""'}>
 CONFIG_ANDROID_BINDER_IPC                       policy<{'arm64': 'm'}>
-CONFIG_ANDROID_BINDER_IPC_RUST                  policy<{'arm64': 'n'}>
 CONFIG_ANON_VMA_NAME                            policy<{'arm64': 'y'}>
 CONFIG_AOSONG_AGS02MA                           policy<{'arm64': 'm'}>
 CONFIG_APDS9160                                 policy<{'arm64': 'm'}>
@@ -1582,7 +1577,6 @@ CONFIG_AUXDISPLAY                               policy<{'arm64': 'y'}>
 CONFIG_AUXILIARY_BUS                            policy<{'arm64': 'y'}>
 CONFIG_AW96103                                  policy<{'arm64': 'm'}>
 CONFIG_AX88796B_PHY                             policy<{'arm64': 'm'}>
-CONFIG_AX88796B_RUST_PHY                        policy<{'arm64': 'n'}>
 CONFIG_AXIADO_MAILBOX                           policy<{'arm64': 'm'}>
 CONFIG_AXI_DMAC                                 policy<{'arm64': 'm'}>
 CONFIG_AXP20X_ADC                               policy<{'arm64': 'm'}>
@@ -1762,7 +1756,6 @@ CONFIG_BH1750                                   policy<{'arm64': 'm'}>
 CONFIG_BH1780                                   policy<{'arm64': 'm'}>
 CONFIG_BIG_KEYS                                 policy<{'arm64': 'y'}>
 CONFIG_BINARY_PRINTF                            policy<{'arm64': 'y'}>
-CONFIG_BINDGEN_VERSION_TEXT                     policy<{'arm64': '"bindgen 0.72.1"'}>
 CONFIG_BINFMT_ELF                               policy<{'arm64': 'y'}>
 CONFIG_BINFMT_MISC                              policy<{'arm64': 'm'}>
 CONFIG_BITREVERSE                               policy<{'arm64': 'y'}>
@@ -1797,7 +1790,6 @@ CONFIG_BLK_DEV_RBD                              policy<{'arm64': 'm'}>
 CONFIG_BLK_DEV_RNBD                             policy<{'arm64': 'y'}>
 CONFIG_BLK_DEV_RNBD_CLIENT                      policy<{'arm64': 'm'}>
 CONFIG_BLK_DEV_RNBD_SERVER                      policy<{'arm64': 'm'}>
-CONFIG_BLK_DEV_RUST_NULL                        policy<{'arm64': 'n'}>
 CONFIG_BLK_DEV_UBLK                             policy<{'arm64': 'm'}>
 CONFIG_BLK_DEV_WRITE_MOUNTED                    policy<{'arm64': 'y'}>
 CONFIG_BLK_DEV_ZONED                            policy<{'arm64': 'y'}>
@@ -2820,7 +2812,6 @@ CONFIG_COUNTER                                  policy<{'arm64': 'm'}>
 CONFIG_CPCAP_ADC                                policy<{'arm64': 'm'}>
 CONFIG_CPM_TSA                                  policy<{'arm64': 'n'}>
 CONFIG_CPUFREQ_DT_PLATDEV                       policy<{'arm64': 'y'}>
-CONFIG_CPUFREQ_DT_RUST                          policy<{'arm64': 'm'}>
 CONFIG_CPUFREQ_VIRT                             policy<{'arm64': 'm'}>
 CONFIG_CPUMASK_OFFSTACK                         policy<{'arm64': 'y'}>
 CONFIG_CPUSETS                                  policy<{'arm64': 'y'}>
@@ -3461,7 +3452,7 @@ CONFIG_DRM_DW_MIPI_DSI                          policy<{'arm64': 'm'}>
 CONFIG_DRM_DW_MIPI_DSI2                         policy<{'arm64': 'm'}>
 CONFIG_DRM_ETNAVIV                              policy<{'arm64': 'm'}>
 CONFIG_DRM_ETNAVIV_THERMAL                      policy<{'arm64': 'y'}>
-CONFIG_DRM_EXEC                                 policy<{'arm64': 'y'}>
+CONFIG_DRM_EXEC                                 policy<{'arm64': 'm'}>
 CONFIG_DRM_FBDEV_EMULATION                      policy<{'arm64': 'y'}>
 CONFIG_DRM_FBDEV_LEAK_PHYS_SMEM                 policy<{'arm64': 'n'}>
 CONFIG_DRM_FBDEV_OVERALLOC                      policy<{'arm64': '100'}>
@@ -3470,7 +3461,7 @@ CONFIG_DRM_GEM_DMA_HELPER                       policy<{'arm64': 'm'}>
 CONFIG_DRM_GEM_SHMEM_HELPER                     policy<{'arm64': 'y'}>
 CONFIG_DRM_GM12U320                             policy<{'arm64': 'm'}>
 CONFIG_DRM_GPUSVM                               policy<{'arm64': 'm'}>
-CONFIG_DRM_GPUVM                                policy<{'arm64': 'y'}>
+CONFIG_DRM_GPUVM                                policy<{'arm64': 'm'}>
 CONFIG_DRM_GUD                                  policy<{'arm64': 'm'}>
 CONFIG_DRM_HDLCD                                policy<{'arm64': 'm'}>
 CONFIG_DRM_HDLCD_SHOW_UNDERRUN                  policy<{'arm64': 'n'}>
@@ -3544,6 +3535,7 @@ CONFIG_DRM_MSM_KMS_FBDEV                        policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP4                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDP5                             policy<{'arm64': 'y'}>
 CONFIG_DRM_MSM_MDSS                             policy<{'arm64': 'y'}>
+CONFIG_DRM_MSM_VALIDATE_XML                     policy<{'arm64': 'n'}>
 CONFIG_DRM_MXS                                  policy<{'arm64': 'y'}>
 CONFIG_DRM_MXSFB                                policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU                              policy<{'arm64': 'm'}>
@@ -3551,7 +3543,6 @@ CONFIG_DRM_NOUVEAU_BACKLIGHT                    policy<{'arm64': 'y'}>
 CONFIG_DRM_NOUVEAU_CH7006                       policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU_SIL164                       policy<{'arm64': 'm'}>
 CONFIG_DRM_NOUVEAU_SVM                          policy<{'arm64': 'n'}>
-CONFIG_DRM_NOVA                                 policy<{'arm64': 'm'}>
 CONFIG_DRM_NWL_MIPI_DSI                         policy<{'arm64': 'm'}>
 CONFIG_DRM_NXP_PTN3460                          policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL                                policy<{'arm64': 'y'}>
@@ -3704,7 +3695,6 @@ CONFIG_DRM_PANIC_BACKGROUND_COLOR               policy<{'arm64': '0x5e2750'}>
 CONFIG_DRM_PANIC_DEBUG                          policy<{'arm64': 'n'}>
 CONFIG_DRM_PANIC_FOREGROUND_COLOR               policy<{'arm64': '0xffffff'}>
 CONFIG_DRM_PANIC_SCREEN                         policy<{'arm64': '"user"'}>
-CONFIG_DRM_PANIC_SCREEN_QR_CODE                 policy<{'arm64': 'n'}>
 CONFIG_DRM_PANTHOR                              policy<{'arm64': 'm'}>
 CONFIG_DRM_PARADE_PS8622                        policy<{'arm64': 'm'}>
 CONFIG_DRM_PARADE_PS8640                        policy<{'arm64': 'm'}>
@@ -3776,7 +3766,6 @@ CONFIG_DRM_TOSHIBA_TC358768                     policy<{'arm64': 'm'}>
 CONFIG_DRM_TOSHIBA_TC358775                     policy<{'arm64': 'm'}>
 CONFIG_DRM_TTM                                  policy<{'arm64': 'm'}>
 CONFIG_DRM_TTM_HELPER                           policy<{'arm64': 'm'}>
-CONFIG_DRM_TYR                                  policy<{'arm64': 'm'}>
 CONFIG_DRM_UDL                                  policy<{'arm64': 'm'}>
 CONFIG_DRM_VGEM                                 policy<{'arm64': 'm'}>
 CONFIG_DRM_VIRTIO_GPU                           policy<{'arm64': 'm'}>
@@ -4377,7 +4366,6 @@ CONFIG_FEC                                      policy<{'arm64': 'y'}>
 CONFIG_FIB_RULES                                policy<{'arm64': 'y'}>
 CONFIG_FILE_LOCKING                             policy<{'arm64': 'y'}>
 CONFIG_FIND_BIT_BENCHMARK                       policy<{'arm64': 'n'}>
-CONFIG_FIND_BIT_BENCHMARK_RUST                  policy<{'arm64': 'n'}>
 CONFIG_FIND_NORMAL_PAGE                         policy<{'arm64': 'y'}>
 CONFIG_FIPS_SIGNATURE_SELFTEST                  policy<{'arm64': 'n'}>
 CONFIG_FIREWIRE                                 policy<{'arm64': 'm'}>
@@ -8186,7 +8174,6 @@ CONFIG_NOUVEAU_DEBUG_DEFAULT                    policy<{'arm64': '3'}>
 CONFIG_NOUVEAU_DEBUG_MMU                        policy<{'arm64': 'n'}>
 CONFIG_NOUVEAU_DEBUG_PUSH                       policy<{'arm64': 'n'}>
 CONFIG_NOUVEAU_PLATFORM_DRIVER                  policy<{'arm64': 'y'}>
-CONFIG_NOVA_CORE                                policy<{'arm64': 'm'}>
 CONFIG_NOZOMI                                   policy<{'arm64': 'm'}>
 CONFIG_NO_HZ                                    policy<{'arm64': 'y'}>
 CONFIG_NO_HZ_COMMON                             policy<{'arm64': 'y'}>
@@ -10229,25 +10216,10 @@ CONFIG_RTW89_PCI                                policy<{'arm64': 'm'}>
 CONFIG_RTW89_USB                                policy<{'arm64': 'm'}>
 CONFIG_RT_MUTEXES                               policy<{'arm64': 'y'}>
 CONFIG_RUNTIME_TESTING_MENU                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_FILE_AS_C_STR                  policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_FILE_WITH_NUL                  policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_SPAN_FILE                      policy<{'arm64': 'y'}>
-CONFIG_RUSTC_HAS_UNNECESSARY_TRANSMUTES         policy<{'arm64': 'y'}>
-CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '21'}>
-CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '210108'}>
+CONFIG_RUSTC_LLVM_MAJOR_VERSION                 policy<{'arm64': '19'}>
+CONFIG_RUSTC_LLVM_VERSION                       policy<{'arm64': '190101'}>
 CONFIG_RUSTC_SUPPORTS_ARM64                     policy<{'arm64': 'y'}>
-CONFIG_RUSTC_VERSION                            policy<{'arm64': '109301'}>
-CONFIG_RUSTC_VERSION_TEXT                       policy<{'arm64': '"rustc 1.93.1 (01f6ddf75 2026-02-11) (built from a source tarball)"'}>
-CONFIG_RUST_BITMAP_HARDENED                     policy<{'arm64': 'n'}>
-CONFIG_RUST_BUILD_ASSERT_ALLOW                  policy<{'arm64': 'n'}>
-CONFIG_RUST_DEBUG_ASSERTIONS                    policy<{'arm64': 'n'}>
-CONFIG_RUST_DRM_GEM_SHMEM_HELPER                policy<{'arm64': 'y'}>
-CONFIG_RUST_DRM_GPUVM                           policy<{'arm64': 'y'}>
-CONFIG_RUST_FW_LOADER_ABSTRACTIONS              policy<{'arm64': 'y'}>
-CONFIG_RUST_IS_AVAILABLE                        policy<{'arm64': 'y'}>
-CONFIG_RUST_OVERFLOW_CHECKS                     policy<{'arm64': 'y'}>
-CONFIG_RUST_PHYLIB_ABSTRACTIONS                 policy<{'arm64': 'y'}>
-CONFIG_RUST_SERIAL_DEV_BUS_ABSTRACTIONS         policy<{'arm64': 'n'}>
+CONFIG_RUSTC_VERSION                            policy<{'arm64': '108200'}>
 CONFIG_RV                                       policy<{'arm64': 'y'}>
 CONFIG_RVU_ESWITCH                              policy<{'arm64': 'm'}>
 CONFIG_RV_HA_MONITOR                            policy<{'arm64': 'y'}>
@@ -10275,7 +10247,6 @@ CONFIG_RZ_MTU3                                  policy<{'arm64': 'y'}>
 CONFIG_RZ_MTU3_CNT                              policy<{'arm64': 'm'}>
 CONFIG_S32G_WDT                                 policy<{'arm64': 'm'}>
 CONFIG_SAMPLES                                  policy<{'arm64': 'y'}>
-CONFIG_SAMPLES_RUST                             policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_AUXDISPLAY                        policy<{'arm64': 'y'}>
 CONFIG_SAMPLE_CONFIGFS                          policy<{'arm64': 'n'}>
 CONFIG_SAMPLE_FPROBE                            policy<{'arm64': 'n'}>
