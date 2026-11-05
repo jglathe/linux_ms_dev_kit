@@ -1,3 +1,11 @@
+linux-qcom-x1e (7.3.1-jg-0) stonking; urgency=medium
+
+  * rebase the stack onto v7.3.1
+  * irqchip/qcom-pdc: Handle ESPIs in qcom,pdc-ranges [Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>]
+  * power: sequencing: pcie-m2: stop requiring subsystem IDs for WCN6855/WCN7850
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 05 Nov 2026 22:38:20 +0100
+
 linux-qcom-x1e (7.3.0-jg-5) stonking; urgency=medium
 
   * rebase onto git+ssh://git.launchpad.net/~ubuntu-concept/ubuntu/+source/linux/+git/stonking repo, 7.3.0-29.29 including config(-ish)
