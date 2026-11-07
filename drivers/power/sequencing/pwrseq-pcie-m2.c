@@ -428,6 +428,14 @@ static bool pwrseq_pcie_m2_check_remote_node(struct device *dev, u8 port, u8 end
 	return false;
 }
 
+static bool pwrseq_pcie_m2_bt_ambiguous(struct device *dev)
+{
+	bool has_usb  = pwrseq_pcie_m2_check_remote_node(dev, 2, 0, "usb");
+	bool has_uart = pwrseq_pcie_m2_check_remote_node(dev, 3, 0, "serial");
+
+	return has_usb && has_uart;
+}
+
 /*
  * If the connector exposes a non-discoverable bus like UART, the respective
  * protocol device needs to be created manually with the help of the notifier
@@ -444,6 +452,12 @@ static int pwrseq_pcie_m2_register_notifier(struct pwrseq_pcie_m2_ctx *ctx)
 	if (!pwrseq_pcie_m2_check_remote_node(ctx->dev, 3, 0, "serial") ||
 	    !pwrseq_pcie_m2_check_remote_node(ctx->dev, 0, 0, "pcie"))
 		return 0;
+
+	if (pwrseq_pcie_m2_bt_ambiguous(ctx->dev)) {
+		dev_info(ctx->dev,
+			 "connector describes both USB and UART BT; refusing automatic serdev creation\n");
+		return 0;
+	}
 
 	ctx->nb.notifier_call = pwrseq_pcie_m2_notify;
 	ret = bus_register_notifier(&pci_bus_type, &ctx->nb);
