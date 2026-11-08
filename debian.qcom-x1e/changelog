@@ -1,3 +1,10 @@
+linux-qcom-x1e (7.3.3-jg-0) stonking; urgency=medium
+
+  * power: sequencing: pcie-m2: refuse serdev creation on dual-wired connectors
+  * rebase the stack onto v7.3.3
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 08 Nov 2026 09:56:06 +0100
+
 linux-qcom-x1e (7.3.1-jg-0) stonking; urgency=medium
 
   * rebase the stack onto v7.3.1
