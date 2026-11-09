@@ -1950,7 +1950,6 @@
 	status = "okay";
 
 	bluetooth {
-		compatible = "qcom,wcn7850-bt";
 		max-speed = <3200000>;
 	};
 
