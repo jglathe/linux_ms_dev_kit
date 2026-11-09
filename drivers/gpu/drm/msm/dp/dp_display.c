@@ -433,6 +433,14 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp)
 			dp->msm_dp_display.connector_type,
 			dp->link->sink_count);
 
+	/*
+	 * Only one runtime PM reference is held while plugged, it is dropped
+	 * by msm_dp_hpd_unplug_handle(). detect() or a previous plug event
+	 * may already hold it.
+	 */
+	if (was_plugged)
+		pm_runtime_put_sync(&pdev->dev);
+
 	dp->plugged = true;
 
 	return ret;
@@ -902,6 +910,7 @@ enum drm_connector_status msm_dp_bridge_detect(struct drm_bridge *bridge,
 	u8 dpcd[DP_RECEIVER_CAP_SIZE];
 	struct drm_dp_desc desc;
 	bool phy_deinit;
+	bool was_plugged;
 	int ret;
 
 	dp = to_dp_bridge(bridge)->msm_dp_display;
@@ -909,6 +918,7 @@ enum drm_connector_status msm_dp_bridge_detect(struct drm_bridge *bridge,
 	priv = container_of(dp, struct msm_dp_display_private, msm_dp_display);
 
 	guard(mutex)(&priv->plugged_lock);
+	was_plugged = priv->plugged;
 	ret = pm_runtime_resume_and_get(&dp->pdev->dev);
 	if (ret) {
 		DRM_ERROR("failed to pm_runtime_resume\n");
@@ -956,7 +966,9 @@ enum drm_connector_status msm_dp_bridge_detect(struct drm_bridge *bridge,
 end:
 	/*
 	 * If we detected the DPRX, leave the controller on so that it doesn't
-	 * lose the state.
+	 * lose the state. Only one runtime PM reference is held while
+	 * plugged, so drop ours if it was already held, and drop the held one
+	 * too if the DPRX went away.
 	 */
 	if (!priv->plugged) {
 		if (phy_deinit) {
@@ -964,6 +976,10 @@ end:
 			msm_dp_display_host_phy_exit(priv);
 		}
 
+		pm_runtime_put_sync(&dp->pdev->dev);
+		if (was_plugged)
+			pm_runtime_put_sync(&dp->pdev->dev);
+	} else if (was_plugged) {
 		pm_runtime_put_sync(&dp->pdev->dev);
 	}
 
