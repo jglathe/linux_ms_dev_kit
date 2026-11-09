@@ -988,6 +988,9 @@
 		reg = <0x5d>;
 
 		hid-descr-addr = <0x1>;
+		interrupts-extended = <&tlmm 19 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-0 = <&tpad_default>;
+		pinctrl-names = "default";
 
 		vdd-supply = <&vreg_misc_3p3>;
 		vddl-supply = <&vreg_l12b_1p2>;
@@ -1489,6 +1492,14 @@
 			drive-strength = <2>;
 			bias-pull-up;
 		};
+	};
+
+	tpad_default: tpad-default-state {
+		pins = "gpio19";
+		function = "gpio";
+		bias-pull-up;
+		drive-strength = <2>;
+		input-enable;
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
