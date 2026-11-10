@@ -167,7 +167,7 @@
 			compatible = "usb-c-connector";
 			reg = <0>;
 			power-role = "dual";
-			data-role = "host";
+			data-role = "dual";
 
 			ports {
 				#address-cells = <1>;
