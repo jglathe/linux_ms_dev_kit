@@ -77,7 +77,7 @@
 	};
 
 	hdmi-bridge {
-		compatible = "realtek,rtd2171";
+		compatible = "parade,ps185hdm";
 
 		pinctrl-0 = <&hdmi_hpd_default>;
 		pinctrl-names = "default";
@@ -1631,7 +1631,7 @@
 			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
 				reg = <0>;
 
-//				data-lanes = <3 2 1 0>;
+				data-lanes = <3 2 1 0>;
 				remote-endpoint = <&hdmi_bridge_dp_in>;
 			};
 
@@ -1641,9 +1641,8 @@
 };
 
 &usb_2 {
-	status = "okay";
-
 	dr_mode = "host";
+	status = "okay";
 };
 
 &usb_2_hsphy {
