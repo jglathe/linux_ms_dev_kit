@@ -1,3 +1,9 @@
+linux-qcom-x1e (7.3.3-jg-1) stonking; urgency=medium
+
+  * fix up Ideapad Slim3x as far as possible
+
+ -- Explorer <jglathe@sdbox2>  Thu, 12 Nov 2026 21:49:51 +0100
+
 linux-qcom-x1e (7.3.3-jg-0) stonking; urgency=medium
 
   * power: sequencing: pcie-m2: refuse serdev creation on dual-wired connectors
