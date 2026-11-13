@@ -965,6 +965,80 @@ static int arch_timer_dying_cpu(unsigned int cpu)
 
 #ifdef CONFIG_CPU_PM
 static DEFINE_PER_CPU(unsigned long, saved_cntkctl);
+
+/*
+ * On the SoCs listed in arch_timer_idle_deadline_init(), the vendor's
+ * hypervisor only lets a CPU power down, and with it the cluster and the
+ * SoC, if the vCPU has a virtual timer deadline to wake up for. A timer
+ * that is disabled or masked does not count.
+ *
+ * A CPU that goes idle with nothing to wait for has had its clock event
+ * device shut down (NOHZ, the broadcast device, the frozen tick of
+ * suspend-to-idle) and so leaves the timer disabled. In suspend-to-idle
+ * that is every CPU: the system-level PSCI state is accepted and held,
+ * but nothing is ever powered down.
+ *
+ * Give such a CPU a deadline half the clock event device's range away
+ * for as long as it is in the idle state. The full range does not work:
+ * the compare value then lies beyond the counter's width, and the
+ * hypervisor treats it like no deadline at all. Interrupts are disabled
+ * from CPU_PM_ENTER to CPU_PM_EXIT, so should the deadline ever be
+ * reached, the timer is back in its previous state before the interrupt
+ * can be taken.
+ */
+static bool arch_timer_idle_deadline __ro_after_init;
+static DEFINE_PER_CPU(unsigned long, idle_deadline_saved_ctrl);
+static DEFINE_PER_CPU(bool, idle_deadline_armed);
+
+static void arch_timer_idle_deadline_enter(void)
+{
+	struct clock_event_device *clk = this_cpu_ptr(arch_timer_evt);
+	unsigned long ctrl;
+
+	if (!arch_timer_idle_deadline)
+		return;
+
+	ctrl = arch_timer_reg_read_cp15(ARCH_TIMER_VIRT_ACCESS,
+					ARCH_TIMER_REG_CTRL);
+	if ((ctrl & ARCH_TIMER_CTRL_ENABLE) && !(ctrl & ARCH_TIMER_CTRL_IT_MASK))
+		return;
+
+	__this_cpu_write(idle_deadline_saved_ctrl, ctrl);
+	__this_cpu_write(idle_deadline_armed, true);
+	set_next_event(ARCH_TIMER_VIRT_ACCESS, clk->max_delta_ticks >> 1, clk);
+}
+
+static void arch_timer_idle_deadline_exit(void)
+{
+	if (!__this_cpu_read(idle_deadline_armed))
+		return;
+
+	arch_timer_reg_write_cp15(ARCH_TIMER_VIRT_ACCESS, ARCH_TIMER_REG_CTRL,
+				  __this_cpu_read(idle_deadline_saved_ctrl));
+	__this_cpu_write(idle_deadline_armed, false);
+}
+
+static void __init arch_timer_idle_deadline_init(void)
+{
+	/*
+	 * Qualcomm SoCs whose hypervisor (Gunyah) has been seen to behave
+	 * this way. It only matters when Linux runs under it, at EL1, on
+	 * the virtual timer.
+	 */
+	static const char * const needs_idle_deadline[] __initconst = {
+		"qcom,x1e80100",
+		NULL
+	};
+
+	if (arch_timer_uses_ppi != ARCH_TIMER_VIRT_PPI)
+		return;
+
+	if (of_machine_compatible_match(needs_idle_deadline)) {
+		arch_timer_idle_deadline = true;
+		pr_info("idle CPUs keep a far timer deadline for the hypervisor\n");
+	}
+}
+
 static int arch_timer_cpu_pm_notify(struct notifier_block *self,
 				    unsigned long action, void *hcpu)
 {
@@ -972,7 +1046,11 @@ static int arch_timer_cpu_pm_notify(struct notifier_block *self,
 		__this_cpu_write(saved_cntkctl, arch_timer_get_cntkctl());
 
 		cpumask_clear_cpu(smp_processor_id(), &evtstrm_available);
+
+		arch_timer_idle_deadline_enter();
 	} else if (action == CPU_PM_ENTER_FAILED || action == CPU_PM_EXIT) {
+		arch_timer_idle_deadline_exit();
+
 		arch_timer_set_cntkctl(__this_cpu_read(saved_cntkctl));
 
 		if (arch_timer_have_evtstrm_feature())
@@ -987,6 +1065,8 @@ static struct notifier_block arch_timer_cpu_pm_notifier = {
 
 static int __init arch_timer_cpu_pm_init(void)
 {
+	arch_timer_idle_deadline_init();
+
 	return cpu_pm_register_notifier(&arch_timer_cpu_pm_notifier);
 }
 
