@@ -159,9 +159,7 @@
 				"qcom,pmic-glink";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
-				<&tlmm 123 GPIO_ACTIVE_HIGH>,
-				<&tlmm 125 GPIO_ACTIVE_HIGH>;
+		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>;
 
 		connector@0 {
 			compatible = "usb-c-connector";
@@ -1018,14 +1016,6 @@
 
 &lpass_wsamacro {
 	status = "okay";
-	assigned-clocks = <&q6prmcc 0x42 0x01>;
-	assigned-clock-rates = <19200000>;
-	clock-output-names = "wsa-mclk";
-	#clock-cells = <0>;
-};
-
-&lpass_wsa2macro {
-	status = "disabled";
 };
 
 &mdss {
@@ -1279,6 +1269,7 @@
 		compatible = "sdw20217020400";
 		reg = <0 0>;
 		powerdown-gpios = <&tlmm 204 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrLeft";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
@@ -1291,6 +1282,7 @@
 		compatible = "sdw20217020400";
 		reg = <0 1>;
 		powerdown-gpios = <&tlmm 205 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrRight";
 		vdd-1p8-supply = <&vreg_l15b_1p8>;
@@ -1374,21 +1366,23 @@
 	spkr_en1_default: spkr-en1-default-state {
 		pins = "gpio204";
 		function = "gpio";
-		drive-strength = <2>;
+		drive-strength = <16>;
 		bias-disable;
+		output-low;
 	};
 
 	spkr_en2_default: spkr-en2-default-state {
 		pins = "gpio205";
 		function = "gpio";
-		drive-strength = <2>;
+		drive-strength = <16>;
 		bias-disable;
+		output-low;
 	};
 
 	audio_en_default: audio-en-default-state {
 		pins = "gpio68";
 		function = "gpio";
-		drive-strength = <2>;
+		drive-strength = <16>;
 		bias-disable;
 	};
 
@@ -1539,7 +1533,7 @@
 	wcd_default: wcd-reset-n-active-state {
 		pins = "gpio191";
 		function = "gpio";
-		drive-strength = <16>;
+		drive-strength = <2>;
 		bias-disable;
 		output-low;
 	};
@@ -1547,7 +1541,7 @@
 	wcn_sw_en: wcn-sw-en-state {
 		pins = "gpio214";
 		function = "gpio";
-		drive-strength = <2>;
+		drive-strength = <16>;
 		bias-disable;
 	};
 
