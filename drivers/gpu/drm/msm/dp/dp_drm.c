@@ -55,7 +55,7 @@ static int msm_dp_audio_startup(struct drm_bridge *bridge,
         struct msm_dp *msm_dp_display = to_dp_bridge(bridge)->msm_dp_display;
 
         if (!msm_dp_display->power_on)
-                return -ENOTSUPP;
+                return 0;
 
         return 0;
 }
