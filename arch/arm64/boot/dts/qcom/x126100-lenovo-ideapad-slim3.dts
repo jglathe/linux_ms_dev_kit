@@ -358,8 +358,8 @@
 				"IN1_HPHL", "HPHL_OUT",
 				"IN2_HPHR", "HPHR_OUT",
 				"AMIC2", "MIC BIAS2",
-				"VA DMIC0", "MIC BIAS3",
-				"VA DMIC1", "MIC BIAS3",
+				"VA DMIC0", "MIC BIAS1",
+				"VA DMIC1", "MIC BIAS1",
 				"VA DMIC0", "VA MIC BIAS1",
 				"VA DMIC1", "VA MIC BIAS1",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
@@ -530,6 +530,10 @@
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l6b_1p8: ldo6 {
@@ -562,8 +566,8 @@
 
 		vreg_l12b_1p2: ldo12 {
 			regulator-name = "vreg_l12b_1p2";
-			regulator-min-microvolt = <1150000>;
-			regulator-max-microvolt = <1250000>;
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -573,6 +577,10 @@
 			regulator-min-microvolt = <3072000>;
 			regulator-max-microvolt = <3072000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+
+			regulator-state-mem {
+				regulator-on-in-suspend;
+			};
 		};
 
 		vreg_l14b_3p0: ldo14 {
@@ -718,8 +726,8 @@
 
 		vreg_l1i_1p8: ldo1 {
 			regulator-name = "vreg_l1i_1p8";
-			regulator-min-microvolt = <1750000>;
-			regulator-max-microvolt = <1850000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
@@ -1011,7 +1019,7 @@
 	pinctrl-names = "default";
 
 	vdd-micb-supply = <&vreg_l1b_1p8>;
-	qcom,dmic-sample-rate = <4800000>;
+	qcom,dmic-sample-rate = <2400000>;
 };
 
 &lpass_wsamacro {
@@ -1085,9 +1093,6 @@
 };
 
 &pcie3 {
-	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
-
 	vddpe-3v3-supply = <&vreg_pcie3_nvme>;
 
 	pinctrl-0 = <&pcie3_default>;
@@ -1105,8 +1110,12 @@
 	status = "okay";
 };
 
-&pcie4 {
+&pcie3_port0 {
+	reset-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
+	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
+};
 
+&pcie4 {
 	pinctrl-0 = <&pcie4_default>;
 	pinctrl-names = "default";
 
@@ -1155,9 +1164,6 @@
 };
 
 &pcie6a {
-	perst-gpios = <&tlmm 152 GPIO_ACTIVE_LOW>;
-	wake-gpios = <&tlmm 154 GPIO_ACTIVE_LOW>;
-
 	vddpe-3v3-supply = <&vreg_nvme>;
 
 	pinctrl-0 = <&pcie6a_default>;
@@ -1235,6 +1241,18 @@
 	status = "okay";
 };
 
+&gpi_dma0 {
+	status = "okay";
+};
+
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
 &remoteproc_adsp {
 	firmware-name = "qcom/x1p42100/LENOVO/83N3/qcadsp8380.mbn",
 			"qcom/x1p42100/LENOVO/83N3/adsp_dtbs.elf";
@@ -1261,14 +1279,13 @@
 &swr0 {
 	status = "okay";
 
-//	pinctrl-0 = <&wsa_swr_active>, <&spkr_en1_default>, <&spkr_en2_default>;
-//	pinctrl-names = "default";
+	pinctrl-0 = <&wsa_swr_active>, <&spkr_01_sd_n_active>;
+	pinctrl-names = "default";
 
 	/* WSA8845, Left Speaker */
 	left_spkr: speaker@0,0 {
 		compatible = "sdw20217020400";
 		reg = <0 0>;
-//		powerdown-gpios = <&tlmm 204 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrLeft";
@@ -1281,7 +1298,6 @@
 	right_spkr: speaker@0,1 {
 		compatible = "sdw20217020400";
 		reg = <0 1>;
-//		powerdown-gpios = <&tlmm 205 GPIO_ACTIVE_LOW>;
 		reset-gpios = <&lpass_tlmm 12 GPIO_ACTIVE_LOW>;
 		#sound-dai-cells = <0>;
 		sound-name-prefix = "SpkrRight";
@@ -1363,29 +1379,6 @@
 		bias-disable;
 	};
 
-//	spkr_en1_default: spkr-en1-default-state {
-//		pins = "gpio204";
-//		function = "gpio";
-//		drive-strength = <16>;
-//		bias-disable;
-//		output-low;
-//	};
-//
-//	spkr_en2_default: spkr-en2-default-state {
-//		pins = "gpio205";
-//		function = "gpio";
-//		drive-strength = <16>;
-//		bias-disable;
-//		output-low;
-//	};
-//
-//	audio_en_default: audio-en-default-state {
-//		pins = "gpio68";
-//		function = "gpio";
-//		drive-strength = <16>;
-//		bias-disable;
-//	};
-//
 	hall_int_n_default: hall-int-n-state {
 		pins = "gpio92";
 		function = "gpio";
@@ -1401,9 +1394,7 @@
 	kybd_default: kybd-default-state {
 		pins = "gpio67";
 		function = "gpio";
-		bias-pull-up;
-		drive-strength = <2>;
-		input-enable;
+		bias-disable;
 	};
 
 	nvme_reg_en: nvme-reg-en-state {
