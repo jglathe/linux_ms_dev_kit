@@ -7,6 +7,20 @@
 #include "hamoa.dtsi"
 #include "x1-dell-thena.dtsi"
 
+/* X1P-64-100: 10 cores (4+3+3); core 3 of clusters 1 and 2 is fused off */
+/delete-node/ &cpu7;
+/delete-node/ &cpu11;
+/delete-node/ &cpu_pd7;
+/delete-node/ &cpu_pd11;
+
+&{/cpus/cpu-map/cluster1} {
+	/delete-node/ core3;
+};
+
+&cpu_map_cluster2 {
+	/delete-node/ core3;
+};
+
 / {
 	model = "Dell Latitude 5455";
 	compatible = "dell,latitude-5455", "qcom,x1e80100";
@@ -19,8 +33,35 @@
 	};
 };
 
+/* Latitude 5455: two speakers, both on WSA (swr0); no WSA2 amps */
+&swr3 {
+	status = "disabled";
+};
+
+&lpass_wsa2macro {
+	status = "disabled";
+};
+
 &sound {
 	model = "X1E80100-Dell-Latitude-5455";
+
+	audio-routing = "WooferLeft IN", "WSA WSA_SPK1 OUT",
+			"TweeterLeft IN", "WSA WSA_SPK2 OUT",
+			"IN1_HPHL", "HPHL_OUT",
+			"IN2_HPHR", "HPHR_OUT",
+			"AMIC2", "MIC BIAS2",
+			"VA DMIC0", "MIC BIAS1",
+			"VA DMIC1", "MIC BIAS1",
+			"VA DMIC0", "VA MIC BIAS1",
+			"VA DMIC1", "VA MIC BIAS1",
+			"TX SWR_INPUT1", "ADC2_OUTPUT";
+
+	wsa-dai-link {
+		codec {
+			sound-dai = <&left_woofer>, <&left_tweeter>,
+				    <&swr0 0>, <&lpass_wsamacro 0>;
+		};
+	};
 
 	displayport-0-dai-link {
 		link-name = "DisplayPort0 Playback";
@@ -103,4 +144,47 @@
 			"qcom/x1e80100/dell/latitude-5455/cdsp_dtbs.elf";
 
 	status = "okay";
+};
+
+/* EC thermal feed for fan control. Binding and driver are in-tree
+ * (dell,xps13-9345-ec / CONFIG_EC_DELL_XPS); the packaged kernel still
+ * has that option disabled. sys_therm6 is unconnected on this board
+ * but the binding requires all seven channel names; the driver skips a
+ * dead sensor.
+ */
+&i2c5 {
+	embedded-controller@3b {
+		compatible = "dell,xps13-9345-ec";
+		reg = <0x3b>;
+
+		interrupts-extended = <&tlmm 66 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-0 = <&ec_int_n_default>;
+		pinctrl-names = "default";
+
+		io-channels = <&pmk8550_vadc ADC5_GEN3_AMUX1_GPIO_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX2_GPIO_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX1_THM_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX2_THM_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX3_THM_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX4_THM_100K_PU(1)>,
+			      <&pmk8550_vadc ADC5_GEN3_AMUX5_THM_100K_PU(1)>;
+		io-channel-names = "sys_therm0", "sys_therm1", "sys_therm2",
+				   "sys_therm3", "sys_therm4", "sys_therm5",
+				   "sys_therm6";
+	};
+};
+
+&tlmm {
+	gpio-reserved-ranges = <44 4>,  /* SPI11 (TPM) */
+			       <65 1>,  /* EC Reset */
+			       <76 4>,  /* SPI19 (TZ Protected) */
+			       <80 2>,  /* I2C20 (Battery SMBus) */
+			       <238 1>; /* UFS Reset */
+
+	ec_int_n_default: ec-int-n-state {
+		pins = "gpio66";
+		function = "gpio";
+		bias-disable;
+	};
 };
