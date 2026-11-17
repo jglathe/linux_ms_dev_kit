@@ -3392,7 +3392,7 @@ CONFIG_DRM_AMD_DC                               policy<{'arm64': 'y'}>
 CONFIG_DRM_AMD_DC_FP                            policy<{'arm64': 'y'}>
 CONFIG_DRM_AMD_DC_SI                            policy<{'arm64': 'y'}>
 CONFIG_DRM_AMD_ISP                              policy<{'arm64': 'y'}>
-CONFIG_DRM_AMD_SECURE_DISPLAY                   policy<{'arm64': 'y'}>
+CONFIG_DRM_AMD_SECURE_DISPLAY                   policy<{'arm64': 'n'}>
 CONFIG_DRM_ANALOGIX_ANX6345                     policy<{'arm64': 'm'}>
 CONFIG_DRM_ANALOGIX_ANX7625                     policy<{'arm64': 'm'}>
 CONFIG_DRM_ANALOGIX_ANX78XX                     policy<{'arm64': 'm'}>
@@ -4058,7 +4058,7 @@ CONFIG_E1000                                    policy<{'arm64': 'm'}>
 CONFIG_E1000E                                   policy<{'arm64': 'm'}>
 CONFIG_ECRYPT_FS_MESSAGING                      policy<{'arm64': 'y'}>
 CONFIG_EC_ACER_ASPIRE1                          policy<{'arm64': 'm'}>
-CONFIG_EC_DELL_XPS                              policy<{'arm64': 'n'}>
+CONFIG_EC_DELL_XPS                              policy<{'arm64': 'm'}>
 CONFIG_EC_HUAWEI_GAOKUN                         policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_THINKPAD_T14S                  policy<{'arm64': 'm'}>
 CONFIG_EC_LENOVO_YOGA_C630                      policy<{'arm64': 'm'}>
@@ -9605,7 +9605,7 @@ CONFIG_REGULATOR_BD96801                        policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_BQ257XX                        policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_CPCAP                          policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_CROS_EC                        policy<{'arm64': 'm'}>
-CONFIG_REGULATOR_DA903X                         policy<{'arm64': 'm'}>
+CONFIG_REGULATOR_DA903X                         policy<{'arm64': 'n'}>
 CONFIG_REGULATOR_DA9052                         policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_DA9055                         policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_DA9062                         policy<{'arm64': 'm'}>
