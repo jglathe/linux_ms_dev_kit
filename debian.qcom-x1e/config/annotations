@@ -1408,7 +1408,7 @@ CONFIG_ARM_SCMI_HAVE_MSG                        policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_HAVE_SHMEM                      policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_HAVE_TRANSPORT                  policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_NEED_DEBUGFS                    policy<{'arm64': 'y'}>
-CONFIG_ARM_SCMI_PERF_DOMAIN                     policy<{'arm64': 'm'}>
+CONFIG_ARM_SCMI_PERF_DOMAIN                     policy<{'arm64': 'y'}>
 CONFIG_ARM_SCMI_POWERCAP                        policy<{'arm64': 'm'}>
 CONFIG_ARM_SCMI_POWER_CONTROL                   policy<{'arm64': 'm'}>
 CONFIG_ARM_SCMI_POWER_DOMAIN                    policy<{'arm64': 'm'}>
@@ -2281,7 +2281,7 @@ CONFIG_CLK_GFM_LPASS_SM8250                     policy<{'arm64': 'm'}>
 CONFIG_CLK_GLYMUR_CAMCC                         policy<{'arm64': 'm'}>
 CONFIG_CLK_GLYMUR_DISPCC                        policy<{'arm64': 'm'}>
 CONFIG_CLK_GLYMUR_EVACC                         policy<{'arm64': 'm'}>
-CONFIG_CLK_GLYMUR_GCC                           policy<{'arm64': 'm'}>
+CONFIG_CLK_GLYMUR_GCC                           policy<{'arm64': 'y'}>
 CONFIG_CLK_GLYMUR_GPUCC                         policy<{'arm64': 'm'}>
 CONFIG_CLK_GLYMUR_TCSRCC                        policy<{'arm64': 'm'}>
 CONFIG_CLK_GLYMUR_VIDEOCC                       policy<{'arm64': 'm'}>
@@ -2383,7 +2383,7 @@ CONFIG_CLK_TWL6040                              policy<{'arm64': 'm'}>
 CONFIG_CLK_VEXPRESS_OSC                         policy<{'arm64': 'y'}>
 CONFIG_CLK_X1E80100_CAMCC                       policy<{'arm64': 'm'}>
 CONFIG_CLK_X1E80100_DISPCC                      policy<{'arm64': 'm'}>
-CONFIG_CLK_X1E80100_GCC                         policy<{'arm64': 'm'}>
+CONFIG_CLK_X1E80100_GCC                         policy<{'arm64': 'y'}>
 CONFIG_CLK_X1E80100_GPUCC                       policy<{'arm64': 'm'}>
 CONFIG_CLK_X1E80100_TCSRCC                      policy<{'arm64': 'm'}>
 CONFIG_CLK_X1P42100_CAMCC                       policy<{'arm64': 'm'}>
@@ -2818,9 +2818,9 @@ CONFIG_CPUSETS                                  policy<{'arm64': 'y'}>
 CONFIG_CPUSETS_V1                               policy<{'arm64': 'n'}>
 CONFIG_CPU_FREQ                                 policy<{'arm64': 'y'}>
 CONFIG_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE        policy<{'arm64': 'n'}>
-CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND            policy<{'arm64': 'y'}>
+CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND            policy<{'arm64': 'n'}>
 CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE           policy<{'arm64': 'n'}>
-CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL           policy<{'arm64': 'n'}>
+CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL           policy<{'arm64': 'y'}>
 CONFIG_CPU_FREQ_DEFAULT_GOV_USERSPACE           policy<{'arm64': 'n'}>
 CONFIG_CPU_FREQ_GOV_ATTR_SET                    policy<{'arm64': 'y'}>
 CONFIG_CPU_FREQ_GOV_COMMON                      policy<{'arm64': 'y'}>
@@ -5748,7 +5748,7 @@ CONFIG_INTERCONNECT_MTK_MT8196                  policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM                        policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_BCM_VOTER              policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_ELIZA                  policy<{'arm64': 'm'}>
-CONFIG_INTERCONNECT_QCOM_GLYMUR                 policy<{'arm64': 'm'}>
+CONFIG_INTERCONNECT_QCOM_GLYMUR                 policy<{'arm64': 'y'}>
 CONFIG_INTERCONNECT_QCOM_HAWI                   policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM_KAANAPALI              policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM_MAILI                  policy<{'arm64': 'y'}>
@@ -5790,7 +5790,7 @@ CONFIG_INTERCONNECT_QCOM_SM8550                 policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM_SM8650                 policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM_SM8750                 policy<{'arm64': 'm'}>
 CONFIG_INTERCONNECT_QCOM_SMD_RPM                policy<{'arm64': 'm'}>
-CONFIG_INTERCONNECT_QCOM_X1E80100               policy<{'arm64': 'm'}>
+CONFIG_INTERCONNECT_QCOM_X1E80100               policy<{'arm64': 'y'}>
 CONFIG_INTERRUPT_CNT                            policy<{'arm64': 'm'}>
 CONFIG_INTERVAL_TREE                            policy<{'arm64': 'y'}>
 CONFIG_INTERVAL_TREE_SPAN_ITER                  policy<{'arm64': 'y'}>
@@ -9050,7 +9050,7 @@ CONFIG_PINCTRL_TEGRA_XUSB                       policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_TMPV7700                         policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_TPS6594                          policy<{'arm64': 'm'}>
 CONFIG_PINCTRL_VISCONTI                         policy<{'arm64': 'y'}>
-CONFIG_PINCTRL_X1E80100                         policy<{'arm64': 'm'}>
+CONFIG_PINCTRL_X1E80100                         policy<{'arm64': 'y'}>
 CONFIG_PINCTRL_ZYNQMP                           policy<{'arm64': 'm'}>
 CONFIG_PING                                     policy<{'arm64': 'm'}>
 CONFIG_PINMUX                                   policy<{'arm64': 'y'}>
@@ -9324,7 +9324,7 @@ CONFIG_QCM_GCC_2290                             policy<{'arm64': 'm'}>
 CONFIG_QCOMTEE                                  policy<{'arm64': 'm'}>
 CONFIG_QCOM_A53PLL                              policy<{'arm64': 'm'}>
 CONFIG_QCOM_ADSP_PWR_LMTS                       policy<{'arm64': 'm'}>
-CONFIG_QCOM_AOSS_QMP                            policy<{'arm64': 'm'}>
+CONFIG_QCOM_AOSS_QMP                            policy<{'arm64': 'y'}>
 CONFIG_QCOM_APCS_IPC                            policy<{'arm64': 'm'}>
 CONFIG_QCOM_APR                                 policy<{'arm64': 'm'}>
 CONFIG_QCOM_BAM_DMA                             policy<{'arm64': 'm'}>
@@ -9702,7 +9702,7 @@ CONFIG_REGULATOR_QCOM_LABIBB                    policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_QCOM_PM8008                    policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_QCOM_REFGEN                    policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_QCOM_RPM                       policy<{'arm64': 'm'}>
-CONFIG_REGULATOR_QCOM_RPMH                      policy<{'arm64': 'm'}>
+CONFIG_REGULATOR_QCOM_RPMH                      policy<{'arm64': 'y'}>
 CONFIG_REGULATOR_QCOM_SMD_RPM                   policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_QCOM_SPMI                      policy<{'arm64': 'm'}>
 CONFIG_REGULATOR_QCOM_USB_VBUS                  policy<{'arm64': 'm'}>
