@@ -2124,7 +2124,7 @@ CONFIG_CDROM                                    policy<{'arm64': 'y'}>
 CONFIG_CDX_BUS                                  policy<{'arm64': 'y'}>
 CONFIG_CDX_CONTROLLER                           policy<{'arm64': 'm'}>
 CONFIG_CEC_CH7322                               policy<{'arm64': 'm'}>
-CONFIG_CEC_CORE                                 policy<{'arm64': 'm'}>
+CONFIG_CEC_CORE                                 policy<{'arm64': 'y'}>
 CONFIG_CEC_CROS_EC                              policy<{'arm64': 'm'}>
 CONFIG_CEC_GPIO                                 policy<{'arm64': 'm'}>
 CONFIG_CEC_MESON_AO                             policy<{'arm64': 'm'}>
@@ -3426,7 +3426,7 @@ CONFIG_DRM_DEBUG_DP_MST_TOPOLOGY_REFS           policy<{'arm64': 'n'}>
 CONFIG_DRM_DEBUG_MM                             policy<{'arm64': 'n'}>
 CONFIG_DRM_DEBUG_MODESET_LOCK                   policy<{'arm64': 'n'}>
 CONFIG_DRM_DISPLAY_CONNECTOR                    policy<{'arm64': 'm'}>
-CONFIG_DRM_DISPLAY_DP_AUX_BUS                   policy<{'arm64': 'm'}>
+CONFIG_DRM_DISPLAY_DP_AUX_BUS                   policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_DP_AUX_CEC                   policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_DP_AUX_CHARDEV               policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_DP_HELPER                    policy<{'arm64': 'y'}>
@@ -3438,7 +3438,7 @@ CONFIG_DRM_DISPLAY_HDMI_CEC_HELPER              policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_HDMI_CEC_NOTIFIER_HELPER     policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_HDMI_HELPER                  policy<{'arm64': 'y'}>
 CONFIG_DRM_DISPLAY_HDMI_STATE_HELPER            policy<{'arm64': 'y'}>
-CONFIG_DRM_DISPLAY_HELPER                       policy<{'arm64': 'm'}>
+CONFIG_DRM_DISPLAY_HELPER                       policy<{'arm64': 'y'}>
 CONFIG_DRM_DRAW                                 policy<{'arm64': 'y'}>
 CONFIG_DRM_DW_DP                                policy<{'arm64': 'm'}>
 CONFIG_DRM_DW_HDMI                              policy<{'arm64': 'm'}>
@@ -3562,7 +3562,7 @@ CONFIG_DRM_PANEL_CHIPONE_ICNA35XX               policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_CHIPWEALTH_CH13726A            policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_DSI_CM                         policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_EBBG_FT8719                    policy<{'arm64': 'm'}>
-CONFIG_DRM_PANEL_EDP                            policy<{'arm64': 'm'}>
+CONFIG_DRM_PANEL_EDP                            policy<{'arm64': 'y'}>
 CONFIG_DRM_PANEL_ELIDA_KD35T133                 policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_FEIXIN_K101_IM2BA02            policy<{'arm64': 'm'}>
 CONFIG_DRM_PANEL_FEIYANG_FY07024DI26A30D        policy<{'arm64': 'm'}>
