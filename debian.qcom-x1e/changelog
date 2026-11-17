@@ -1,15 +1,35 @@
 linux-qcom-x1e (7.3.3-jg-1) stonking; urgency=medium
 
-  * fix up Ideapad Slim3x as far as possible
+  * arm64: dts: qcom: lenovo-t14s: remove compatible for Bluetooth definition
+  * clocksource/arm_arch_timer: park stopped timers [Anthony Ruhier <aruhier@mailbox.org>]
+  * soc: qcom: add ADSP power-limits Modern Standby notifier [Anthony Ruhier <aruhier@mailbox.org>]
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: move from wcn7850 to pwrseq-pcie-m2
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: enable touchpad gpio on tlmm19
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: Fix audio routing [Matheus Polkorny <polkorny@debian.org>]
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: enable native HDMI [Matheus Polkorny <mpolkorny@gmail.com>]
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: correct USB topology [Matheus Polkorny <mpolkorny@gmail.com>]
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: wire up usb1_ss1 for fingerprint reader
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: iterate sound setup
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: iterate sound setup again
+  * drm/msm/dp: don't fail audio startup while DP is powered off
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: align against slim5x
+  * arm64: dts: qcom: sc8280xp: fix GPU peak bandwidth votes [Xilin Wu <sophon@radxa.com>]
+  * Ubuntu: Update config
+  * UBUNTU: [Config] qcom-x1e: restore built-in SCMI perf domain, schedutil and X1E platform drivers
+  * UBUNTU: [Config] qcom-x1e: build DRM_PANEL_EDP in
+  * firmware: arm_scmi: perf: ignore an implausible sustained frequency [Charlie Garner <charlie@akao.au>]
+  * arm64: dts: qcom: hamoa: disable crypto engine by default
+  * arm64: dts: qcom: x1p64100-dell-latitude-5455: speakers, fused CPUs, EC [3thanRam <ramsey.e.ethan@gmail.com>]
+  * Ubuntu: update annotations and ubuntu_x1e_defconfig
 
- -- Explorer <jglathe@sdbox2>  Thu, 12 Nov 2026 21:49:51 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Tue, 17 Nov 2026 18:27:35 +0100
 
 linux-qcom-x1e (7.3.3-jg-0) stonking; urgency=medium
 
   * power: sequencing: pcie-m2: refuse serdev creation on dual-wired connectors
   * rebase the stack onto v7.3.3
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 08 Nov 2026 09:56:06 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Sun, 08 Nov 2026 09:56:06 +0100
 
 linux-qcom-x1e (7.3.1-jg-0) stonking; urgency=medium
 
@@ -17,20 +37,20 @@ linux-qcom-x1e (7.3.1-jg-0) stonking; urgency=medium
   * irqchip/qcom-pdc: Handle ESPIs in qcom,pdc-ranges [Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>]
   * power: sequencing: pcie-m2: stop requiring subsystem IDs for WCN6855/WCN7850
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 05 Nov 2026 22:38:20 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Thu, 05 Nov 2026 22:38:20 +0100
 
 linux-qcom-x1e (7.3.0-jg-5) stonking; urgency=medium
 
   * rebase onto git+ssh://git.launchpad.net/~ubuntu-concept/ubuntu/+source/linux/+git/stonking repo, 7.3.0-29.29 including config(-ish)
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Fri, 30 Oct 2026 06:44:47 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Fri, 30 Oct 2026 06:44:47 +0100
 
 linux-qcom-x1e (7.3.0-jg-4) stonking; urgency=medium
 
   * media: iris: apply clock defaults after power domains
   * net: qrtr: smd: release send_lock before endpoint unregister on open failure [Ethan RAMSEY <132889564+3thanRam@users.noreply.github.com>]
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Wed, 28 Oct 2026 22:36:03 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Wed, 28 Oct 2026 22:36:03 +0100
 
 linux-qcom-x1e (7.3.0-jg-3) resolute; urgency=medium
 
@@ -38,7 +58,7 @@ linux-qcom-x1e (7.3.0-jg-3) resolute; urgency=medium
   * arm64: dts: qcom: lenovo-t14s: re-add Bluetooth definition
   * enable Iris node on several devices
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 26 Oct 2026 07:08:13 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Mon, 26 Oct 2026 07:08:13 +0100
 
 linux-qcom-x1e (7.3.0-jg-2) stonking; urgency=medium
 
@@ -63,19 +83,19 @@ linux-qcom-x1e (7.3.0-jg-2) stonking; urgency=medium
   * drm/msm/dpu: use common helper cleanup function in cmd mode disable [JS Deck <jsdeckerido@gmail.com>]
   * drm/msm/dpu: reset DSC_CMN_MAIN_CNF in dsc disable [JS Deck <jsdeckerido@gmail.com>]
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Sun, 25 Oct 2026 15:05:56 +0100
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Sun, 25 Oct 2026 15:05:56 +0100
 
 linux-qcom-x1e (7.3.0-jg-1) stonking; urgency=medium
 
   * add Iris IOMMU fault series: https://lore.kernel.org/all/20260926-vpu_iommu_iova_handling-v5-0-0322ca5dc10c@oss.qualcomm.com/ [Vikash Garodia <vikash.garodia@oss.qualcomm.com>]
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 20 Oct 2026 20:40:27 +0200
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Tue, 20 Oct 2026 20:40:27 +0200
 
 linux-qcom-x1e (7.3.0-jg-0) stonking; urgency=medium
 
   * rebase the whole stack to v7.3
 
- -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 19 Oct 2026 19:53:52 +0200
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Mon, 19 Oct 2026 19:53:52 +0200
 
 linux-qcom-x1e (7.3.0-29.29) stonking; urgency=medium
 
