@@ -4166,6 +4166,8 @@
 			qcom,controlled-remotely;
 			num-channels = <20>;
 			qcom,num-ees = <4>;
+
+			status = "disabled";
 		};
 
 		crypto: crypto@1dfa000 {
@@ -4179,6 +4181,8 @@
 			interconnects = <&aggre2_noc MASTER_CRYPTO QCOM_ICC_TAG_ALWAYS
 					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>;
 			interconnect-names = "memory";
+
+			status = "disabled";
 		};
 
 		tcsr_mutex: hwlock@1f40000 {
