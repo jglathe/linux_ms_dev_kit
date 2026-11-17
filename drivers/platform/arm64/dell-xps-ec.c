@@ -267,3 +267,4 @@ module_i2c_driver(dell_xps_ec_driver);
 MODULE_AUTHOR("Aleksandrs Vinarskis <alex@vinarskis.com>");
 MODULE_DESCRIPTION("Dell XPS 13 9345 Embedded Controller");
 MODULE_LICENSE("GPL");
+MODULE_IMPORT_NS("IIO_CONSUMER");
