@@ -201,7 +201,8 @@
 	reserved-memory {
 		linux,cma {
 			compatible = "shared-dma-pool";
-			size = <0x0 0x8000000>;
+			size = <0x0 0x10000000>;
+			alloc-ranges = <0x0 0x80000000 0x0 0x60000000>;
 			reusable;
 			linux,cma-default;
 		};
