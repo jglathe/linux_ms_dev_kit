@@ -47,6 +47,7 @@
 		qcom,tx-device = <&wcd_tx>;
 
 		reset-gpios = <&tlmm 191 GPIO_ACTIVE_LOW>;
+		mux-controls = <&us_euro_mux_ctrl>;
 
 		vdd-buck-supply = <&vreg_l15b_1p8>;
 		vdd-rxtx-supply = <&vreg_l15b_1p8>;
@@ -241,16 +242,15 @@
 		regulator-always-on;
 	};
 
-//	vreg_audio_en: regulator-audio-en {
-//		compatible = "regulator-fixed";
-//		regulator-name = "VREG_AUDIO_EN";
-//		gpio = <&tlmm 68 GPIO_ACTIVE_HIGH>;
-//		enable-active-high;
-//		pinctrl-0 = <&audio_en_default>;
-//		pinctrl-names = "default";
-//		regulator-always-on;
-//		regulator-boot-on;
-//	};
+	/* two muxes together support CTIA and OMTP switching */
+	us_euro_mux_ctrl: mux-controller {
+		compatible = "gpio-mux";
+		pinctrl-0 = <&us_euro_hs_sel>;
+		pinctrl-names = "default";
+		mux-supply = <&vreg_l16b_2p5>;
+		#mux-control-cells = <0>;
+		mux-gpios = <&tlmm 68 GPIO_ACTIVE_HIGH>;
+	};
 
 	vreg_nvme: regulator-nvme {
 		compatible = "regulator-fixed";
@@ -359,10 +359,14 @@
 				"IN1_HPHL", "HPHL_OUT",
 				"IN2_HPHR", "HPHR_OUT",
 				"AMIC2", "MIC BIAS2",
-				"VA DMIC0", "MIC BIAS1",
-				"VA DMIC1", "MIC BIAS1",
-				"VA DMIC0", "VA MIC BIAS1",
-				"VA DMIC1", "VA MIC BIAS1",
+				/*
+				 * Internal 2x DMIC array: Lenovo's Windows INF sets
+				 * ExternalMicBiasNeeded=1 for 83N3, i.e. the DMICs are
+				 * not biased by the WCD9385. Power them from the board
+				 * supply (vdd-micb = vreg_l1b_1p8) like the Yoga Slim 7x.
+				 */
+				"VA DMIC0", "vdd-micb",
+				"VA DMIC1", "vdd-micb",
 				"TX SWR_INPUT1", "ADC2_OUTPUT";
 
 		displayport-0-dai-link {
@@ -597,6 +601,13 @@
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
+		};
+
+		vreg_l16b_2p5: ldo16 {
+			regulator-name = "vreg_l16b_2p5";
+			regulator-min-microvolt = <2504000>;
+			regulator-max-microvolt = <2504000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l17b_2p5: ldo17 {
@@ -1503,6 +1514,13 @@
 		bias-pull-up;
 		drive-strength = <2>;
 		input-enable;
+	};
+
+	us_euro_hs_sel: us-euro-hs-sel-state {
+		pins = "gpio68";
+		function = "gpio";
+		bias-pull-down;
+		drive-strength = <2>;
 	};
 
 	usb_1_ss0_sbu_default: usb-1-ss0-sbu-state {
