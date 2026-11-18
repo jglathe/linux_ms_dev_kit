@@ -221,6 +221,9 @@ static void iris_unreserve_iova_region(struct device *dev, struct dma_iova_state
 {
 	unsigned int i;
 
+	if (!iova_state)
+		return;
+
 	for (i = 0; dma_iova_size(&iova_state[i]); i++)
 		dma_iova_free(dev, &iova_state[i]);
 }
@@ -395,10 +398,18 @@ static int iris_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = iris_reserve_iova_region(dev, &core->iova_state, IRIS_NP_RESERVE_IOVA_START,
-				       IRIS_NP_RESERVE_IOVA_SIZE);
-	if (ret)
-		return ret;
+	/*
+	 * With "non-pixel"/"pixel" context bank subnodes the parent has no
+	 * IOMMU and the restricted range is described by "iommu-ranges" on
+	 * the non-pixel node, so only reserve it when the parent is mapped.
+	 */
+	if (device_iommu_mapped(dev)) {
+		ret = iris_reserve_iova_region(dev, &core->iova_state,
+					       IRIS_NP_RESERVE_IOVA_START,
+					       IRIS_NP_RESERVE_IOVA_SIZE);
+		if (ret)
+			return ret;
+	}
 
 	ret = iris_fw_init(core);
 	if (ret)
@@ -451,7 +462,6 @@ err_cb_deinit:
 	iris_deinit_cb_devs(core);
 err_fw_deinit:
 	iris_fw_deinit(core);
-err_unresv_iova_region:
 	iris_unreserve_iova_region(dev, core->iova_state);
 
 	return ret;
