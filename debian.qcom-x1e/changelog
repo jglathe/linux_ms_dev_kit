@@ -1,3 +1,20 @@
+linux-qcom-x1e (7.3.3-jg-2) stonking; urgency=medium
+
+  * Ubuntu: Update annotations and ubuntu_x1e_defconfig
+  * platform: arm64: dell-xps-ec: import the IIO_CONSUMER namespace
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: define 256MB CMA below 4G
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: add CTIA/OMTP mux and DMIC supply
+  * UBUNTU: [Config] qcom-x1e: build the X1 boot chain in again, as in 7.1.y
+  * Ubuntu: update annotations, devbuildconfig.sh
+  * media: iris: only reserve the parent IOVA range when it is IOMMU-mapped
+  * arm64: dts: qcom: x1e001de-devkit-jg: move USB dual-role to the front port
+  * mfd: syscon: don't take the clock of a clock provider [Nicola Nicodemo <nicola084@gmail.com>]
+  * drm/msm/dp: hold a single runtime PM reference while plugged [Frelsaren <markus.roiland00@gmail.com>]
+  * arm64: dts: qcom: x1-el2-sleep: EL2 system sleep states for Zenbook A14 [Frelsaren <markus.roiland00@gmail.com>]
+  * arm64: dts: qcom: wire x1-el2-sleep into the T14s EL2 DTBs
+
+ -- Jens Glathe <jens.glathe@oldschoolsolutions.biz>  Thu, 19 Nov 2026 21:25:00 +0100
+
 linux-qcom-x1e (7.3.3-jg-1) stonking; urgency=medium
 
   * arm64: dts: qcom: lenovo-t14s: remove compatible for Bluetooth definition
