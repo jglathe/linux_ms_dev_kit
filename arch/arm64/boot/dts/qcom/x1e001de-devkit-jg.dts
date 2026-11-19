@@ -74,7 +74,7 @@
 			compatible = "usb-c-connector";
 			reg = <0>;
 			power-role = "dual";
-			data-role = "dual";
+			data-role = "host";
 
 			ports {
 				#address-cells = <1>;
@@ -148,7 +148,7 @@
 			compatible = "usb-c-connector";
 			reg = <2>;
 			power-role = "dual";
-			data-role = "host";
+			data-role = "dual";
 
 			ports {
 				#address-cells = <1>;
@@ -1750,8 +1750,7 @@
 };
 
 &usb_1_ss0 {
-	dr_mode = "otg";
-	usb-role-switch;
+	dr_mode = "host";
 
 	status = "okay";
 };
@@ -1781,7 +1780,8 @@
 };
 
 &usb_1_ss1 {
-	dr_mode = "host";
+	dr_mode = "otg";
+	usb-role-switch;
 
 	status = "okay";
 };
