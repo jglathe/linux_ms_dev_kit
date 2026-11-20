@@ -8,6 +8,7 @@
 #include <linux/types.h>
 #include <linux/clk.h>
 #include <linux/clk/clk-conf.h>
+#include <linux/clk-provider.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
@@ -141,6 +142,10 @@ struct msm_dp_ctrl_private {
 	bool link_clks_on;
 	bool stream_clks_on;
 	bool clk_defaults_set;
+
+	/* clocks left running by the bootloader and held until we own them */
+	bool boot_link_clks_held;
+	bool boot_pixel_clk_held;
 };
 
 static inline u32 msm_dp_read_ahb(const struct msm_dp_ctrl_private *ctrl, u32 offset)
@@ -1826,6 +1831,56 @@ static void msm_dp_ctrl_link_clk_disable(struct msm_dp_ctrl *msm_dp_ctrl)
 		   str_on_off(ctrl->core_clks_on));
 }
 
+static void msm_dp_ctrl_boot_link_clks_put(struct msm_dp_ctrl_private *ctrl)
+{
+	if (!ctrl->boot_link_clks_held)
+		return;
+
+	clk_bulk_disable_unprepare(ctrl->num_link_clks, ctrl->link_clks);
+	ctrl->boot_link_clks_held = false;
+}
+
+static void msm_dp_ctrl_boot_pixel_clk_put(struct msm_dp_ctrl_private *ctrl)
+{
+	if (!ctrl->boot_pixel_clk_held)
+		return;
+
+	clk_disable_unprepare(ctrl->pixel_clk);
+	ctrl->boot_pixel_clk_held = false;
+}
+
+static void msm_dp_ctrl_boot_clks_put(void *data)
+{
+	struct msm_dp_ctrl_private *ctrl = data;
+
+	msm_dp_ctrl_boot_link_clks_put(ctrl);
+	msm_dp_ctrl_boot_pixel_clk_put(ctrl);
+}
+
+/*
+ * The bootloader may leave the link and pixel clocks of the display it
+ * initialized (typically the eDP panel) running. Nothing references them
+ * until the first modeset, so the clock framework's unused clock sweep
+ * (e.g. clk sync_state of the display clock controller) gates them well
+ * before we take over, and the first clk_set_rate() afterwards can fail
+ * because the RCG sees no source toggling. Hold the clocks which are found
+ * running at probe time until the first modeset has enabled them itself.
+ * The references are dropped by the _put() helpers above, when the link and
+ * pixel clocks have been enabled for the first modeset, on link teardown or
+ * when the controller goes away.
+ */
+static void msm_dp_ctrl_boot_clks_get(struct msm_dp_ctrl_private *ctrl)
+{
+	/* ctrl_link is the first link clock, ctrl_link_iface the second */
+	if (__clk_is_enabled(ctrl->link_clks[0].clk) &&
+	    !clk_bulk_prepare_enable(ctrl->num_link_clks, ctrl->link_clks))
+		ctrl->boot_link_clks_held = true;
+
+	if (__clk_is_enabled(ctrl->pixel_clk) &&
+	    !clk_prepare_enable(ctrl->pixel_clk))
+		ctrl->boot_pixel_clk_held = true;
+}
+
 static int msm_dp_ctrl_enable_mainlink_clocks(struct msm_dp_ctrl_private *ctrl,
 					      struct msm_dp_panel *panel)
 {
@@ -1852,6 +1907,8 @@ static int msm_dp_ctrl_enable_mainlink_clocks(struct msm_dp_ctrl_private *ctrl,
 	ret = msm_dp_ctrl_link_clk_enable(&ctrl->msm_dp_ctrl);
 	if (ret)
 		DRM_ERROR("Unable to start link clocks. ret=%d\n", ret);
+	else
+		msm_dp_ctrl_boot_link_clks_put(ctrl);
 
 	drm_dbg_dp(ctrl->drm_dev, "link rate=%d\n", ctrl->link->link_params.rate);
 
@@ -2228,6 +2285,7 @@ static int msm_dp_ctrl_on_pixel_clk(struct msm_dp_ctrl_private *ctrl, unsigned l
 		return ret;
 	}
 	ctrl->stream_clks_on = true;
+	msm_dp_ctrl_boot_pixel_clk_put(ctrl);
 
 	return ret;
 }
@@ -2686,6 +2744,7 @@ void msm_dp_ctrl_off_link(struct msm_dp_ctrl *msm_dp_ctrl,
 	msm_dp_ctrl_reset(&ctrl->msm_dp_ctrl, panel);
 
 	msm_dp_ctrl_link_clk_disable(&ctrl->msm_dp_ctrl);
+	msm_dp_ctrl_boot_clks_put(ctrl);
 
 	phy_power_off(phy);
 }
@@ -2839,6 +2898,11 @@ struct msm_dp_ctrl *msm_dp_ctrl_get(struct device *dev, struct msm_dp_link *link
 		dev_err(dev, "failed to init clocks\n");
 		return ERR_PTR(ret);
 	}
+
+	msm_dp_ctrl_boot_clks_get(ctrl);
+	ret = devm_add_action_or_reset(dev, msm_dp_ctrl_boot_clks_put, ctrl);
+	if (ret)
+		return ERR_PTR(ret);
 
 	return &ctrl->msm_dp_ctrl;
 }
