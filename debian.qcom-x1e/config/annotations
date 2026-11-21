@@ -198,6 +198,9 @@ CONFIG_FHANDLE                                  note<'LP: #1412543'>
 CONFIG_FUSE_FS                                  policy<{'arm64': 'y'}>
 CONFIG_FUSE_FS                                  note<'not autoloadable'>
 
+CONFIG_FW_DEVLINK_SYNC_STATE_TIMEOUT            policy<{'arm64': 'y'}>
+CONFIG_FW_DEVLINK_SYNC_STATE_TIMEOUT            note<'release sync_state() of providers with never-probing consumers after deferred_probe_timeout'>
+
 CONFIG_FW_LOADER_USER_HELPER_FALLBACK           policy<{'arm64': 'n'}>
 CONFIG_FW_LOADER_USER_HELPER_FALLBACK           note<'LP: #1398458'>
 
@@ -4545,7 +4548,6 @@ CONFIG_FW_CACHE                                 policy<{'arm64': 'y'}>
 CONFIG_FW_CFG_SYSFS                             policy<{'arm64': 'm'}>
 CONFIG_FW_CFG_SYSFS_CMDLINE                     policy<{'arm64': 'n'}>
 CONFIG_FW_CS_DSP                                policy<{'arm64': 'm'}>
-CONFIG_FW_DEVLINK_SYNC_STATE_TIMEOUT            policy<{'arm64': 'n'}>
 CONFIG_FW_LOADER                                policy<{'arm64': 'y'}>
 CONFIG_FW_LOADER_COMPRESS                       policy<{'arm64': 'y'}>
 CONFIG_FW_LOADER_COMPRESS_XZ                    policy<{'arm64': 'y'}>
