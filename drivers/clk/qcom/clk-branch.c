@@ -59,6 +59,36 @@ static bool clk_branch2_check_halt(const struct clk_branch *br, bool enabling)
 	return (val & CBCR_CLK_OFF) == (invert ? 0 : CBCR_CLK_OFF);
 }
 
+/*
+ * The enable bit only says that a clock was requested. Firmware may leave it
+ * set on a branch that has stopped since, e.g. because its PHY source was
+ * powered down. Report such a branch as disabled, so that "enabled" means
+ * the clock is actually running.
+ *
+ * The status bit is only consulted when it describes this branch alone and
+ * is checked on enable anyway: not for voted branches, where the enable bit
+ * is our vote and the status is the aggregate of all voters; not for
+ * branches without a usable status bit (BRANCH_HALT_DELAY, BRANCH_HALT_SKIP);
+ * and not under hardware clock gating, which may halt the branch at any time.
+ */
+static int clk_branch2_is_enabled(struct clk_hw *hw)
+{
+	struct clk_branch *br = to_clk_branch(hw);
+	int ret;
+
+	ret = clk_is_enabled_regmap(hw);
+	if (ret <= 0)
+		return ret;
+
+	if (br->halt_check != BRANCH_HALT && br->halt_check != BRANCH_HALT_ENABLE)
+		return 1;
+
+	if (clk_branch_in_hwcg_mode(br))
+		return 1;
+
+	return clk_branch2_check_halt(br, true);
+}
+
 static int clk_branch_wait(const struct clk_branch *br, bool enabling,
 		bool (check_halt)(const struct clk_branch *, bool))
 {
@@ -168,20 +198,20 @@ static void clk_branch2_mem_disable(struct clk_hw *hw)
 const struct clk_ops clk_branch2_mem_ops = {
 	.enable = clk_branch2_mem_enable,
 	.disable = clk_branch2_mem_disable,
-	.is_enabled = clk_is_enabled_regmap,
+	.is_enabled = clk_branch2_is_enabled,
 };
 EXPORT_SYMBOL_GPL(clk_branch2_mem_ops);
 
 const struct clk_ops clk_branch2_ops = {
 	.enable = clk_branch2_enable,
 	.disable = clk_branch2_disable,
-	.is_enabled = clk_is_enabled_regmap,
+	.is_enabled = clk_branch2_is_enabled,
 };
 EXPORT_SYMBOL_GPL(clk_branch2_ops);
 
 const struct clk_ops clk_branch2_aon_ops = {
 	.enable = clk_branch2_enable,
-	.is_enabled = clk_is_enabled_regmap,
+	.is_enabled = clk_branch2_is_enabled,
 };
 EXPORT_SYMBOL_GPL(clk_branch2_aon_ops);
 
@@ -195,6 +225,6 @@ EXPORT_SYMBOL_GPL(clk_branch_simple_ops);
 const struct clk_ops clk_branch2_prepare_ops = {
 	.prepare = clk_branch2_enable,
 	.unprepare = clk_branch2_disable,
-	.is_prepared = clk_is_enabled_regmap,
+	.is_prepared = clk_branch2_is_enabled,
 };
 EXPORT_SYMBOL_GPL(clk_branch2_prepare_ops);
