@@ -1038,7 +1038,7 @@ static irqreturn_t msm_dp_display_irq_thread(int irq, void *dev_id)
 		else
 			msm_dp_irq_hpd_handle(dp);
 		if (!rc)
-			pm_runtime_put_sync(&pdev->dev);
+			pm_runtime_put(&pdev->dev);
 	}
 
 	ret = IRQ_HANDLED;
