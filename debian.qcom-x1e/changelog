@@ -1,3 +1,16 @@
+linux-qcom-x1e (7.3.3-jg-3) stonking; urgency=medium
+
+  * drm/msm/dp: configure voltage swing and pre-emphasis for all active lanes [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
+  * drm/msm/dp: keep training pattern active until stream video is ready [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
+  * drm/msm/dp: restore source params and reinit video_comp on link maintenance [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
+  * drm/msm/dp: use async pm_runtime_put() in the IRQ_HPD path
+  * drm/msm/dp: avoid synchronous runtime PM put from HPD IRQ thread [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
+  * drm/msm/dp: fix HPD plugged and sink_count state tracking across hotplug [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
+  * clk: qcom: branch: only report branches as enabled when they are running
+  * arm64: configs: ubuntu_x1e: default fw_devlink sync_state to timeout
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Mon, 23 Nov 2026 18:57:53 +0100
+
 linux-qcom-x1e (7.3.3-jg-2) stonking; urgency=medium
 
   * Ubuntu: Update annotations and ubuntu_x1e_defconfig
