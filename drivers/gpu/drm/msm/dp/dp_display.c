@@ -15,7 +15,9 @@
 #include <linux/workqueue.h>
 #include <drm/display/drm_dp_aux_bus.h>
 #include <drm/display/drm_hdmi_audio_helper.h>
+#include <drm/drm_atomic_helper.h>
 #include <drm/drm_edid.h>
+#include <drm/drm_modeset_lock.h>
 #include <drm/drm_probe_helper.h>
 
 #include "msm_drv.h"
@@ -62,6 +64,7 @@ struct msm_dp_display_private {
 	bool link_failed;
 	bool link_failure_notified;
 	struct work_struct link_status_work;
+	struct work_struct link_retrain_work;
 
 	struct drm_device *drm_dev;
 
@@ -217,6 +220,23 @@ static void msm_dp_display_reset_link_failure(struct msm_dp_display_private *dp)
 	dp->link_failure_notified = false;
 }
 
+/*
+ * The sink is back after an enable failed. Start a new failure episode for
+ * the hotplug notification and, if the last enable failed, retrain the link.
+ */
+static void msm_dp_display_sink_returned(struct msm_dp_display_private *dp)
+{
+	bool retrain;
+
+	scoped_guard(spinlock, &dp->link_status_lock) {
+		dp->link_failure_notified = false;
+		retrain = dp->link_failed;
+	}
+
+	if (retrain)
+		schedule_work(&dp->link_retrain_work);
+}
+
 static void msm_dp_display_report_link_failure(struct msm_dp_display_private *dp)
 {
 	scoped_guard(spinlock, &dp->link_status_lock)
@@ -256,6 +276,59 @@ static void msm_dp_display_link_status_work(struct work_struct *work)
 		drm_kms_helper_connector_hotplug_event(connector);
 }
 
+/*
+ * Compositors that don't act on link-status (mutter, for one) keep an
+ * output whose enable failed "on" when the sink comes back with the same
+ * modes, and the link is never trained again. Do a full modeset of the
+ * CRTC ourselves then, but only if the last enable failed and the CRTC is
+ * still active. This runs only on sink events, never on enable failures,
+ * so a sink that keeps failing can't make it loop.
+ */
+static void msm_dp_display_link_retrain_work(struct work_struct *work)
+{
+	struct msm_dp_display_private *dp = container_of(work,
+			struct msm_dp_display_private, link_retrain_work);
+	struct drm_connector *connector = dp->msm_dp_display.connector;
+	struct drm_device *dev = connector->dev;
+	struct drm_modeset_acquire_ctx ctx;
+	struct drm_crtc *crtc;
+	bool link_failed;
+	int ret;
+
+	drm_modeset_acquire_init(&ctx, 0);
+retry:
+	ret = drm_modeset_lock(&dev->mode_config.connection_mutex, &ctx);
+	if (ret)
+		goto out;
+
+	crtc = connector->state->crtc;
+	if (!crtc)
+		goto out;
+
+	ret = drm_modeset_lock(&crtc->mutex, &ctx);
+	if (ret)
+		goto out;
+
+	scoped_guard(spinlock, &dp->link_status_lock)
+		link_failed = dp->link_failed;
+
+	if (!link_failed || !crtc->state->active)
+		goto out;
+
+	drm_dbg_dp(dp->drm_dev, "type=%d retraining after a failed enable\n",
+		   dp->msm_dp_display.connector_type);
+
+	ret = drm_atomic_helper_reset_crtc(crtc, &ctx);
+out:
+	if (ret == -EDEADLK) {
+		drm_modeset_backoff(&ctx);
+		goto retry;
+	}
+
+	drm_modeset_drop_locks(&ctx);
+	drm_modeset_acquire_fini(&ctx);
+}
+
 static int msm_dp_display_bind(struct device *dev, struct device *master,
 			   void *data)
 {
@@ -286,6 +359,7 @@ static void msm_dp_display_unbind(struct device *dev, struct device *master,
 	struct msm_dp_display_private *dp = dev_get_dp_display_private(dev);
 	struct msm_drm_private *priv = dev_get_drvdata(master);
 
+	cancel_work_sync(&dp->link_retrain_work);
 	cancel_work_sync(&dp->link_status_work);
 	of_dp_aux_depopulate_bus(dp->aux);
 
@@ -474,10 +548,6 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp)
 	if (dp->plugged)
 		return 0;
 
-	/* eDP goes through here on every enable, don't reset its latch */
-	if (!dp->msm_dp_display.is_edp)
-		msm_dp_display_reset_link_failure(dp);
-
 	ret = pm_runtime_resume_and_get(&pdev->dev);
 	if (ret) {
 		DRM_ERROR("failed to pm_runtime_resume\n");
@@ -499,6 +569,10 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp)
 	if (!ret && dp->msm_dp_display.power_on && !was_plugged)
 		drm_connector_set_link_status_property(dp->msm_dp_display.connector,
 						       DRM_MODE_LINK_STATUS_BAD);
+
+	/* eDP goes through here on every enable */
+	if (!dp->msm_dp_display.is_edp)
+		msm_dp_display_sink_returned(dp);
 
 	drm_dbg_dp(dp->drm_dev, "After, type=%d sink_count=%d\n",
 			dp->msm_dp_display.connector_type,
@@ -546,9 +620,6 @@ static int msm_dp_hpd_unplug_handle(struct msm_dp_display_private *dp)
 	guard(mutex)(&dp->plugged_lock);
 	if (!dp->plugged)
 		return 0;
-
-	if (!dp->msm_dp_display.is_edp)
-		msm_dp_display_reset_link_failure(dp);
 
 	/* Don't forget modes for eDP */
 	if (!dp->msm_dp_display.is_edp)
@@ -601,8 +672,9 @@ static int msm_dp_irq_hpd_handle(struct msm_dp_display_private *dp)
 		sink_request = dp->link->sink_request;
 		drm_dbg_dp(dp->drm_dev, "sink_request=%d\n", sink_request);
 		if (sink_request & DS_PORT_STATUS_CHANGED) {
-			msm_dp_display_reset_link_failure(dp);
 			rc = msm_dp_display_process_hpd_high(dp);
+			if (!rc && dp->link->sink_count)
+				msm_dp_display_sink_returned(dp);
 		} else {
 			rc = msm_dp_display_handle_irq_hpd(dp);
 		}
@@ -1320,6 +1392,7 @@ static int msm_dp_display_probe(struct platform_device *pdev)
 	mutex_init(&dp->plugged_lock);
 	spin_lock_init(&dp->link_status_lock);
 	INIT_WORK(&dp->link_status_work, msm_dp_display_link_status_work);
+	INIT_WORK(&dp->link_retrain_work, msm_dp_display_link_retrain_work);
 
 	rc = msm_dp_display_get_io(dp);
 	if (rc)
