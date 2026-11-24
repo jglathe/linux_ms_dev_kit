@@ -1,3 +1,15 @@
+linux-qcom-x1e (7.3.3-jg-4) stonking; urgency=medium
+
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: remove the x1 speed cap
+  * drm/msm/dp: don't report link training success after a reinit [Oleg Keri <okerixx@gmail.com>]
+  * drm/msm/dp: mark the link bad when enabling the stream fails
+  * drm/msm/dp: retrain a failed link when the sink comes back
+  * drm/msm/dp: send a hotplug event when the downstream port status changes
+  * drm/msm/dp: don't set link-status from the HPD plug path
+  * DEBUG: drm/msm/dp: rate-limited markers for the HPD and enable failure paths
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Tue, 24 Nov 2026 20:00:00 +0100
+
 linux-qcom-x1e (7.3.3-jg-3) stonking; urgency=medium
 
   * drm/msm/dp: configure voltage swing and pre-emphasis for all active lanes [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
