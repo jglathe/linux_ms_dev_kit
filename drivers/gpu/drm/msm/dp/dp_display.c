@@ -566,9 +566,17 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp)
 		return ret;
 	}
 
-	if (!ret && dp->msm_dp_display.power_on && !was_plugged)
-		drm_connector_set_link_status_property(dp->msm_dp_display.connector,
-						       DRM_MODE_LINK_STATUS_BAD);
+	/*
+	 * The sink came back while the stream is still on, so the link it was
+	 * trained for is gone. Don't touch link-status from here: this runs
+	 * from detect() with connection_mutex held, where taking it again
+	 * deadlocks, and from the HPD thread under plugged_lock, which nests
+	 * the other way round against detect(). Treat it like a failed
+	 * enable instead, the work marks the link BAD and sends a hotplug
+	 * event, and msm_dp_display_sink_returned() below retrains it.
+	 */
+	if (dp->msm_dp_display.power_on && !was_plugged)
+		msm_dp_display_report_link_failure(dp);
 
 	/* eDP goes through here on every enable */
 	if (!dp->msm_dp_display.is_edp)
