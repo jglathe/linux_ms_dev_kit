@@ -656,7 +656,12 @@ static int msm_dp_hpd_unplug_handle(struct msm_dp_display_private *dp)
 	return 0;
 }
 
-static int msm_dp_irq_hpd_handle(struct msm_dp_display_private *dp)
+/*
+ * @ds_changed is set when the sink reported a downstream port status
+ * change, e.g. a DP-HDMI converter whose HDMI sink went away or came back.
+ */
+static int msm_dp_irq_hpd_handle(struct msm_dp_display_private *dp,
+				 bool *ds_changed)
 {
 	u32 sink_request;
 	int rc = 0;
@@ -672,6 +677,8 @@ static int msm_dp_irq_hpd_handle(struct msm_dp_display_private *dp)
 		sink_request = dp->link->sink_request;
 		drm_dbg_dp(dp->drm_dev, "sink_request=%d\n", sink_request);
 		if (sink_request & DS_PORT_STATUS_CHANGED) {
+			if (ds_changed)
+				*ds_changed = true;
 			rc = msm_dp_display_process_hpd_high(dp);
 			if (!rc && dp->link->sink_count)
 				msm_dp_display_sink_returned(dp);
@@ -1176,13 +1183,24 @@ static irqreturn_t msm_dp_display_irq_thread(int irq, void *dev_id)
 				      connector_status_connected);
 
 	if (hpd_isr_status & DP_DP_IRQ_HPD_INT_MASK) {
+		struct drm_connector *connector = dp->msm_dp_display.connector;
+		bool ds_changed = false;
+
 		rc = pm_runtime_resume_and_get(&pdev->dev);
 		if (rc)
 			DRM_ERROR("failed to pm_runtime_resume\n");
 		else
-			msm_dp_irq_hpd_handle(dp);
+			msm_dp_irq_hpd_handle(dp, &ds_changed);
 		if (!rc)
 			pm_runtime_put(&pdev->dev);
+
+		/*
+		 * IRQ_HPD isn't passed through drm_bridge_hpd_notify(), so
+		 * nothing else tells userspace that the sink count changed.
+		 * Let it reprobe, detect() reads SINK_COUNT.
+		 */
+		if (ds_changed && connector)
+			drm_kms_helper_connector_hotplug_event(connector);
 	}
 
 	ret = IRQ_HANDLED;
@@ -1740,7 +1758,8 @@ void msm_dp_bridge_hpd_notify(struct drm_bridge *bridge,
 	if (status == connector_status_connected) {
 		if (hpd_link_status == ISR_IRQ_HPD_PULSE_COUNT ||
 		    extra_status == DRM_CONNECTOR_DP_IRQ_HPD) {
-			msm_dp_irq_hpd_handle(dp);
+			/* drm_bridge_connector sends the hotplug event */
+			msm_dp_irq_hpd_handle(dp, NULL);
 		} else if (hpd_link_status == ISR_HPD_REPLUG_COUNT) {
 			msm_dp_hpd_unplug_handle(dp);
 			msm_dp_hpd_plug_handle(dp);
