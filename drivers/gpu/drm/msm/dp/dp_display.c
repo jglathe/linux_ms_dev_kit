@@ -272,6 +272,10 @@ static void msm_dp_display_link_status_work(struct work_struct *work)
 	drm_connector_set_link_status_property(connector,
 					       DRM_MODE_LINK_STATUS_BAD);
 
+	dev_info_ratelimited(&dp->msm_dp_display.pdev->dev,
+			     "dbg: link failed, link-status BAD, hotplug event %s\n",
+			     notify ? "sent" : "suppressed");
+
 	if (notify)
 		drm_kms_helper_connector_hotplug_event(connector);
 }
@@ -302,8 +306,11 @@ retry:
 		goto out;
 
 	crtc = connector->state->crtc;
-	if (!crtc)
+	if (!crtc) {
+		dev_info_ratelimited(&dp->msm_dp_display.pdev->dev,
+				     "dbg: retrain: connector has no CRTC, skipped\n");
 		goto out;
+	}
 
 	ret = drm_modeset_lock(&crtc->mutex, &ctx);
 	if (ret)
@@ -311,6 +318,10 @@ retry:
 
 	scoped_guard(spinlock, &dp->link_status_lock)
 		link_failed = dp->link_failed;
+
+	dev_info_ratelimited(&dp->msm_dp_display.pdev->dev,
+			     "dbg: retrain: link_failed=%d crtc active=%d\n",
+			     link_failed, crtc->state->active);
 
 	if (!link_failed || !crtc->state->active)
 		goto out;
@@ -575,8 +586,11 @@ static int msm_dp_hpd_plug_handle(struct msm_dp_display_private *dp)
 	 * enable instead, the work marks the link BAD and sends a hotplug
 	 * event, and msm_dp_display_sink_returned() below retrains it.
 	 */
-	if (dp->msm_dp_display.power_on && !was_plugged)
+	if (dp->msm_dp_display.power_on && !was_plugged) {
+		dev_info_ratelimited(&pdev->dev,
+				     "dbg: sink back while stream on, link flagged failed\n");
 		msm_dp_display_report_link_failure(dp);
+	}
 
 	/* eDP goes through here on every enable */
 	if (!dp->msm_dp_display.is_edp)
@@ -628,6 +642,10 @@ static int msm_dp_hpd_unplug_handle(struct msm_dp_display_private *dp)
 	guard(mutex)(&dp->plugged_lock);
 	if (!dp->plugged)
 		return 0;
+
+	dev_info_ratelimited(&pdev->dev,
+			     "dbg: unplug handled, power_on=%d sink_count=%d\n",
+			     dp->msm_dp_display.power_on, dp->link->sink_count);
 
 	/* Don't forget modes for eDP */
 	if (!dp->msm_dp_display.is_edp)
@@ -688,6 +706,9 @@ static int msm_dp_irq_hpd_handle(struct msm_dp_display_private *dp,
 			if (ds_changed)
 				*ds_changed = true;
 			rc = msm_dp_display_process_hpd_high(dp);
+			dev_info_ratelimited(&dp->msm_dp_display.pdev->dev,
+					     "dbg: IRQ_HPD downstream port change, sink_count=%d rc=%d\n",
+					     dp->link->sink_count, rc);
 			if (!rc && dp->link->sink_count)
 				msm_dp_display_sink_returned(dp);
 		} else {
@@ -812,8 +833,12 @@ static int msm_dp_display_prepare_link(struct msm_dp_display_private *dp)
 		return rc;
 	}
 
-	if (dp->link->sink_count == 0)
+	if (dp->link->sink_count == 0) {
+		dev_info_ratelimited(&msm_dp_display->pdev->dev,
+				     "dbg: enable with sink_count=0 plugged=%d phy_init=%d\n",
+				     dp->plugged, dp->phy_initialized);
 		return -ENOTCONN;
+	}
 
 	if (!msm_dp_display->power_on) {
 		msm_dp_display_host_phy_init(dp);
@@ -1651,6 +1676,11 @@ void msm_dp_display_atomic_enable(struct msm_dp *msm_dp_display,
 	else
 		msm_dp_display_reset_link_failure(dp);
 
+	dev_info_ratelimited(&msm_dp_display->pdev->dev,
+			     "dbg: stream on rc=%d, %u lanes @ %u kHz, sink_count=%d\n",
+			     rc, dp->link->link_params.num_lanes,
+			     dp->link->link_params.rate, dp->link->sink_count);
+
 	rc = msm_dp_display_post_enable(msm_dp_display);
 	if (rc) {
 		DRM_ERROR("DP display post enable failed, rc=%d\n", rc);
@@ -1702,6 +1732,11 @@ void msm_dp_display_atomic_post_disable(struct msm_dp *dp)
 		msm_dp_hpd_unplug_handle(msm_dp_display);
 
 	msm_dp_display_audio_notify_disable(msm_dp_display);
+
+	dev_info_ratelimited(&dp->pdev->dev,
+			     "dbg: stream off, power_on=%d plugged=%d sink_count=%d\n",
+			     dp->power_on, msm_dp_display->plugged,
+			     msm_dp_display->link->sink_count);
 
 	msm_dp_display_disable(msm_dp_display, msm_dp_display->panel);
 
@@ -1762,6 +1797,10 @@ void msm_dp_bridge_hpd_notify(struct drm_bridge *bridge,
 
 	drm_dbg_dp(dp->drm_dev, "type=%d link hpd_link_status=0x%x, status=%d\n",
 		   msm_dp_display->connector_type, hpd_link_status, status);
+	dev_info_ratelimited(&msm_dp_display->pdev->dev,
+			     "dbg: HPD %s (isr link status %#x, extra %d)\n",
+			     status == connector_status_connected ? "high" : "low",
+			     hpd_link_status, extra_status);
 
 	if (status == connector_status_connected) {
 		if (hpd_link_status == ISR_IRQ_HPD_PULSE_COUNT ||
