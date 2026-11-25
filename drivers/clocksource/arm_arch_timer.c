@@ -1027,6 +1027,7 @@ static void __init arch_timer_idle_deadline_init(void)
 	 */
 	static const char * const needs_idle_deadline[] __initconst = {
 		"qcom,x1e80100",
+		"qcom,x1p42100",
 		NULL
 	};
 
