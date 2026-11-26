@@ -1,3 +1,19 @@
+linux-qcom-x1e (7.3.3-jg-4) stonking; urgency=medium
+
+  * arm64: dts: qcom: x126100-lenovo-ideapad-slim3: remove the x1 speed cap
+  * drm/msm/dp: don't report link training success after a reinit [Oleg Keri <okerixx@gmail.com>]
+  * drm/msm/dp: mark the link bad when enabling the stream fails
+  * drm/msm/dp: retrain a failed link when the sink comes back
+  * drm/msm/dp: send a hotplug event when the downstream port status changes
+  * drm/msm/dp: don't set link-status from the HPD plug path
+  * DEBUG: drm/msm/dp: rate-limited markers for the HPD and enable failure paths
+  * PCI: Avoid bridge D3 on Qualcomm SC8280XP [Clover <alex@ironrobin.net>]
+  * arm64: dts: qcom: x1p-el2-sleep: EL2 system sleep states for Purwa, wire into Slim 5x [Grok Bot <grokbot@invalid>]
+  * clocksource/drivers/arm_arch_timer: keep a far deadline on idle CPUs under Gunyah (book4) [Nicola Nicodemo <nicola084@gmail.com>]
+  * clocksource/drivers/arm_arch_timer: idle deadline also on qcom,x1p42100 (Purwa) [Stewings <stewings@users.noreply.github.com>]
+
+ -- Jens Glathe <jens.glathe@oldschoololutions.biz>  Thu, 26 Nov 2026 20:00:07 +0100
+
 linux-qcom-x1e (7.3.3-jg-3) stonking; urgency=medium
 
   * drm/msm/dp: configure voltage swing and pre-emphasis for all active lanes [Gianfranco Mariotti <gianfranco.mariotti94@gmail.com>]
